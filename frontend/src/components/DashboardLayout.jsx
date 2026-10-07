@@ -3,7 +3,6 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { notificationsAPI, walletAPI } from '../services/api';
-import AutoLinkLogo from './AutoLinkLogo';
 import TopUpModal from './TopUpModal';
 import {
   Car, LogOut, Menu, X, Bell, User, ChevronDown, Sun, Moon, CheckCheck,
@@ -51,16 +50,6 @@ const NAV_ITEMS = {
     { icon: MessageSquare, label: 'Messages', path: '/messages' },
   ],
 };
-
-const ROLE_COLORS = {
-  CLIENT: 'bg-blue-100 text-blue-700',
-  OWNER: 'bg-primary-100 text-primary-700',
-  DRIVER: 'bg-accent-100 text-accent-700',
-  ADMIN: 'bg-red-100 text-red-700',
-  CONTROLLER: 'bg-purple-100 text-purple-700',
-  INTERMEDIARY: 'bg-violet-100 text-violet-700',
-};
-const ROLE_LABELS = { CLIENT: 'Client', OWNER: 'Gestionnaire', DRIVER: 'Chauffeur', ADMIN: 'Administrateur', CONTROLLER: 'Contrôleur', INTERMEDIARY: 'Intermédiaire' };
 
 // Identité visuelle par rôle : palette distincte (sidebar, accent actif, avatar)
 const ROLE_THEME = {
@@ -232,24 +221,6 @@ export default function DashboardLayout({ children, title }) {
 
   const Sidebar = ({ mobile = false }) => (
     <div className={`flex flex-col h-full ${theme.sidebar} ${mobile ? 'w-full' : 'w-64'}`}>
-      <div className={`p-4 border-b ${theme.border} flex items-center justify-center`}>
-        <Link to="/">
-          <AutoLinkLogo size="md" />
-        </Link>
-      </div>
-
-      <div className={`p-4 border-b ${theme.border}`}>
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 bg-gradient-to-br ${theme.avatar} rounded-full flex items-center justify-center text-white font-bold`}>
-            {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-white font-semibold text-sm truncate">{user?.firstName} {user?.lastName}</div>
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ROLE_COLORS[user?.role]}`}>{ROLE_LABELS[user?.role]}</span>
-          </div>
-        </div>
-      </div>
-
       {user?.role === 'CLIENT' && <WalletSidebarCard />}
 
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
