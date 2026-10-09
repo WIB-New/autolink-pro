@@ -35,7 +35,7 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "apiBaseUrl": "http://localhost:8000/api",
+      "apiBaseUrl": "https://api-autolink-pro.worldwide-international.business/api",
       "commissionRate": 0.25
     }
   }
