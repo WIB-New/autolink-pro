@@ -265,6 +265,6 @@ export default function AutoLinkLogo({ size = 'md', className = '' }) {
   return (
     <img src={logoPng} alt="AutoLink Pro"
       style={{ height: h, width: 'auto' }}
-      className={`object-contain shrink-0 ${className}`} />
+      className={`object-contain shrink-0 ${className} rounded-full`} />
   );
 }

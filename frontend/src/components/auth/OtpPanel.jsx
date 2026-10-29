@@ -84,17 +84,17 @@ export default function OtpPanel({ email, phone, code, onCodeChange, onSubmit, o
         {loading ? <Loader size={17} className="animate-spin" /> : <>Confirmer et continuer <ArrowRight size={16} /></>}
       </button>
 
-      <div className="border-t border-slate-100 pt-4 mb-5">
+      <div className="border-t border-slate-100 pt-6 mb-6">
         <div className="flex items-center justify-between text-xs mb-2.5">
           <span className="flex items-center gap-1.5 text-slate-500 font-medium">
             <HelpCircle size={13} className="text-amber-500" /> Code non reçu ?
           </span>
           <button type="button" className="text-teal-600 font-semibold hover:underline">Besoin d'aide</button>
         </div>
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-2 gap-5">
           <button type="button" onClick={resend}
-            className="flex items-center justify-center gap-2 border border-slate-200 hover:border-teal-400 hover:text-teal-700 text-slate-600 text-xs font-semibold py-2.5 rounded-xl transition-colors">
-            <MessageCircle size={14} className="text-emerald-500" /> Renvoyer par WhatsApp <span className="text-[10px] text-emerald-600 font-bold">Gratuit</span>
+            className="flex items-center justify-center gap-1 border border-slate-200 hover:border-teal-400 hover:text-teal-700 text-slate-600 text-xs font-semibold py-2.5 rounded-xl transition-colors">
+            <MessageCircle size={14} className="text-emerald-500" /> Renvoyer par WhatsApp
           </button>
           <button type="button" onClick={resend}
             className="flex items-center justify-center gap-2 border border-slate-200 hover:border-teal-400 hover:text-teal-700 text-slate-600 text-xs font-semibold py-2.5 rounded-xl transition-colors">
@@ -107,12 +107,12 @@ export default function OtpPanel({ email, phone, code, onCodeChange, onSubmit, o
         className="w-full text-center text-sm text-slate-500 hover:text-teal-600 font-medium flex items-center justify-center gap-1.5">
         <ArrowLeft size={14} /> Retour à la page de connexion
       </button>
-
+{/* 
       <div className="flex items-center justify-center gap-4 mt-6 text-[10px] text-slate-400 font-medium">
         <span className="flex items-center gap-1"><ShieldCheck size={11} className="text-teal-500" /> Protocole CEMAC 256-bit</span>
         <span className="w-1 h-1 bg-slate-200 rounded-full" />
         <span className="flex items-center gap-1"><ShieldCheck size={11} className="text-teal-500" /> Certifié GSMA Mobile Money</span>
-      </div>
+      </div> */}
     </form>
   );
 }

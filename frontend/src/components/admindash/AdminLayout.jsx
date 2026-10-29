@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import AutoLinkLogo from '../AutoLinkLogo';
 import {
   LayoutDashboard, CalendarCheck, Car, Building2, Users, UserCheck,
-  Landmark, AlertTriangle, Wrench, MessageSquare, Settings,
+  Landmark, AlertTriangle, Wrench, MessageSquare, Settings,UserIcon,
   LogOut, Search, Bell, Menu, X, Siren, Radio,
 } from 'lucide-react';
 
@@ -18,7 +18,7 @@ const ITEMS = [
   { to: '/admin/finance',     icon: Landmark,        label: 'Finances',         badge: 'finances' },
   { to: '/admin/litiges',     icon: AlertTriangle,   label: 'Litiges',          badge: 'disputes' },
   { to: '/admin/inspections', icon: Wrench,          label: 'Maintenance',      badge: null },
-  { to: '/admin/agents',      icon: MessageSquare,   label: 'Messages',         badge: 'messages' },
+  { to: '/admin/agents',      icon: UserIcon,   label: 'Agents',         badge: 'messages' },
   { to: '/admin/settings',    icon: Settings,        label: 'Paramètres',       badge: null },
 ];
 
@@ -69,7 +69,7 @@ export default function AdminLayout({ title, subtitle, children, badges = {} }) 
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-[12px] font-black text-white truncate">{user?.first_name} {user?.last_name?.[0]}.</div>
-            <div className="text-[10px] text-slate-400">Super Admin Douala/Ydé</div>
+            <div className="text-[10px] text-slate-400">Super Admin</div>
           </div>
         </div>
         <button onClick={logout}
