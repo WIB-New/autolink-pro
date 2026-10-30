@@ -58,12 +58,12 @@ export default function Hero() {
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-4">
-              <a href="https://github.com/WIB-New/autolink-pro/releases/download/app-v1.0.0/autolink-pro.apk"
+              <a href="https://github.com/WIB-New/autolink-pro/releases/download/v3.1-apk/autolink-pro-v3.1.apk"
                 className="inline-flex items-center gap-3 bg-teal-500 hover:bg-teal-400 active:bg-teal-600 text-slate-950 font-bold py-3.5 px-6 rounded-2xl transition-all shadow-lg shadow-teal-500/30 hover:shadow-teal-400/40">
                 <Smartphone size={22} />
                 <span className="text-left leading-tight">
                   <span className="block text-[10px] uppercase tracking-wider opacity-80">Application Android</span>
-                  <span className="block text-base">Télécharger l'APK</span>
+                  <span className="block text-base">Télécharger l'APK v3.1</span>
                 </span>
               </a>
               <span className="text-xs text-slate-300">Gratuite · Installation directe<br />Android 8.0+</span>
