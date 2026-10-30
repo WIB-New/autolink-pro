@@ -19,22 +19,21 @@ export default function Faq() {
           </p>
         </div>
 
+        {/* Accordéon */}
         <div className="space-y-3">
           {FAQS.map((f, i) => (
             <div key={f.q}
-              className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <button onClick={() => setOpen(open === i ? -1 : i)}
-                className="w-full flex items-center justify-between gap-4 px-6 py-4 text-left">
-                <span className={`font-bold text-sm ${open === i ? 'text-teal-600' : 'text-slate-900'}`}>
-                  {f.q}
-                </span>
-                <ChevronDown size={18}
-                  className={`shrink-0 transition-transform duration-300 ${open === i ? 'rotate-180 text-teal-600' : 'text-slate-400'}`} />
+              className={`bg-white rounded-2xl border transition-all ${open === i ? 'border-teal-200 shadow-md' : 'border-slate-100'}`}>
+              <button
+                onClick={() => setOpen(open === i ? -1 : i)}
+                aria-expanded={open === i}
+                className="w-full flex items-center justify-between gap-4 text-left px-6 py-4">
+                <span className="font-bold text-slate-900 text-sm md:text-base">{f.q}</span>
+                <ChevronDown size={17}
+                  className={`text-slate-400 shrink-0 transition-transform ${open === i ? 'rotate-180 text-teal-600' : ''}`} />
               </button>
               {open === i && (
-                <div className="px-6 pb-5 text-sm text-slate-500 leading-relaxed border-t border-slate-50 pt-4">
-                  {f.a}
-                </div>
+                <p className="px-6 pb-5 text-sm text-slate-500 leading-relaxed">{f.a}</p>
               )}
             </div>
           ))}

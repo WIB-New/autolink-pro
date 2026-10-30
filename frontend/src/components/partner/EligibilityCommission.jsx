@@ -13,7 +13,7 @@ export default function EligibilityCommission() {
             <span className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center">
               <ListChecks size={19} className="text-teal-600" />
             </span>
-            <h3 className="font-black text-slate-900 text-lg">Votre véhicule est-il éligible ?</h3>
+            <h3 className="font-black text-slate-600 text-lg">Votre véhicule est-il éligible ?</h3>
           </div>
           <ul className="space-y-3.5">
             {ELIGIBILITY.map(e => (
@@ -28,12 +28,12 @@ export default function EligibilityCommission() {
         </div>
 
         {/* Commission */}
-        <div className="bg-slate-900 rounded-3xl p-7 lg:p-9 text-white">
+        <div className="bg-white border border-slate-100 rounded-3xl p-7 lg:p-9 text-white">
           <div className="flex items-center gap-3 mb-6">
             <span className="w-10 h-10 bg-teal-600/20 rounded-xl flex items-center justify-center">
               <Percent size={19} className="text-teal-400" />
             </span>
-            <h3 className="font-black text-lg">Commission claire et équitable</h3>
+            <h3 className="font-black text-lg text-slate-600">Commission claire et équitable</h3>
           </div>
           {/* Barre de répartition */}
           <div className="flex rounded-xl overflow-hidden mb-2 h-12">
@@ -43,7 +43,7 @@ export default function EligibilityCommission() {
           <p className="text-[11px] text-slate-400 mb-6">AutoLink Pro ne gagne que lorsque votre véhicule est loué.</p>
           <ul className="space-y-3">
             {COMMISSION_POINTS.map(p => (
-              <li key={p} className="flex items-start gap-2.5 text-sm text-slate-300">
+              <li key={p} className="flex items-start gap-2.5 text-sm text-slate-400">
                 <CheckCircle2 size={16} className="text-teal-400 shrink-0 mt-0.5" /> {p}
               </li>
             ))}

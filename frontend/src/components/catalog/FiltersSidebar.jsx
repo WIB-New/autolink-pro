@@ -187,7 +187,7 @@ export default function FiltersSidebar({ vehicles, filters, setFilters, activeCo
         <RotateCcw size={13} /> Réinitialiser tous les filtres
       </button>
 
-      <div className="mt-5 bg-slate-50 rounded-xl p-4">
+      {/* <div className="mt-5 bg-slate-50 rounded-xl p-4">
         <div className="flex items-center gap-2 font-black text-slate-900 text-xs mb-1.5">
           <ShieldCheck size={15} className="text-teal-600" /> Garantie AutoLink
         </div>
@@ -195,7 +195,7 @@ export default function FiltersSidebar({ vehicles, filters, setFilters, activeCo
           Inspection unique en 50 points. Contrôle du véhicule avant chaque départ et
           caution sécurisée (Orange Money / MTN MoMo).
         </p>
-      </div>
+      </div> */}
     </aside>
   );
 }

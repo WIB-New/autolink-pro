@@ -8,8 +8,8 @@ export default function HelpContacts() {
     <section className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <p className="text-teal-600 text-xs font-black uppercase tracking-widest mb-2">Une équipe dédiée</p>
-          <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-3">
+          {/* <p className="text-teal-600 text-xs font-black uppercase tracking-widest mb-2">Une équipe dédiée</p> */}
+          <h2 className="text-3xl md:text-4xl font-black text-teal-600 mb-3">
             Besoin d'une assistance immédiate ?<br />
             <span className="text-teal-600">Notre équipe locale est à votre écoute</span>
           </h2>
@@ -25,7 +25,7 @@ export default function HelpContacts() {
               <span className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 ${c.green ? 'bg-white/15' : 'bg-white border border-slate-100'}`}>
                 <c.icon size={22} className={c.green ? 'text-white' : 'text-teal-600'} />
               </span>
-              <h3 className={`font-black mb-2 ${c.green ? 'text-white' : 'text-slate-900'}`}>{c.title}</h3>
+              <h3 className={`font-black mb-2 ${c.green ? 'text-white' : 'text-slate-600'}`}>{c.title}</h3>
               <p className={`text-sm leading-relaxed mb-5 ${c.green ? 'text-teal-100' : 'text-slate-500'}`}>{c.desc}</p>
 
               {c.lines && (

@@ -16,8 +16,8 @@ export default function HelpCategories({ query, cat, setCat }) {
     <section className="py-16 bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <p className="text-teal-600 text-xs font-black uppercase tracking-widest mb-2">Base de connaissances</p>
-          <h2 className="text-3xl md:text-4xl font-black text-slate-900">
+          {/* <p className="text-teal-600 text-xs font-black uppercase tracking-widest mb-2">Base de connaissances</p> */}
+          <h2 className="text-3xl md:text-4xl font-black text-teal-600">
             Questions fréquentes <span className="text-teal-600">par thématique</span>
           </h2>
         </div>
@@ -47,13 +47,13 @@ export default function HelpCategories({ query, cat, setCat }) {
                 <p className="text-xs text-slate-500 leading-relaxed">{h.desc}</p>
               </div>
             ))}
-            <div className="bg-teal-600 rounded-2xl p-5 text-white">
+            {/* <div className="bg-teal-600 rounded-2xl p-5 text-white">
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-black text-2xl">99,4 %</span>
                 <BadgeCheck size={18} className="text-teal-200" />
               </div>
               <p className="text-xs text-teal-100">de questions résolues en autonomie par nos clients.</p>
-            </div>
+            </div> */}
           </div>
 
           {/* Accordéon questions */}
@@ -70,9 +70,9 @@ export default function HelpCategories({ query, cat, setCat }) {
                 <button onClick={() => setOpen(open === i ? null : i)}
                   className="w-full flex items-center justify-between gap-4 text-left px-6 py-4">
                   <div>
-                    <span className="block text-[9px] font-black uppercase tracking-widest text-teal-600 mb-1">
+                    {/* <span className="block text-[9px] font-black uppercase tracking-widest text-teal-600 mb-1">
                       {CAT_LABEL[f.cat]}
-                    </span>
+                    </span> */}
                     <span className="font-bold text-slate-900 text-sm">{f.q}</span>
                   </div>
                   <ChevronDown size={17} className={`text-slate-400 shrink-0 transition-transform ${open === i ? 'rotate-180 text-teal-600' : ''}`} />

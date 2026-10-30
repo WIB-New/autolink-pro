@@ -7,8 +7,8 @@ export default function WhyPartner() {
     <section className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <p className="text-teal-600 text-xs font-black uppercase tracking-widest mb-2">Avantages partenaires</p>
-          <h2 className="text-3xl md:text-4xl font-black text-slate-900">
+          {/* <p className="text-teal-600 text-xs font-black uppercase tracking-widest mb-2">Avantages partenaires</p> */}
+          <h2 className="text-3xl md:text-4xl font-black text-teal-600">
             Pourquoi confier votre véhicule à <span className="text-teal-600">AutoLink Pro ?</span>
           </h2>
         </div>
@@ -18,7 +18,7 @@ export default function WhyPartner() {
               <span className="w-11 h-11 bg-teal-50 rounded-xl flex items-center justify-center mb-4">
                 <b.icon size={20} className="text-teal-600" />
               </span>
-              <h3 className="font-black text-slate-900 text-sm mb-2">{b.title}</h3>
+              <h3 className=" text-slate-800 text-sm mb-2">{b.title}</h3>
               <p className="text-xs text-slate-500 leading-relaxed">{b.desc}</p>
             </div>
           ))}

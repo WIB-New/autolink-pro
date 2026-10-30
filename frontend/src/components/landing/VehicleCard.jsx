@@ -18,7 +18,7 @@ export default function VehicleCard({ v }) {
         <span className="absolute top-3 left-3 bg-white/95 text-slate-800 text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm">
           {v.category}
         </span>
-        <span className="absolute top-3 right-3 bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
+        <span className="absolute top-3 right-3 bg-teal-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
           <span className="w-1.5 h-1.5 bg-white rounded-full" /> Disponible
         </span>
       </Link>

@@ -326,7 +326,7 @@ export default function Catalog() {
               )}
 
               {/* Bande paiement sécurisé */}
-              <div className="mt-10 bg-white rounded-2xl border border-slate-100 shadow-sm px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* <div className="mt-10 bg-white rounded-2xl border border-slate-100 shadow-sm px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <div className="w-11 h-11 bg-teal-50 rounded-xl flex items-center justify-center shrink-0">
                     <ShieldCheck size={22} className="text-teal-600" />
@@ -345,7 +345,7 @@ export default function Catalog() {
                     <CreditCard size={11} /> Carte
                   </span>
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

@@ -11,7 +11,7 @@ export default function Formules() {
     <section className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-3">
+          <h2 className="text-2xl md:text-4xl font-black text-teal-600 mb-3">
             Des formules adaptées à votre rythme
           </h2>
           <p className="text-slate-500 max-w-2xl mx-auto">
@@ -34,7 +34,7 @@ export default function Formules() {
               <h3 className="font-black text-slate-900 text-lg">{f.name}</h3>
               <p className="text-xs text-slate-500 mt-1 mb-4">{f.desc}</p>
               <div className="mb-5">
-                <span className="text-3xl font-black text-slate-900">{f.price}</span>
+                <span className="text-3xl font-black text-teal-600">{f.price}</span>
                 <span className="text-slate-400 text-sm ml-1">{f.unit}</span>
               </div>
               <ul className="space-y-2.5 mb-6 flex-1">

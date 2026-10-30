@@ -9,10 +9,11 @@ import { authAPI } from '../../services/api';
 import GoogleAuthButton from '../../components/GoogleAuthButton';
 import AuthLayout from '../../components/auth/AuthLayout';
 import OtpPanel from '../../components/auth/OtpPanel';
+import AutoLinkLogo from '../../components/AutoLinkLogo';
 
 const ROLES = [
-  { value: 'CLIENT', label: 'Je veux louer', icon: Car },
-  { value: 'OWNER', label: 'Je veux proposer', icon: KeyRound },
+  { value: 'CLIENT', label: 'Je suis client', icon: Car },
+  { value: 'OWNER', label: 'Je suis proprietaire', icon: KeyRound },
   // { value: 'DRIVER', label: 'Je veux etre chauffeur', icon: KeyRound },
 ];
 
@@ -123,14 +124,24 @@ export default function Register() {
   return (
     <AuthLayout maxW="max-w-2xl">
       {/* En-tête */}
-      <div className="text-center mb-7">
+      {/* <div className="text-center mb-7">
         <h1 className="text-3xl font-black text-teal-600 mb-1.5">Créer un compte</h1>
         <p className="text-sm text-slate-500">
           {next ? 'Créez votre compte pour finaliser votre réservation' : 'Rejoignez AutoLink Pro en quelques instants'}
         </p>
-      </div>
+      </div> */}
 
       <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-7 sm:p-10">
+        <Link to="/" className="flex items-center justify-center mb-8">
+          <AutoLinkLogo size="sm" />
+        </Link>
+
+        <div className="text-center mb-7">
+          <h1 className="text-3xl font-black text-teal-600 mb-1.5">Créer un compte</h1>
+          <p className="text-sm text-slate-500">
+            {next ? 'Créez votre compte pour finaliser votre réservation' : 'Rejoignez AutoLink Pro en quelques instants'}
+          </p>
+        </div>
         {error && (
           <div className="flex items-center gap-2 bg-red-50 text-red-700 border border-red-200 rounded-xl p-3 mb-5 text-sm">
             <AlertCircle size={16} /> {error}
@@ -225,7 +236,7 @@ export default function Register() {
           </div>
 
           {/* Code de parrainage repliable */}
-      
+
 
           <label className="flex items-start gap-2.5 cursor-pointer select-none">
             <input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)}

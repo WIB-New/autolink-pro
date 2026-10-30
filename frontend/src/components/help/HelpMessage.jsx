@@ -16,8 +16,8 @@ export default function HelpMessage() {
     <section className="py-20 bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-10">
-          <p className="text-teal-600 text-xs font-black uppercase tracking-widest mb-2">Écrivez-nous</p>
-          <h2 className="text-3xl md:text-4xl font-black text-slate-900">
+          {/* <p className="text-teal-600 text-xs font-black uppercase tracking-widest mb-2">Écrivez-nous</p> */}
+          <h2 className="text-3xl md:text-4xl text-center font-black text-teal-600">
             Envoyez-nous <span className="text-teal-600">un message</span>
           </h2>
         </div>

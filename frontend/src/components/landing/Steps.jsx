@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock } from 'lucide-react';
 import { ETAPES } from './data';
 
 /* « 4 étapes pour prendre le volant » — section sombre */
@@ -38,26 +37,15 @@ export default function Steps() {
         </div>
 
         {/* Barre d'info */}
-        <div className="bg-white rounded-2xl px-6 py-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
-          <div className="flex items-center gap-4">
-            <div className="w-11 h-11 bg-teal-50 rounded-xl flex items-center justify-center shrink-0">
-              <Clock size={22} className="text-teal-600" />
-            </div>
-            <p className="text-slate-700 text-sm font-medium">
-              <span className="font-black text-slate-900">Un imprévu ou un changement de programme ?</span>{' '}
-              Modification gratuite jusqu'à 15 minutes avant le départ.
-            </p>
-          </div>
-          <button onClick={() => navigate('/catalogue')}
-            className="shrink-0 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-6 rounded-xl transition-colors text-sm">
+        <div className="flex flex-col items-center justify-center text-center gap-5 w-full max-w-2xl mx-auto px-4">
+          <p className="text-slate-300 text-sm md:text-base font-medium">
+            Modification gratuite jusqu'à 15 minutes avant le départ.
+          </p>
+          <button
+            onClick={() => navigate('/catalogue')}
+            className="bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-8 rounded-xl transition-colors text-sm md:text-base shadow-lg shadow-teal-900/30"
+          >
             Réserver maintenant
-          </button>
-        </div>
-
-        <div className="text-center mt-8">
-          <button onClick={() => navigate('/comment-ca-marche')}
-            className="text-teal-400 hover:text-teal-300 font-bold text-sm transition-colors">
-            Découvrir le fonctionnement complet → caution, portefeuille, documents
           </button>
         </div>
       </div>

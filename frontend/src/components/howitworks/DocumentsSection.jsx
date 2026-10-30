@@ -24,7 +24,7 @@ export default function DocumentsSection() {
                 </span>
                 <span className="text-3xl font-black text-slate-100">{i + 1}</span>
               </div>
-              <h3 className="font-black text-slate-900 mb-2">{d.title}</h3>
+              <h3 className=" text-slate-900 mb-2">{d.title}</h3>
               <p className="text-sm text-slate-500 leading-relaxed">{d.desc}</p>
             </div>
           ))}
