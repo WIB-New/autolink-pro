@@ -9,9 +9,9 @@ export default function HelpContacts() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           {/* <p className="text-teal-600 text-xs font-black uppercase tracking-widest mb-2">Une équipe dédiée</p> */}
-          <h2 className="text-3xl md:text-4xl font-black text-teal-600 mb-3">
+          <h2 className="text-3xl md:text-4xl font-black text-slate-700 mb-3">
             Besoin d'une assistance immédiate ?<br />
-            <span className="text-teal-600">Notre équipe locale est à votre écoute</span>
+            <span className="text-slate-500 text-xl">Notre équipe locale est à votre écoute</span>
           </h2>
           <p className="text-slate-500 max-w-2xl mx-auto">
             Choisissez le canal qui vous convient : réponse garantie en moins de 10 minutes.

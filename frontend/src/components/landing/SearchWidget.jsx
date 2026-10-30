@@ -6,15 +6,15 @@ const TOUTES = 'Toutes';
 
 /* Barre de recherche de véhicule — redirige vers le catalogue public
    avec les critères en query params (?ville=&retour=&debut=&fin=&categorie=&etat=). */
-export default function SearchWidget({ compact = false }) {
+export default function SearchWidget({ compact = false, initialValues = {}, onSearch }) {
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    debut: '',
-    fin: '',
-    depart: 'Douala',
-    retour: 'Douala',
-    categorie: TOUTES,
-    etat: TOUTES,
+    debut: initialValues.debut || '',
+    fin: initialValues.fin || '',
+    depart: initialValues.depart || initialValues.ville || 'Douala',
+    retour: initialValues.retour || 'Douala',
+    categorie: initialValues.categorie || TOUTES,
+    etat: initialValues.etat || TOUTES,
   });
 
   const submit = (e) => {
@@ -24,7 +24,13 @@ export default function SearchWidget({ compact = false }) {
     if (form.fin) q.set('fin', form.fin);
     if (form.categorie !== TOUTES) q.set('categorie', form.categorie);
     if (form.etat !== TOUTES) q.set('etat', form.etat);
-    navigate(`/catalogue?${q.toString()}`);
+
+    // Si une fonction de callback est fournie (ex. sur la page catalogue), on l'exécute, sinon on navigue
+    if (onSearch) {
+      onSearch(form);
+    } else {
+      navigate(`/catalogue?${q.toString()}`);
+    }
   };
 
   /* span = largeur du champ sur grand écran (grille de 12 colonnes) */
@@ -46,7 +52,7 @@ export default function SearchWidget({ compact = false }) {
 
   return (
     <form onSubmit={submit}
-      className={`bg-white rounded-2xl shadow-xl border border-slate-100 ${compact ? 'p-3' : 'p-4 lg:p-5'}`}>
+      className={`bg-white rounded-2xl shadow-sm border border-slate-100 ${compact ? 'p-3' : 'p-4 lg:p-5'}`}>
       <div className="grid sm:grid-cols-2 lg:grid-cols-12 gap-4 items-end">
         {fields.map(f => (
           <div key={f.key} className={f.span}>

@@ -10,7 +10,7 @@ export default function PartnerHero() {
   const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
   return (
-    <section className="relative overflow-hidden flex items-center min-h-[85vh] pt-28 lg:pt-36 pb-20 bg-slate-900">
+    <section className="relative overflow-hidden flex items-center min-h-[75vh] pt-28 lg:pt-36 pb-20 bg-slate-900">
       {/* Image de fond pleine section */}
       <div className="absolute inset-0">
         <img

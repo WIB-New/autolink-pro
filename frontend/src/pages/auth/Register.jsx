@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import {
   Car, KeyRound, Briefcase, Eye, EyeOff, AlertCircle, ArrowRight,
-  User, Mail, Lock, Loader,
+  User, Mail, Lock, Loader, ArrowLeft,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { authAPI } from '../../services/api';
@@ -123,15 +123,17 @@ export default function Register() {
 
   return (
     <AuthLayout maxW="max-w-2xl">
-      {/* En-tête */}
-      {/* <div className="text-center mb-7">
-        <h1 className="text-3xl font-black text-teal-600 mb-1.5">Créer un compte</h1>
-        <p className="text-sm text-slate-500">
-          {next ? 'Créez votre compte pour finaliser votre réservation' : 'Rejoignez AutoLink Pro en quelques instants'}
-        </p>
-      </div> */}
+      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-7 sm:p-10 relative">
+        
+        {/* Lien de retour à l'accueil */}
+        {/* <Link 
+          to="/" 
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-teal-600 transition-colors mb-6"
+        >
+          <ArrowLeft size={15} />
+          Retour à l'accueil
+        </Link> */}
 
-      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-7 sm:p-10">
         <Link to="/" className="flex items-center justify-center mb-8">
           <AutoLinkLogo size="sm" />
         </Link>
@@ -234,9 +236,6 @@ export default function Register() {
               )}
             </div>
           </div>
-
-          {/* Code de parrainage repliable */}
-
 
           <label className="flex items-start gap-2.5 cursor-pointer select-none">
             <input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)}

@@ -16,8 +16,8 @@ export default function GammesGrid() {
         <div className="flex flex-wrap items-end justify-between gap-4 mb-12">
           <div>
             {/* <p className="text-teal-600 text-xs font-black uppercase tracking-widest mb-2">Notre catalogue</p> */}
-            <h2 className="text-3xl md:text-4xl font-black text-teal-600">
-              Comparez nos <span className="text-teal-600">4 gammes de mobilité</span>
+            <h2 className="text-3xl md:text-4xl font-black text-slate-700">
+              Comparez nos <span className="text-slate-700">4 gammes de mobilité</span>
             </h2>
           </div>
           <p className="text-sm text-slate-400 font-medium">Prix par jour — dégressifs dès 3 jours</p>

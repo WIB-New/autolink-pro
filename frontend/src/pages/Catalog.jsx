@@ -1,22 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  MapPin, CalendarRange, UserCheck, RefreshCw, X, Car,
-  ChevronDown, ChevronLeft, ChevronRight, ShieldCheck, CreditCard, Loader, Filter,
+  X, Car, ChevronDown, ChevronLeft, ChevronRight, Filter, Loader,
 } from 'lucide-react';
 import { PublicNavbar, Footer } from '../components/landing';
 import CatalogCard from '../components/catalog/CatalogCard';
 import FiltersSidebar, { GAMMES, FORMULE_OPTS, matchCategory, PRICE_MAX } from '../components/catalog/FiltersSidebar';
+import SearchWidget from '../components/landing/SearchWidget';
 import { CATALOG_VEHICLES, getVehicleImage } from '../utils/carImages';
 import { normalizeVehicle, vehicleBrand } from '../utils/vehicleMeta';
 import { vehiclesAPI } from '../services/api';
 
-const CITIES = ['Douala', 'Yaoundé'];
-const SERVICES = [
-  { id: 'internal', label: 'Avec chauffeur' },
-  { id: 'none',     label: 'Sans chauffeur' },
-  { id: 'owner',    label: 'Chauffeur du proprio' },
-];
 const SORTS = [
   { id: 'reco',   label: 'Recommandés' },
   { id: 'asc',    label: 'Prix croissant' },
@@ -54,22 +48,20 @@ export default function Catalog() {
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState('reco');
   const [filtersOpen, setFiltersOpen] = useState(true);
-  const [toolbar, setToolbar] = useState({
-    ville:    params.get('ville') || 'Douala',
-    formule:  'urban_day',
-    debut:    params.get('debut') || '',
-    fin:      params.get('fin') || '',
-    service:  'internal',
-  });
+
+  const villeParam = params.get('ville') || 'Douala';
+  const categorieParam = params.get('categorie');
+  const etatParam = params.get('etat');
+
   const [filters, setFilters] = useState({
     onlyAvailable: true,
-    gammes:    params.get('gamme') ? [params.get('gamme')] : [],
-    formule:   'urban_day',
-    priceMax:  PRICE_MAX,
-    categories: [],
-    marques:   [],
+    gammes: params.get('gamme') ? [params.get('gamme')] : [],
+    formule: 'urban_day',
+    priceMax: PRICE_MAX,
+    categories: categorieParam && categorieParam !== 'Toutes' ? [categorieParam] : [],
+    marques: [],
     transmissions: [],
-    energies:  [],
+    energies: [],
     equipements: [],
   });
 
@@ -94,6 +86,7 @@ export default function Catalog() {
   const filtered = useMemo(() => {
     const list = vehicles.filter(v =>
       (!filters.onlyAvailable || v.available) &&
+      (v.city?.toLowerCase() === villeParam.toLowerCase()) &&
       (filters.gammes.length === 0 || filters.gammes.includes(v.tier)) &&
       v.price <= filters.priceMax &&
       (filters.categories.length === 0 || filters.categories.some(c => matchCategory(v, c))) &&
@@ -108,10 +101,10 @@ export default function Catalog() {
     if (sort === 'rating') sorted.sort((a, b) => b.rating - a.rating);
     if (sort === 'reco')   sorted.sort((a, b) => (b.rating * b.reviews) - (a.rating * a.reviews));
     return sorted;
-  }, [vehicles, filters, sort]);
+  }, [vehicles, filters, sort, villeParam]);
 
   // Retour à la page 1 à chaque changement de filtres / tri
-  useEffect(() => { setPage(1); }, [filters, sort]);
+  useEffect(() => { setPage(1); }, [filters, sort, villeParam]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -119,7 +112,7 @@ export default function Catalog() {
     setPage(Math.min(Math.max(1, p), totalPages));
     document.getElementById('resultats')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-  // Fenêtre de pages : 1 … courante±1 … dernière
+
   const pageNums = (() => {
     if (totalPages <= 7) return [...Array(totalPages)].map((_, i) => i + 1);
     const nums = [1];
@@ -131,7 +124,9 @@ export default function Catalog() {
   })();
 
   const activeChips = [
-    { key: 'ville', label: toolbar.ville },
+    { key: 'ville', label: villeParam },
+    ...(categorieParam && categorieParam !== 'Toutes' ? [{ key: 'cat', label: categorieParam }] : []),
+    ...(etatParam && etatParam !== 'Toutes' ? [{ key: 'etat', label: etatParam }] : []),
     ...filters.gammes.map(g => ({ key: `gamme-${g}`, label: GAMMES.find(x => x.id === g)?.label, clear: () => setFilters(f => ({ ...f, gammes: f.gammes.filter(x => x !== g) })) })),
     ...filters.categories.map(c => ({ key: `cat-${c}`, label: c, clear: () => setFilters(f => ({ ...f, categories: f.categories.filter(x => x !== c) })) })),
     ...filters.marques.map(m => ({ key: `marque-${m}`, label: m, clear: () => setFilters(f => ({ ...f, marques: f.marques.filter(x => x !== m) })) })),
@@ -141,17 +136,27 @@ export default function Catalog() {
     ...(filters.priceMax < PRICE_MAX ? [{ key: 'prix', label: `≤ ${filters.priceMax.toLocaleString('fr-FR')} F`, clear: () => setFilters(f => ({ ...f, priceMax: PRICE_MAX })) }] : []),
   ];
 
-  const activeCount = activeChips.length - 1; // hors chip ville
+  const activeCount = activeChips.length - 1;
   const clearAll = () => {
     setFilters(f => ({
       ...f, gammes: [], categories: [], marques: [], transmissions: [],
       energies: [], equipements: [], priceMax: PRICE_MAX, onlyAvailable: true,
     }));
+    setParams({});
   };
 
-  const applyToolbar = () => {
-    setFilters(f => ({ ...f, formule: toolbar.formule }));
-    setParams({ ville: toolbar.ville, ...(toolbar.debut && { debut: toolbar.debut }), ...(toolbar.fin && { fin: toolbar.fin }) });
+  const handleSearchSubmit = (formData) => {
+    const q = new URLSearchParams({ ville: formData.depart, retour: formData.retour });
+    if (formData.debut) q.set('debut', formData.debut);
+    if (formData.fin) q.set('fin', formData.fin);
+    if (formData.categorie !== 'Toutes') q.set('categorie', formData.categorie);
+    if (formData.etat !== 'Toutes') q.set('etat', formData.etat);
+    setParams(q);
+
+    setFilters(f => ({
+      ...f,
+      categories: formData.categorie !== 'Toutes' ? [formData.categorie] : [],
+    }));
   };
 
   const formuleLabel = FORMULE_OPTS.find(f => f.id === filters.formule)?.label.replace(' heures', 'h').replace(' heure', 'h') || '24h';
@@ -163,61 +168,23 @@ export default function Catalog() {
       <div className="pt-28 lg:pt-36 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-          {/* Barre de recherche — ville / formule / période / service */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6 mb-10">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.4fr_1fr_auto] gap-5 items-end">
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Ville</label>
-                <div className="relative">
-                  <MapPin size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-teal-600" />
-                  <select value={toolbar.ville} onChange={e => setToolbar(t => ({ ...t, ville: e.target.value }))}
-                    className="w-full pl-9 pr-8 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none">
-                    {CITIES.map(c => <option key={c}>{c}</option>)}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Formule</label>
-                <div className="relative">
-                  <RefreshCw size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-teal-600" />
-                  <select value={toolbar.formule} onChange={e => setToolbar(t => ({ ...t, formule: e.target.value }))}
-                    className="w-full pl-9 pr-8 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none">
-                    {FORMULE_OPTS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Période de réservation</label>
-                <div className="relative flex items-center gap-1.5">
-                  <CalendarRange size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-teal-600 pointer-events-none" />
-                  <input type="date" value={toolbar.debut} onChange={e => setToolbar(t => ({ ...t, debut: e.target.value }))}
-                    className="w-full pl-9 pr-2 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500" />
-                  <input type="date" value={toolbar.fin} onChange={e => setToolbar(t => ({ ...t, fin: e.target.value }))}
-                    className="w-full px-2 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Service</label>
-                <div className="relative">
-                  <UserCheck size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-teal-600" />
-                  <select value={toolbar.service} onChange={e => setToolbar(t => ({ ...t, service: e.target.value }))}
-                    className="w-full pl-9 pr-8 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none">
-                    {SERVICES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                </div>
-              </div>
-              <button onClick={applyToolbar} title="Actualiser la recherche"
-                className="flex items-center justify-center w-11 h-11 bg-teal-600 hover:bg-teal-700 text-white rounded-xl transition-colors shadow-sm">
-                <RefreshCw size={16} />
-              </button>
-            </div>
+          {/* Utilisation du SearchWidget unifié */}
+          <div className="mb-10">
+            <SearchWidget 
+              initialValues={{
+                ville: villeParam,
+                debut: params.get('debut') || '',
+                fin: params.get('fin') || '',
+                retour: params.get('retour') || 'Douala',
+                categorie: categorieParam || 'Toutes',
+                etat: etatParam || 'Toutes',
+              }}
+              onSearch={handleSearchSubmit}
+            />
           </div>
 
           <div className={`grid gap-6 items-start ${filtersOpen ? 'lg:grid-cols-[260px_1fr]' : 'lg:grid-cols-1'}`}>
-            {/* Sidebar filtres — repliable via le bouton du panneau */}
+            {/* Sidebar filtres */}
             {filtersOpen && (
               <FiltersSidebar vehicles={vehicles} filters={filters} setFilters={setFilters}
                 activeCount={Math.max(activeCount, 0)} onClose={() => setFiltersOpen(false)} />
@@ -239,7 +206,7 @@ export default function Catalog() {
                   )}
                   <h1 className="text-xl md:text-2xl text-slate-900">
                     {filtered.length} véhicule{filtered.length > 1 ? 's' : ''} disponible{filtered.length > 1 ? 's' : ''}
-                    <span className="text-slate-900"> à {toolbar.ville}</span>
+                    <span className="text-slate-900"> à {villeParam}</span>
                   </h1>
                 </div>
                 <div className="flex items-center gap-3">
@@ -324,28 +291,6 @@ export default function Catalog() {
                   )}
                 </>
               )}
-
-              {/* Bande paiement sécurisé */}
-              {/* <div className="mt-10 bg-white rounded-2xl border border-slate-100 shadow-sm px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 bg-teal-50 rounded-xl flex items-center justify-center shrink-0">
-                    <ShieldCheck size={22} className="text-teal-600" />
-                  </div>
-                  <div>
-                    <div className="font-black text-slate-900 text-sm">Paiement &amp; Caution Sécurisés</div>
-                    <div className="text-xs text-slate-500">
-                      Pré-autorisation Mobile Money (Orange Money / MTN MoMo) — sans débit du compte avant prise en charge.
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2.5 shrink-0">
-                  <span className="bg-yellow-400 text-slate-900 text-[10px] font-black px-2.5 py-1.5 rounded-lg">MTN MoMo</span>
-                  <span className="bg-orange-500 text-white text-[10px] font-black px-2.5 py-1.5 rounded-lg">Orange Money</span>
-                  <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-2.5 py-1.5 rounded-lg flex items-center gap-1">
-                    <CreditCard size={11} /> Carte
-                  </span>
-                </div>
-              </div> */}
             </div>
           </div>
         </div>

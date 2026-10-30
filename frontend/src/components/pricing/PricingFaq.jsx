@@ -12,8 +12,8 @@ export default function PricingFaq() {
         {/* En-tête centré */}
         <div className="text-center mb-10">
           {/* <p className="text-teal-600 text-xs font-black uppercase tracking-widest mb-2">Tout sur nos prix</p> */}
-          <h2 className="text-3xl md:text-4xl  text-teal-600">
-            Questions fréquentes sur <span className="text-teal-600">nos tarifs</span>
+          <h2 className="text-3xl md:text-4xl  text-slate-700">
+            Questions fréquentes sur <span className="text-slate-700">nos tarifs</span>
           </h2>
         </div>
 

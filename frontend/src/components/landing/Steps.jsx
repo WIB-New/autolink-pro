@@ -10,7 +10,7 @@ export default function Steps() {
     <section id="etapes" className="py-20 bg-slate-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-14">
-          <h2 className="text-3xl md:text-4xl font-black text-white mb-3">
+          <h2 className="text-3xl md:text-4xl  font-black text-white mb-3">
             4 étapes pour prendre le volant
           </h2>
           <p className="text-slate-400 max-w-2xl mx-auto">

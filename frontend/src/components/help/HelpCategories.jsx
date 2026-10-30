@@ -17,8 +17,8 @@ export default function HelpCategories({ query, cat, setCat }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           {/* <p className="text-teal-600 text-xs font-black uppercase tracking-widest mb-2">Base de connaissances</p> */}
-          <h2 className="text-3xl md:text-4xl font-black text-teal-600">
-            Questions fréquentes <span className="text-teal-600">par thématique</span>
+          <h2 className="text-3xl md:text-4xl font-black text-slate-700">
+            Questions fréquentes <span className="text-slate-700">par thématique</span>
           </h2>
         </div>
 

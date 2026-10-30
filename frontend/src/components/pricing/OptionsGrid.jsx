@@ -8,8 +8,8 @@ export default function OptionsGrid() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <p className="text-teal-600 text-xs font-black uppercase tracking-widest mb-2">Personnalisez à la carte</p>
-          <h2 className="text-3xl md:text-4xl font-black text-teal-600 mb-3">
-            Options et <span className="text-teal-600">suppléments transparents</span>
+          <h2 className="text-3xl md:text-4xl font-black text-slate-700 mb-3">
+            Options et <span className="text-slate-700">suppléments transparents</span>
           </h2>
           <p className="text-slate-500 max-w-2xl mx-auto">
             Chaque option a un prix fixe, affiché avant réservation et jamais modifié après.

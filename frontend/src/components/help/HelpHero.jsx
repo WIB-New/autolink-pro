@@ -15,7 +15,7 @@ const BG_POSITION = 'object-[50%_30%]';
 /* Hero du centre d'aide — image d'assistance floutée + titre (fond navy en secours). */
 export default function HelpHero({ query, setQuery }) {
   return (
-    <section className="relative overflow-hidden flex items-center min-h-[60vh] lg:min-h-[80vh] pt-28 lg:pt-36 pb-20 bg-slate-900">
+    <section className="relative overflow-hidden flex items-center min-h-[50vh] lg:min-h-[60vh] pt-28 lg:pt-36 pb-20 bg-slate-900">
       {/* Image de fond légèrement floutée */}
       <div className="absolute inset-0">
         <img
