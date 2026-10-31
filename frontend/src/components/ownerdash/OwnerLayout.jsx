@@ -13,8 +13,8 @@ const NAV = [
   { icon: PlusSquare,      label: 'Ajouter un véhicule',  path: '/owner/add-vehicle' },
   { icon: FileText,        label: 'Demandes de location', path: '/owner/requests', badge: 'demandes' },
   { icon: Wallet,          label: 'Revenus & Finances',   path: '/owner/revenue' },
-  { icon: MessageSquare,   label: 'Messagerie',           path: '/owner/messages', badge: 'messages' },
-  { icon: Bell,            label: 'Notifications',        path: '/owner/notifications' },
+  { icon: MessageSquare,   label: 'Messagerie',           path: '/owner/dashboard', badge: 'messages', passive: true },
+  { icon: Bell,            label: 'Notifications',        path: '/owner/dashboard', passive: true },
   { icon: Settings,        label: 'Profil & Paramètres',  path: '/settings' },
 ];
 

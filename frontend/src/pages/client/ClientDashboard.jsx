@@ -160,12 +160,12 @@ export default function ClientDashboard() {
             <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <span className="font-label-md text-label-md text-surface-variant">{t('Solde disponible')}</span>
-                <div className={`${String(Math.round(balance)).length > 8 ? 'font-headline-xl text-headline-xl-mobile' : 'font-display-lg text-display-lg'} text-surface-bright tracking-tight leading-none mt-1 break-words`}>{wallet ? formatNumber(balance) : '—'} <span className="font-label-lg text-label-lg text-primary-fixed-dim">FCFA</span></div>
+                <div className={`${String(Math.round(balance)).length > 8 ? 'font-headline-lg text-headline-lg-mobile' : 'font-headline-xl text-headline-xl'} text-surface-bright tracking-tight leading-none mt-1 break-words`}>{wallet ? formatNumber(balance) : '—'} <span className="font-label-lg text-label-lg text-primary-fixed-dim">FCFA</span></div>
                 <span className="font-body-sm text-body-sm text-surface-variant/80">{t('Immédiatement utilisable pour vos trajets')}</span>
               </div>
               <div className="sm:pl-4 sm:border-l sm:border-surface-variant/20">
                 <span className="flex items-center gap-1 font-label-md text-label-md text-surface-variant">{t('Caution séquestrée bloquée')}<Icon name="lock" size={16} className="text-tertiary-fixed-dim" /></span>
-                <div className="font-headline-xl text-headline-xl text-surface-bright mt-1">{formatNumber(held)} <span className="font-label-lg text-label-lg text-surface-variant">FCFA</span></div>
+                <div className="font-headline-lg text-headline-lg text-surface-bright mt-1">{formatNumber(held)} <span className="font-label-lg text-label-lg text-surface-variant">FCFA</span></div>
                 <span className="font-body-sm text-body-sm text-surface-variant/80">{t('Débloquée automatiquement à la fin de la location sans litige.')}</span>
               </div>
             </div>
@@ -187,7 +187,7 @@ export default function ClientDashboard() {
                 { value: Number(stats.average_rating || 0).toFixed(1), label: 'Note donnée', sub: t('{{n}} avis', { n: stats.rated_count || 0 }) },
               ].map((item) => (
                 <div key={item.label} className="rounded-xl bg-surface-container-low dark:bg-slate-900 p-3 text-center">
-                  <div className="font-headline-md text-headline-md text-on-surface dark:text-white truncate">{item.value}</div>
+                  <div className="font-headline-sm text-headline-sm text-on-surface dark:text-white truncate">{item.value}</div>
                   <div className="font-label-sm text-label-sm text-on-surface-variant">{t(item.label)}</div>
                   <div className="text-[10px] text-outline">{item.sub}</div>
                 </div>
@@ -282,7 +282,7 @@ export default function ClientDashboard() {
                   <div className="min-w-0"><div className="font-label-lg text-label-lg text-on-surface dark:text-white truncate">{tx.note || tx.reference}</div><div className="font-body-sm text-body-sm text-on-surface-variant">{formatDate(tx.created_at)} · {tx.reference}</div></div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className={`font-headline-sm text-headline-sm ${txSign(tx) === '+' ? 'text-primary' : 'text-on-surface dark:text-white'}`}>{txSign(tx)}{formatNumber(tx.amount)} FCFA</div>
+                  <div className={`font-label-lg text-label-lg ${txSign(tx) === '+' ? 'text-primary' : 'text-on-surface dark:text-white'}`}>{txSign(tx)}{formatNumber(tx.amount)} FCFA</div>
                   <div className="font-label-sm text-label-sm text-on-surface-variant">{tx.status === 'completed' ? t('Réussi') : tx.status === 'failed' ? t('Échoué') : t('En attente')}</div>
                 </div>
               </div>

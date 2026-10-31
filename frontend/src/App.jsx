@@ -73,6 +73,7 @@ import D2s2s from './design/c2_tunnel_tape_2_paiement_solde_suffisant';
 import D2s3 from './design/c2_tunnel_tape_3_confirmation';
 import D3 from './design/c3_mes_r_servations';
 import D4 from './design/c4_d_tail_d_une_r_servation';
+import D4mod from './design/c4_modification_reservation';
 import D5 from './design/c5_portefeuille_et_caution';
 import D6 from './design/c6_favoris';
 import D7 from './design/c7_messagerie';
@@ -122,6 +123,7 @@ function AppRoutes() {
       <Route path="/client/settings" element={<Guard roles={['CLIENT']}><Parametres /></Guard>} />
       <Route path="/client/referrals" element={<Guard roles={['CLIENT']}><Referrals /></Guard>} />
       <Route path="/client/bookings/:id" element={<Guard roles={['CLIENT']}><D4 /></Guard>} />
+      <Route path="/client/bookings/:id/modifier" element={<Guard roles={['CLIENT']}><D4mod /></Guard>} />
       <Route path="/client/favorites" element={<Guard roles={['CLIENT']}><D6 /></Guard>} />
       <Route path="/client/wallet" element={<Guard roles={['CLIENT']}><D5 /></Guard>} />
 

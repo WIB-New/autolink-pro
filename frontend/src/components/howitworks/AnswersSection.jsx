@@ -7,7 +7,7 @@ export default function AnswersSection() {
     <section className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h2 className="text-2xl md:text-4xl font-black text-teal-600 mb-3">
+          <h2 className="text-2xl md:text-4xl font-black text-slate-700 mb-3">
             Une réponse claire et structurée à chaque étape
           </h2>
           <p className="text-slate-500 max-w-2xl mx-auto">

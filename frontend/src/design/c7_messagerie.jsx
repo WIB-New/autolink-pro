@@ -42,9 +42,15 @@ const HTML = `<div class="flex flex-col w-full h-[calc(100vh-6rem)]">
 </div>
 <!-- Filter tabs -->
 <div class="flex items-center gap-1.5 p-1 bg-surface-container-low rounded-xl">
-<button class="flex-1 py-1 px-2.5 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm font-semibold shadow-sm transition-all text-center">Tous</button>
-<button class="flex-1 py-1 px-2.5 rounded-lg text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm font-medium transition-all text-center">Réservations</button>
-<button class="flex-1 py-1 px-2.5 rounded-lg text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm font-medium transition-all text-center">Support</button>
+
+</div>
+<!-- Filter by role -->
+<div class="flex items-center gap-1.5 p-1 bg-surface-container-low rounded-xl">
+<button class="flex-1 py-1 px-2 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm font-semibold shadow-sm transition-all text-center">Tous</button>
+<button class="flex-1 py-1 px-2 rounded-lg text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm font-medium transition-all text-center">Clients</button>
+<button class="flex-1 py-1 px-2 rounded-lg text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm font-medium transition-all text-center">Chauffeurs</button>
+<button class="flex-1 py-1 px-2 rounded-lg text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm font-medium transition-all text-center">Propriétaires</button>
+<button class="flex-1 py-1 px-2 rounded-lg text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm font-medium transition-all text-center">Support</button>
 </div>
 </div>
 <!-- Conversations Scrollable Area -->

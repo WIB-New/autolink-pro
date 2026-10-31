@@ -10,7 +10,7 @@ export default function WalletSection() {
     <section className="py-24 bg-teal-50/60 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-20">
-          <h2 className="text-2xl md:text-3xl font-black text-teal-600 mb-3">
+          <h2 className="text-2xl md:text-3xl font-black text-slate-700 mb-3">
             Le Portefeuille AutoLink Pro : Comment ça fonctionne ?
           </h2>
           <p className="text-slate-500 max-w-2xl mx-auto">
@@ -47,11 +47,24 @@ export default function WalletSection() {
         </div>
 
         {/* Légende descriptive — espace généreux sous l'orbite */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto mt-24">
-          {WALLET_FEATURES.map(f => (
-            <div key={f.title} className="flex items-start gap-2.5 text-left">
-              <span className="w-1.5 h-1.5 bg-teal-500 rounded-full mt-1.5 shrink-0" />
-              <p className="text-xs text-slate-500 leading-relaxed"><strong className="text-slate-800">{f.title} — </strong>{f.desc}</p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto mt-24">
+          {WALLET_FEATURES.map((f, i) => (
+            <div key={f.title} className="relative text-center lg:text-left">
+              <div className="relative inline-flex items-center justify-center w-14 h-14 bg-teal-600/15 border border-teal-500/30 rounded-2xl mb-5">
+                {f.icon ? (
+                  <f.icon size={24} className="text-teal-400" />
+                ) : (
+                  <span className="text-teal-400 font-bold text-sm">{i + 1}</span>
+                )}
+                <span className="absolute -top-2 -right-2 w-6 h-6 bg-teal-600 text-white text-[11px] font-black rounded-full flex items-center justify-center">
+                  {i + 1}
+                </span>
+              </div>
+              {/* {i < WALLET_FEATURES.length - 1 && (
+                <div className="hidden lg:block absolute top-7 left-16 right-0 h-px border-t border-dashed border-slate-700" />
+              )} */}
+              <h3 className="font-black text-white mb-2">{f.title}</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">{f.desc}</p>
             </div>
           ))}
         </div>

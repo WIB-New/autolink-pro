@@ -237,23 +237,23 @@ const HTML = `<div class="flex flex-col w-full">
             2. Montant à créditer (FCFA)
           </label>
 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5" id="amount-presets">
-<button class="amount-btn py-3 px-3 rounded-xl bg-surface-container text-on-surface hover:bg-surface-container-high font-headline-sm text-headline-sm text-center transition-all" onclick="selectAmount(15000, this)" type="button">
+<button class="amount-btn py-3 px-3 rounded-xl bg-surface-container text-on-surface hover:bg-surface-container-high font-headline-sm text-headline-sm text-center transition-all border border-outline-variant/40" onclick="selectAmount(15000, this)" type="button">
               +15 000
             </button>
-<button class="amount-btn py-3 px-3 rounded-xl bg-primary-container text-on-primary-container font-headline-sm text-headline-sm text-center transition-all shadow-sm" onclick="selectAmount(30000, this)" type="button">
+<button class="amount-btn py-3 px-3 rounded-xl bg-surface-container text-on-surface hover:bg-surface-container-high font-headline-sm text-headline-sm text-center transition-all border border-outline-variant/40" onclick="selectAmount(30000, this)" type="button">
               +30 000
             </button>
-<button class="amount-btn py-3 px-3 rounded-xl bg-surface-container text-on-surface hover:bg-surface-container-high font-headline-sm text-headline-sm text-center transition-all" onclick="selectAmount(50000, this)" type="button">
+<button class="amount-btn py-3 px-3 rounded-xl bg-surface-container text-on-surface hover:bg-surface-container-high font-headline-sm text-headline-sm text-center transition-all border border-outline-variant/40" onclick="selectAmount(50000, this)" type="button">
               +50 000
             </button>
-<button class="amount-btn py-3 px-3 rounded-xl bg-surface-container text-on-surface hover:bg-surface-container-high font-headline-sm text-headline-sm text-center transition-all" onclick="selectAmount(100000, this)" type="button">
+<button class="amount-btn py-3 px-3 rounded-xl bg-surface-container text-on-surface hover:bg-surface-container-high font-headline-sm text-headline-sm text-center transition-all border border-outline-variant/40" onclick="selectAmount(100000, this)" type="button">
               +100 000
             </button>
 </div>
 <div class="flex flex-col sm:flex-row gap-3 items-center">
 <div class="relative w-full">
 <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant font-label-md text-label-md">Montant personnalisé :</span>
-<input class="w-full pl-44 pr-16 py-3 rounded-xl bg-surface-container-low text-on-surface font-headline-sm text-headline-sm outline-none focus:ring-2 focus:ring-primary" id="custom-amount-input" placeholder="ex: 75000" type="number" value="30000">
+<input class="w-full pl-44 pr-16 py-3 rounded-xl bg-surface-container-low text-on-surface font-headline-sm text-headline-sm outline-none focus:ring-2 focus:ring-primary border border-outline-variant/40" id="custom-amount-input" placeholder="ex: 75000" type="number" value="0">
 <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant font-label-md text-label-md">FCFA</span>
 </div>
 <button class="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-2.5 px-7 py-3 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg shadow-md hover:shadow-lg transition-all active:scale-[0.98]" id="confirm-recharge-btn" type="button">
@@ -703,6 +703,13 @@ const HTML = `<div class="flex flex-col w-full">
 <span class="">Charte de Séquestre</span>
 </a>
 </div>
+</div>
+<!-- Bouton Catalogue en bas -->
+<div class="mt-6">
+<a class="inline-flex items-center justify-center gap-2.5 w-full px-6 py-4 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg shadow-md hover:shadow-lg transition-all" href="/client/search">
+<span class="material-symbols-outlined text-[20px]">explore</span>
+<span class="">Explorer le Catalogue de Véhicules</span>
+</a>
 </div>
 </div>
 </div>

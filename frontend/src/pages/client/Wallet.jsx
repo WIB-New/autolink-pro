@@ -38,7 +38,7 @@ export default function Wallet() {
   const [wallet, setWallet] = useState(null);
   const [error, setError] = useState('');
   const [modal, setModal] = useState(null);
-  const [expressAmount, setExpressAmount] = useState(30000);
+  const [expressAmount, setExpressAmount] = useState(0);
   const [expressMethod, setExpressMethod] = useState('');
   const [configured, setConfigured] = useState([]);
   const [search, setSearch] = useState('');
@@ -150,7 +150,7 @@ export default function Wallet() {
                 <span className="font-label-sm text-label-sm uppercase tracking-wider text-primary-fixed font-bold">{t('Solde disponible')}</span>
                 <span className="w-9 h-9 rounded-lg bg-on-primary/15 flex items-center justify-center"><Icon name="account_balance_wallet" /></span>
               </div>
-              <div className="font-display-lg text-display-lg tracking-tight mt-3">{wallet ? formatNumber(balance) : '—'} <span className="font-headline-sm text-headline-sm text-primary-fixed">FCFA</span></div>
+              <div className="font-headline-xl text-headline-xl tracking-tight mt-3">{wallet ? formatNumber(balance) : '—'} <span className="font-headline-sm text-headline-sm text-primary-fixed">FCFA</span></div>
               <p className="font-body-sm text-body-sm text-primary-fixed/90 mt-1">{t('Immédiatement utilisable pour vos locations et options de mobilité.')}</p>
             </div>
             <button onClick={() => setModal({ amount: 25000 })} className="relative w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-surface-container-lowest text-primary font-label-lg text-label-lg hover:bg-primary-fixed/30 hover:text-on-primary transition-colors">
@@ -164,7 +164,7 @@ export default function Wallet() {
                 <span className="font-label-sm text-label-sm uppercase tracking-wider text-surface-variant font-bold">{t('Caution bloquée sous séquestre')}</span>
                 <span className="w-9 h-9 rounded-full bg-surface-variant/15 flex items-center justify-center text-tertiary-fixed-dim"><Icon name="lock" /></span>
               </div>
-              <div className="font-display-lg text-display-lg tracking-tight text-surface-bright mt-3">{formatNumber(heldDeposit)} <span className="font-headline-sm text-headline-sm text-surface-variant">FCFA</span></div>
+              <div className="font-headline-xl text-headline-xl tracking-tight text-surface-bright mt-3">{formatNumber(heldDeposit)} <span className="font-headline-sm text-headline-sm text-surface-variant">FCFA</span></div>
             </div>
             <div className="flex flex-col gap-2">
               {held.length === 0 && <p className="font-body-sm text-body-sm text-surface-variant">{t('Aucune caution bloquée actuellement.')}</p>}
@@ -223,16 +223,16 @@ export default function Wallet() {
             </div>
             <div className="flex flex-col gap-3">
               <div className="overline">{t('2. Montant à créditer (FCFA)')}</div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {QUICK_AMOUNTS.slice(1).map((value) => (
                   <button key={value} onClick={() => setExpressAmount(value)}
-                    className={`py-3 rounded-xl font-headline-sm text-headline-sm transition-all ${expressAmount === value ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface-container-low hover:bg-surface-container text-on-surface dark:bg-slate-900 dark:text-white'}`}>
+                    className={`py-3.5 rounded-xl font-headline-sm text-headline-sm transition-all border-2 ${expressAmount === value ? 'bg-primary text-on-primary border-primary shadow-md scale-105' : 'bg-surface-container-low hover:bg-surface-container text-on-surface border-outline-variant dark:bg-slate-900 dark:border-slate-700 dark:text-white hover:border-primary'}`}>
                     +{formatNumber(value)}
                   </button>
                 ))}
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
-                <label className="flex-1 flex items-center gap-2 px-4 rounded-xl bg-surface-container-low dark:bg-slate-900">
+                <label className="flex-1 flex items-center gap-2 px-4 rounded-xl bg-surface-container-low dark:bg-slate-900 border-2 border-outline-variant dark:border-slate-700 focus-within:border-primary transition-colors">
                   <span className="font-body-sm text-body-sm text-on-surface-variant whitespace-nowrap">{t('Montant personnalisé :')}</span>
                   <input type="number" min={500} step={500} value={expressAmount} onChange={(e) => setExpressAmount(Number(e.target.value))}
                     className="w-full bg-transparent py-3 font-label-lg text-label-lg text-right focus:outline-none dark:text-white" />
@@ -352,6 +352,14 @@ export default function Wallet() {
             </div>
           </div>
           <Link to="/messages?support=1" className="btn-secondary py-2 px-4 shrink-0"><Icon name="support_agent" size={18} />{t('Support portefeuille')}</Link>
+        </div>
+
+        <div className="flex flex-col items-center gap-4 p-6 rounded-xl bg-primary/5 dark:bg-slate-900 border border-primary/20">
+          <div className="text-center">
+            <h3 className="font-headline-md text-headline-md text-on-surface dark:text-white">{t('Besoin d\'un véhicule ?')}</h3>
+            <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">{t('Parcourez notre catalogue et réservez votre prochain véhicule.')}</p>
+          </div>
+          <Link to="/client/search" className="btn-primary py-3 px-6"><Icon name="directions_car" size={20} />{t('Voir le catalogue')}</Link>
         </div>
       </div>
 

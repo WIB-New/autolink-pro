@@ -139,6 +139,37 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
           });
         });
       }
+      // Filtre par rôles : Tous / Clients / Chauffeurs / Propriétaires / Support
+      if (['Tous', 'Clients', 'Chauffeurs', 'Propriétaires', 'Support'].includes(t)) {
+        const parent = btn.parentElement;
+        if (parent && parent.querySelectorAll('button').length === 5) {
+          on(btn, () => {
+            const group = [...parent.querySelectorAll('button')];
+            group.forEach((b) => {
+              b.classList.remove('bg-surface-container-lowest', 'text-on-surface', 'font-semibold', 'shadow-sm');
+              b.classList.add('text-on-surface-variant');
+            });
+            btn.classList.add('bg-surface-container-lowest', 'text-on-surface', 'font-semibold', 'shadow-sm');
+            btn.classList.remove('text-on-surface-variant');
+            // Filtrer par rôle dans la liste des conversations
+            const list = btn.closest('.flex-col')?.parentElement?.querySelector('.overflow-y-auto');
+            const items = list ? list.querySelectorAll(':scope > div') : [];
+            items.forEach((item) => {
+              const it = item.textContent;
+              const isClient = /Client|Emmanuel|Jean-Pierre Mbida/i.test(it);
+              const isDriver = /Chauffeur|Mbida|Jean-Pierre/i.test(it);
+              const isOwner = /Propriétaire|Marc T\./i.test(it);
+              const isSupport = /Hub|Conciergerie|Support|AutoLink/i.test(it);
+              let show = t === 'Tous';
+              if (t === 'Clients') show = isClient;
+              if (t === 'Chauffeurs') show = isDriver;
+              if (t === 'Propriétaires') show = isOwner;
+              if (t === 'Support') show = isSupport;
+              item.style.display = show ? '' : 'none';
+            });
+          });
+        }
+      }
     });
 
     // 2f) Notifications C8 : filtres, marquer lu / tout lire, archiver, compteur, état vide
@@ -277,6 +308,7 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
         const active = text(p).includes(val.replace(' FCFA', ''));
         p.classList.toggle('bg-primary', active);
         p.classList.toggle('text-on-primary', active);
+        p.classList.toggle('bg-surface-container', !active);
         p.classList.toggle('bg-primary-container', false);
       });
     };
@@ -292,6 +324,11 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
       const handler = () => {
         const future = root.querySelector('#future-balance');
         if (future) future.textContent = fmt(26500 + (parseInt(customInput.value, 10) || 0));
+        // Désélectionner les boutons prédéfinis quand on tape dans l'input
+        root.querySelectorAll('.amount-pill, .amount-btn').forEach((p) => {
+          p.classList.remove('bg-primary', 'text-on-primary');
+          p.classList.add('bg-surface-container', 'text-on-surface');
+        });
       };
       customInput.addEventListener('input', handler);
       cleanups.push(() => customInput.removeEventListener('input', handler));

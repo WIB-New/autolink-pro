@@ -18,12 +18,12 @@ export default function PartnerApply() {
     <section id="candidature" className="py-20 bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-8 items-stretch">
         {/* CTA */}
-        <div className="bg-slate-900 rounded-3xl p-8 lg:p-10 flex flex-col justify-between">
+        <div className="bg-white border border-slate-100 rounded-3xl p-8 lg:p-10 flex flex-col justify-between">
           <div>
-            <span className="inline-flex items-center gap-2 bg-teal-600/20 text-teal-300 text-[11px] font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full mb-6">
-              <Rocket size={13} /> Rejoignez nos partenaires
+            <span className="inline-flex items-center gap-2 bg-teal-600 text-teal-300 text-[11px] font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full mb-6">
+              <Rocket size={13} /> <span className='text-white'>Rejoignez nos partenaires</span>
             </span>
-            <h2 className="text-3xl font-black text-white leading-tight mb-4">
+            <h2 className="text-3xl font-black text-slate-600 leading-tight mb-4">
               Commencez à monétiser votre voiture dès cette semaine.
             </h2>
             <p className="text-slate-400 leading-relaxed mb-8">
@@ -31,7 +31,7 @@ export default function PartnerApply() {
               pour planifier l'inspection gratuite de votre véhicule.
             </p>
           </div>
-          <ul className="space-y-3 text-sm text-slate-300">
+          <ul className="space-y-3 text-sm text-slate-500">
             {['Inspection gratuite en agence', 'Zéro frais d\'inscription', 'Premier versement dès la 1ʳᵉ location'].map(t => (
               <li key={t} className="flex items-center gap-2.5">
                 <CheckCircle size={16} className="text-teal-400 shrink-0" /> {t}

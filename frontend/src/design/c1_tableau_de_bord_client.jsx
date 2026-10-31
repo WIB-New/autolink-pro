@@ -74,7 +74,7 @@ const HTML = `<div class="w-full px-gutter py-space-lg flex flex-col gap-space-x
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-lg pt-space-xs">
 <div class="flex flex-col gap-space-xs">
 <span class="font-label-md text-label-md text-surface-variant">Solde disponible</span>
-<div class="font-display-lg text-display-lg font-bold text-surface-bright tracking-tight leading-none">
+<div class="font-headline-xl text-headline-xl font-bold text-surface-bright tracking-tight leading-none">
                 45 000 <span class="font-label-lg text-label-lg text-primary-fixed-dim font-normal">FCFA</span>
 </div>
 <span class="font-body-sm text-body-sm text-surface-variant/80">Immédiatement utilisable pour vos trajets</span>
@@ -84,7 +84,7 @@ const HTML = `<div class="w-full px-gutter py-space-lg flex flex-col gap-space-x
 <span class="font-label-md text-label-md text-surface-variant">Caution séquestrée bloquée</span>
 <span class="material-symbols-outlined text-[16px] text-tertiary-fixed-dim cursor-pointer" title="Fonds réservés pour garantie de location">lock</span>
 </div>
-<div class="font-headline-xl text-headline-xl font-bold text-surface-bright tracking-tight">
+<div class="font-headline-lg text-headline-lg font-bold text-surface-bright tracking-tight">
                 150 000 <span class="font-label-lg text-label-lg text-surface-variant font-normal">FCFA</span>
 </div>
 <span class="font-body-sm text-body-sm text-surface-variant/80 leading-relaxed">
@@ -224,7 +224,7 @@ const HTML = `<div class="w-full px-gutter py-space-lg flex flex-col gap-space-x
 <div class="absolute top-space-sm left-space-sm flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md text-primary font-label-sm text-label-sm font-bold shadow-sm">
 <span class="material-symbols-outlined text-[16px]">verified</span> Catégorie Standard Pro
           </div>
-<div class="absolute bottom-space-sm right-space-sm px-3 py-1.5 rounded-xl bg-on-surface/90 backdrop-blur-md text-surface-bright font-currency-display text-currency-display font-bold shadow-sm">
+<div class="absolute bottom-space-sm right-space-sm px-3 py-1.5 rounded-xl bg-on-surface/90 backdrop-blur-md text-surface-bright font-headline-lg text-headline-lg font-bold shadow-sm">
             45 000 <span class="font-label-sm text-label-sm text-surface-variant font-normal">FCFA / jour</span>
 </div>
 </div>

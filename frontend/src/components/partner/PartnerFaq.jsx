@@ -9,7 +9,7 @@ export default function PartnerFaq() {
     <section className="py-20 bg-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-10">
-          <p className="text-teal-600 text-xs font-black uppercase tracking-widest mb-2">Questions propriétaires</p>
+          {/* <p className="text-teal-600 text-xs font-black uppercase tracking-widest mb-2">Questions propriétaires</p> */}
           <h2 className="text-3xl md:text-4xl font-black text-slate-900">
             Tout ce que vous devez savoir avant de <span className="text-teal-600">confier votre voiture</span>
           </h2>

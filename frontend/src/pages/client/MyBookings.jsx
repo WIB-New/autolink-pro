@@ -261,6 +261,9 @@ export default function MyBookings() {
                 {b.status !== 'cancelled' && (
                   <div className="px-5 py-3 bg-surface-container-low/60 dark:bg-slate-900/60 flex flex-wrap gap-2">
                     <Link to={`/client/bookings/${b.id}`} className="btn-secondary py-1.5 px-3"><Icon name="receipt_long" size={16} />{t('Détail & reçu')}</Link>
+                    {['pending', 'confirmed'].includes(b.status) && b.start_date > new Date().toISOString().slice(0, 10) && (
+                      <Link to={`/client/bookings/${b.id}/edit`} className="btn-primary py-1.5 px-3"><Icon name="edit" size={16} />{t('Modifier')}</Link>
+                    )}
                     <Link to={`/messages?booking=${b.id}`} className="btn-secondary py-1.5 px-3"><Icon name="chat" size={16} />{t('Messagerie')}</Link>
                     {b.driver_phone && <a href={`tel:${b.driver_phone}`} className="btn-secondary py-1.5 px-3"><Icon name="call" size={16} />{t('Appeler chauffeur')}</a>}
                     {b.status === 'completed' && !b.client_rating && <button onClick={() => setRatingBooking(b)} className="btn-secondary py-1.5 px-3 text-tertiary"><Icon name="star" size={16} />{t('Évaluer')}</button>}

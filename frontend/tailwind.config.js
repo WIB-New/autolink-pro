@@ -35,6 +35,7 @@ module.exports = {
           container: '#e3efff', 'container-lowest': '#ffffff', 'container-low': '#edf4ff',
           'container-high': '#dde9fa', 'container-highest': '#d7e4f4',
         },
+        'on-surface': '#1e293b', 'on-surface-variant': '#475569',
         error: { DEFAULT: '#ba1a1a', container: '#ffdad6' },
         background: '#f7f9ff',
         outline: { DEFAULT: '#6d7a76', variant: '#bcc9c5' },

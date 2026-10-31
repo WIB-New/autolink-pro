@@ -57,7 +57,11 @@ export default function BookingDetail() {
     setBusy(false);
   };
 
-  const save = (event) => { event.preventDefault(); run(() => bookingsAPI.update(id, form), t('Les modifications ont été enregistrées.')); };
+  const save = (event) => {
+    event.preventDefault();
+    run(() => bookingsAPI.update(id, form), t('Les modifications ont été enregistrées. Redirection vers vos réservations...'));
+    setTimeout(() => navigate('/client/bookings'), 1500);
+  };
 
   const downloadReceipt = async () => {
     try {

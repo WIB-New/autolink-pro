@@ -42,14 +42,14 @@ export const HELP_HIGHLIGHTS = [
 /* ── Assistance immédiate ────────────────────────────── */
 export const HELP_CONTACTS = [
   {
-    icon: MessageCircle, title: 'Échangez en direct avec un conseiller AutoLink',
-    desc: 'WhatsApp Business — réponse moyenne en moins de 10 minutes, 7j/7 de 7h à 22h.',
-    btn: 'Démarrer sur WhatsApp (+237 655 090 909)', green: true,
-  },
-  {
     icon: Phone, title: 'Appeler le standard — 24h/24 & 7j/7',
     desc: 'Pour les urgences route, pannes et retards : une équipe décroche jour et nuit.',
     btn: '+237 656 789 000', lines: ['+237 699 456 123', '+237 233 478 900'],
+  },
+   {
+    icon: MessageCircle, title: 'Échangez en direct avec un conseiller AutoLink',
+    desc: 'WhatsApp Business — réponse moyenne en moins de 10 minutes, 7j/7 de 7h à 22h.',
+    btn: 'Démarrer sur WhatsApp (+237 655 090 909)', green: true,
   },
   {
     icon: Building2, title: 'Nos agences & bureaux d\'inspection',

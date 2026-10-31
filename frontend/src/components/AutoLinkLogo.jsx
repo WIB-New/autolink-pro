@@ -253,7 +253,7 @@ export function AutoLinkShield({ size = 200 }) {
 }
 
 /* ── Sizes (hauteur du logo) ── */
-const H = { xs: 52, sm: 68, md: 84, lg: 84, xl: 128, '2xl': 160 };
+const H = { xs: 24, sm: 44, md: 84, lg: 84, xl: 128, '2xl': 160 };
 
 export function AutoLinkIcon({ size = 52 }) {
   return <img src={logoPng} alt="AutoLink Pro" style={{ height: size, width: 'auto' }} className="object-contain" />;
@@ -265,6 +265,6 @@ export default function AutoLinkLogo({ size = 'md', className = '' }) {
   return (
     <img src={logoPng} alt="AutoLink Pro"
       style={{ height: h, width: 'auto' }}
-      className={`object-contain shrink-0 ${className} rounded-full`} />
+      className={`object-contain shrink-0 ${className} rounded-none`} />
   );
 }

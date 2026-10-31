@@ -24,7 +24,7 @@ export const NAV_LINKS = [
   { label: 'Catalogue',           href: '/catalogue' },
   { label: 'Comment ça marche',   href: '/comment-ca-marche' },
   { label: 'Tarifs',              href: '/tarifs' },
-  { label: 'Devenir propriétaire',href: '/devenir-proprietaire' },
+  // { label: 'Devenir propriétaire',href: '/devenir-proprietaire' },
   { label: 'Aide',                href: '/aide' },
 ];
 

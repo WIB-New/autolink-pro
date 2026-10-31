@@ -6,11 +6,11 @@ import { STANDINGS } from './data';
 /* « Choisissez selon votre standing » — 4 gammes tarifaires */
 export default function Standings() {
   return (
-    <section id="tarifs" className="py-20 bg-white">
+    <section id="tarifs" className="py-36 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-end justify-between mb-10">
           <div>
-            <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-3">
+            <h2 className="text-2xl md:text-4xl font-black text-slate-700 mb-3">
               Choisissez selon votre standing
             </h2>
             <p className="text-slate-500 max-w-xl">
@@ -34,7 +34,7 @@ export default function Standings() {
                   onError={e => { e.target.style.display = 'none'; e.target.parentElement.style.background = '#134e4a'; }} />
               </div>
               <div className="p-5">
-                <h3 className="font-black text-slate-900 text-lg mb-1">{s.name}</h3>
+                <h3 className=" text-slate-900 text-lg mb-1">{s.name}</h3>
                 <p className="text-slate-500 text-xs leading-relaxed mb-4">{s.desc}</p>
                 <div className="text-sm">
                   <span className="text-slate-400">À partir de </span>

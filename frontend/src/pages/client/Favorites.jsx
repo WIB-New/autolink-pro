@@ -88,7 +88,7 @@ export default function Favorites() {
                       <span className="flex items-center gap-1"><Icon name="location_on" size={16} />{v.city}</span>
                       <span className="flex items-center gap-1"><Icon name="star" size={16} fill className="text-tertiary-container" />{Number(v.rating || 0).toFixed(1)}</span>
                     </div>
-                    <Link to={`/vehicles/${v.id}`} className="font-headline-sm text-headline-sm text-on-surface dark:text-white hover:text-primary">{vehicleName(v)}</Link>
+                    <Link to={`/client/vehicle/${v.id}`} className="font-headline-sm text-headline-sm text-on-surface dark:text-white hover:text-primary">{vehicleName(v)}</Link>
                     <div className="flex flex-wrap gap-3 font-body-sm text-body-sm text-on-surface-variant">
                       <span className="flex items-center gap-1"><Icon name="airline_seat_recline_normal" size={16} />{v.seats} pl.</span>
                       <span className="flex items-center gap-1"><Icon name="local_gas_station" size={16} />{vehicleLabel(v.fuel, 'fuel')}</span>

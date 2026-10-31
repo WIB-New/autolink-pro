@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import Icon from '../components/Icon';
 import { useAuth } from '../contexts/AuthContext';
+import AutoLinkLogo from '../components/AutoLinkLogo';
 
 const NAVS = {
   client: [
@@ -64,13 +65,7 @@ export default function DesignShell({ children, role = 'client' }) {
     <div className="flex flex-col h-full w-72 bg-surface-container-lowest text-on-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
       <div className="h-20 px-6 flex items-center justify-between shrink-0">
         <Link to="/" className="flex items-center gap-2.5">
-          <span className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-on-primary shadow-sm">
-            <Icon name="directions_car" size={22} />
-          </span>
-          <span className="leading-none">
-            <span className="block font-headline-md text-headline-md tracking-tight text-on-surface">AutoLink <span className="text-primary">Pro</span></span>
-            <span className="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold">Pro Mobility</span>
-          </span>
+          <AutoLinkLogo size="lg" />
         </Link>
         <button onClick={() => setOpen(false)} className="lg:hidden p-1 opacity-70" aria-label="Fermer le menu"><Icon name="close" /></button>
       </div>

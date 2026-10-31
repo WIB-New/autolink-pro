@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, Star, Users, Cog, Fuel, UserCheck, ArrowRight, CalendarX } from 'lucide-react';
 import useReserve from '../../hooks/useReserve';
+import { useAuth } from '../../contexts/AuthContext';
 
 const TIER_STYLE = {
   basic:      { label: 'Basic',    cls: 'bg-slate-700' },
@@ -15,8 +16,10 @@ const TIER_STYLE = {
    Réserver → flux de réservation (compte requis si non connecté). */
 export default function CatalogCard({ v, formuleLabel = '24h', wide = false }) {
   const reserve = useReserve();
+  const { isAuthenticated } = useAuth();
   const tier = TIER_STYLE[v.tier] || TIER_STYLE.standard;
-  const detailUrl = `/vehicule/${v.id}${v.fromApi ? '' : '?src=cat'}`;
+  const detailUrl = isAuthenticated ? `/client/vehicle/${v.id}` : `/vehicule/${v.id}${v.fromApi ? '' : '?src=cat'}`;
+  const reserveUrl = isAuthenticated ? `/client/booking?vehicle=${v.id}` : '/login';
 
   return (
     <div className={`group bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden transition-all duration-300 ${v.available ? 'hover:shadow-xl hover:-translate-y-0.5' : ''}`}>
