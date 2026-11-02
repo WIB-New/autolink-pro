@@ -65,7 +65,7 @@ export default function DesignShell({ children, role = 'client' }) {
     <div className="flex flex-col h-full w-72 bg-surface-container-lowest text-on-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
       <div className="h-20 px-6 flex items-center justify-between shrink-0">
         <Link to="/" className="flex items-center gap-2.5">
-          <AutoLinkLogo size="lg" />
+          <AutoLinkLogo size="sm" className="max-w-[180px]" />
         </Link>
         <button onClick={() => setOpen(false)} className="lg:hidden p-1 opacity-70" aria-label="Fermer le menu"><Icon name="close" /></button>
       </div>
