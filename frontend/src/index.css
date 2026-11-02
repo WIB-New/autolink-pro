@@ -10,6 +10,18 @@
   src: url('@fontsource/material-symbols-outlined/files/material-symbols-outlined-latin-400-normal.woff2') format('woff2');
 }
 
+/* Compense le zoom JS (--vz) : les hauteurs en unités viewport sont
+   réduites par le zoom, on les agrandit pour que l'app remplisse l'écran. */
+:root { --vz: 1; }
+body, #root { min-height: calc(100vh / var(--vz)); }
+.h-screen { height: calc(100vh / var(--vz)) !important; }
+.min-h-screen { min-height: calc(100vh / var(--vz)) !important; }
+.max-h-screen { max-height: calc(100vh / var(--vz)) !important; }
+
+/* Scroll : molette/tactile fonctionnelle mais barres invisibles */
+html, .app-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+html::-webkit-scrollbar, .app-scroll::-webkit-scrollbar { display: none; }
+
 @layer base {
   * { box-sizing: border-box; }
   body {

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import Icon from '../components/Icon';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import AutoLinkLogo from '../components/AutoLinkLogo';
 
 const NAVS = {
@@ -9,14 +10,14 @@ const NAVS = {
     { icon: 'dashboard', label: 'Tableau de bord', path: '/client/dashboard' },
     { icon: 'directions_car', label: 'Mes Réservations', path: '/client/bookings' },
     { icon: 'account_balance_wallet', label: 'Portefeuille & Caution', path: '/client/wallet' },
+    { icon: 'search', label: 'Catalogue', path: '/client/search' },
     { icon: 'notifications', label: 'Notifications', path: '/notifications', badge: '3' },
     { icon: 'favorite', label: 'Favoris', path: '/client/favorites' },
     { icon: 'chat', label: 'Messagerie', path: '/messages' },
     { icon: 'badge', label: 'Profil & Paramètres', path: '/profile' },
     { icon: 'loyalty', label: 'Parrainage & Réductions', path: '/client/referrals' },
     { icon: 'settings', label: 'Paramètres', path: '/settings' },
-    { icon: 'search', label: 'Catalogue', path: '/client/search' },
-    { icon: 'help', label: 'Aide', path: '/help' },
+    { icon: 'help', label: 'Aide', path: '/client/help' },
   ],
   driver: [
     { icon: 'dashboard', label: 'Tableau de bord', path: '/driver/dashboard' },
@@ -48,7 +49,11 @@ export default function DesignShell({ children, role = 'client' }) {
   const user = USERS[role] || USERS.client;
   const notifPath = role === 'driver' ? '/driver/notifications' : role === 'owner' ? '/owner/notifications' : '/notifications';
   const walletPath = role === 'driver' ? '/driver/revenue' : role === 'owner' ? '/owner/revenue' : '/client/wallet?recharge=1';
+  const { i18n } = useTranslation();
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const toggleDark = (v) => { setDark(v); document.documentElement.classList.toggle('dark', v); localStorage.setItem('autolink_theme', v ? 'dark' : 'light'); };
   const [open, setOpen] = useState(false);
+  const [navExpanded, setNavExpanded] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef(null);
   const navigate = useNavigate();
@@ -62,42 +67,32 @@ export default function DesignShell({ children, role = 'client' }) {
     return () => document.removeEventListener('mousedown', close);
   }, [profileOpen]);
   const sidebar = (
-    <div className="flex flex-col h-full w-72 bg-surface-container-lowest text-on-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-      <div className="h-20 px-6 flex items-center justify-between shrink-0">
-        <Link to="/" className="flex items-center gap-2.5">
-          <AutoLinkLogo size="sm" className="max-w-[180px]" />
+    <div
+      onMouseEnter={() => setNavExpanded(true)}
+      onMouseLeave={() => setNavExpanded(false)}
+      className={`flex flex-col h-full bg-white text-on-surface border-r border-outline-variant/30 transition-[width] duration-300 w-72 ${navExpanded ? 'lg:w-72' : 'lg:w-[76px]'} overflow-hidden`}
+    >
+      <div className={`h-20 px-4 flex items-center shrink-0 border-b border-outline-variant/30 ${navExpanded ? 'justify-between' : 'justify-between lg:justify-center'}`}>
+        <Link to="/" className="flex items-center gap-2.5 min-w-0">
+          <AutoLinkLogo size="sm" className={`max-w-[180px] ${navExpanded ? '' : 'lg:hidden'}`} />
+          <AutoLinkLogo size="xs" className={`hidden max-w-[40px] ${navExpanded ? '' : 'lg:block'}`} />
         </Link>
         <button onClick={() => setOpen(false)} className="lg:hidden p-1 opacity-70" aria-label="Fermer le menu"><Icon name="close" /></button>
       </div>
-      <div className="px-6 pb-2 shrink-0">
-        <div className="py-1.5 px-3 rounded-lg flex items-center justify-between bg-surface-container-low">
-          <span className="font-label-sm text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">{user.space}</span>
-          <span className="w-2 h-2 rounded-full bg-primary-fixed-dim animate-pulse" />
-        </div>
-      </div>
-      <nav className="flex-1 min-h-0 overflow-y-auto px-4 py-2 flex flex-col gap-1">
+      <nav className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-4 flex flex-col gap-1 ${navExpanded ? '' : 'lg:px-3'}`}>
         {NAV.map(({ icon, label, path, badge }) => (
-          <NavLink key={path + label} to={path} onClick={() => setOpen(false)}
-            className={({ isActive }) => `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all font-label-lg text-label-lg ${isActive ? 'bg-primary-container text-on-primary-container font-semibold shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'}`}>
+          <NavLink key={path + label} to={path} onClick={() => setOpen(false)} title={label}
+            className={({ isActive }) => `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all font-label-lg text-label-lg ${isActive ? 'bg-primary text-white font-semibold shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'} ${navExpanded ? '' : 'lg:justify-center lg:px-0'}`}>
             <Icon name={icon} size={20} />
-            <span className="truncate flex-1">{label}</span>
-            {badge && <span className="px-2 py-0.5 rounded-full bg-error text-on-error font-label-sm text-label-sm font-bold">{badge}</span>}
+            <span className={`truncate flex-1 ${navExpanded ? '' : 'lg:hidden'}`}>{label}</span>
+            {badge && <span className={`px-2 py-0.5 rounded-full bg-error text-on-error font-label-sm text-label-sm font-bold ${navExpanded ? '' : 'lg:hidden'}`}>{badge}</span>}
           </NavLink>
         ))}
       </nav>
-      <div className="p-4 border-t border-outline-variant/30 flex flex-col gap-2 shrink-0">
-        <div className="flex items-center gap-3 px-1">
-          <div className="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center font-label-md text-label-md shrink-0">{user.init}</div>
-          <div className="min-w-0 flex-1">
-            <div className="font-label-md text-label-md truncate">{user.name}</div>
-            <div className="text-[11px] text-on-surface-variant">{user.role}</div>
-          </div>
-          <span className="flex items-center gap-1 text-[11px] text-primary-fixed-dim shrink-0">
-            <span className="w-2 h-2 rounded-full bg-primary-fixed animate-pulse" />En ligne
-          </span>
-        </div>
-        <button onClick={doLogout} className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-label-md text-label-md text-error hover:bg-error-container transition-all">
-          <Icon name="logout" size={18} />Déconnexion
+      <div className={`p-4 border-t border-outline-variant/30 shrink-0 ${navExpanded ? '' : 'lg:px-3'}`}>
+        <button onClick={doLogout} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-label-md text-label-md text-error hover:bg-error-container transition-all ${navExpanded ? '' : 'lg:justify-center lg:px-0'}`}>
+          <Icon name="logout" size={18} />
+          <span className={navExpanded ? '' : 'lg:hidden'}>Déconnexion</span>
         </button>
       </div>
     </div>
@@ -108,7 +103,7 @@ export default function DesignShell({ children, role = 'client' }) {
       <aside className="hidden lg:flex shrink-0 z-30">{sidebar}</aside>
       {open && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="shadow-2xl">{sidebar}</div>
+          <div className="h-full max-w-[85vw] shadow-2xl">{sidebar}</div>
           <div className="flex-1 bg-inverse-surface/60" onClick={() => setOpen(false)} />
         </div>
       )}
@@ -118,21 +113,8 @@ export default function DesignShell({ children, role = 'client' }) {
             <button onClick={() => setOpen(true)} className="lg:hidden w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high" aria-label="Menu">
               <Icon name="menu" />
             </button>
-            <div className="hidden sm:flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-xl bg-surface-container-low">
-              <Icon name="account_balance_wallet" size={18} className="text-primary" />
-              <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">{role === 'driver' ? 'Gains' : 'Solde'}</span>
-              <span className="font-label-lg text-label-lg font-bold text-on-surface whitespace-nowrap">{role === 'driver' ? '85 000' : '45 000'} <span className="text-primary font-label-sm">FCFA</span></span>
-              <button onClick={() => navigate(walletPath)} title="Recharger le portefeuille"
-                className="w-7 h-7 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors">
-                <Icon name="add" size={16} />
-              </button>
-            </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="hidden sm:flex rounded-xl overflow-hidden border border-outline-variant/40">
-              <span className="px-2.5 py-1.5 font-label-sm text-label-sm bg-primary text-on-primary">FR</span>
-              <span className="px-2.5 py-1.5 font-label-sm text-label-sm bg-surface-container-lowest text-on-surface-variant">EN</span>
-            </div>
             <button onClick={() => navigate(role === 'driver' ? '/driver/messages' : '/messages')} className="relative w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high" title="Messages">
               <Icon name="chat_bubble" size={22} />
               <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-on-primary text-[10px] font-bold flex items-center justify-center">2</span>
@@ -146,27 +128,33 @@ export default function DesignShell({ children, role = 'client' }) {
                 <span className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-label-md text-label-md">{user.init}</span>
                 <span className="hidden md:block text-left leading-tight">
                   <span className="block font-label-md text-label-md text-on-surface">{user.short}</span>
-                  <span className="block text-[11px] text-on-surface-variant">{user.role}</span>
                 </span>
                 <Icon name="expand_more" size={18} className="text-on-surface-variant" />
               </button>
               {profileOpen && (
                 <div className="absolute right-0 top-full mt-2 w-56 bg-surface-container-lowest rounded-xl shadow-elevation-3 border border-outline-variant/30 py-2 z-50">
                   <div className="px-4 py-2 border-b border-outline-variant/30">
+                    <div className="font-body-sm text-body-sm text-on-surface-variant uppercase tracking-wide">{user.space}</div>
                     <div className="font-label-lg text-label-lg text-on-surface">{user.name}</div>
-                    <div className="font-body-sm text-body-sm text-on-surface-variant truncate">{user.email}</div>
                   </div>
-                  {[
-                    { icon: 'dashboard', label: 'Tableau de bord', to: role === 'driver' ? '/driver/dashboard' : '/client/dashboard' },
-                    { icon: 'badge', label: role === 'driver' ? 'Profil & Documents' : 'Documents & Profil', to: role === 'driver' ? '/driver/profile' : '/profile' },
-                    ...(role === 'client' ? [{ icon: 'loyalty', label: 'Parrainage & Réductions', to: '/client/referrals' }] : []),
-                    { icon: 'settings', label: 'Paramètres', to: role === 'driver' ? '/driver/settings' : '/settings' },
-                  ].map((item) => (
-                    <button key={item.label} onClick={() => { setProfileOpen(false); navigate(item.to); }}
-                      className="flex items-center gap-2 px-4 py-2 font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-low w-full">
-                      <Icon name={item.icon} size={18} />{item.label}
-                    </button>
-                  ))}
+                  <div className="flex items-center justify-between px-4 py-2">
+                    <span className="flex items-center gap-2 font-body-md text-body-md text-on-surface-variant"><Icon name="dark_mode" size={18} />Thème</span>
+                    <div className="flex rounded-lg overflow-hidden border border-outline-variant/40">
+                      <button onClick={() => toggleDark(false)} className={`px-2.5 py-1 font-label-sm text-label-sm ${!dark ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant'}`}>On</button>
+                      <button onClick={() => toggleDark(true)} className={`px-2.5 py-1 font-label-sm text-label-sm ${dark ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant'}`}>Off</button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-2">
+                    <span className="flex items-center gap-2 font-body-md text-body-md text-on-surface-variant"><Icon name="language" size={18} />Langue</span>
+                    <div className="flex rounded-lg overflow-hidden border border-outline-variant/40">
+                      <button onClick={() => i18n.changeLanguage('fr')} className={`px-2.5 py-1 font-label-sm text-label-sm ${i18n.language === 'fr' ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant'}`}>FR</button>
+                      <button onClick={() => i18n.changeLanguage('en')} className={`px-2.5 py-1 font-label-sm text-label-sm ${i18n.language === 'en' ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant'}`}>EN</button>
+                    </div>
+                  </div>
+                  <button onClick={() => { setProfileOpen(false); navigate('/profile'); }}
+                    className="flex items-center gap-2 px-4 py-2 font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-low w-full">
+                    <Icon name="badge" size={18} />Profil
+                  </button>
                   <div className="border-t border-outline-variant/30 mt-1 pt-1">
                     <button onClick={() => doLogout()} className="flex items-center gap-2 px-4 py-2 font-body-md text-body-md text-error hover:bg-error-container/50 w-full">
                       <Icon name="logout" size={18} />Déconnexion
@@ -177,7 +165,7 @@ export default function DesignShell({ children, role = 'client' }) {
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto bg-surface">{children}</main>
+        <main className="flex-1 overflow-y-auto app-scroll bg-surface">{children}</main>
       </div>
     </div>
   );

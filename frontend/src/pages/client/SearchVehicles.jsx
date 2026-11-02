@@ -7,7 +7,7 @@ import VehicleCard from '../../components/VehicleCard';
 import TopUpModal from '../../components/TopUpModal';
 import { RENTAL_TYPES, TIERS } from '../../utils/carImages';
 import { vehicleImage, vehicleName, vehicleRate, TIER_BADGES } from '../../utils/vehicles';
-import { vehiclesAPI, bookingsAPI, paymentsAPI, walletAPI } from '../../services/api';
+import { bookingsAPI, paymentsAPI, walletAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import useFavorites from '../../utils/useFavorites';
 import { formatDate, formatNumber, uiText, vehicleLabel } from '../../i18n';
@@ -411,11 +411,7 @@ export default function SearchVehicles() {
         setVehicles(list);
         setOffline(false);
         const selectedId = Number(new URLSearchParams(window.location.search).get('vehicle'));
-        if (selectedId) {
-          const vehicle = list.find((item) => item.id === selectedId);
-          if (vehicle) setSelected(vehicle);
-          else vehiclesAPI.detail(selectedId).then(({ data }) => mounted && setSelected({ ...data, type: 'rental' })).catch(() => {});
-        }
+        if (selectedId) navigate(`/client/booking/recap?vehicle=${selectedId}`, { replace: true });
         setLoadingList(false);
       })
       .catch(() => { if (mounted) { setOffline(true); setLoadingList(false); } });
@@ -452,23 +448,6 @@ export default function SearchVehicles() {
       <div className="pt-4 px-4 sm:px-6 lg:px-8">
         <div className="mb-4"><h1 className="font-headline-lg text-headline-lg text-on-surface">{t('Catalogue de véhicules')}</h1><p className="text-body-md text-on-surface-variant">{t('Choisissez votre véhicule, votre formule et réservez en quelques clics.')}</p></div>
         <div className="flex flex-col gap-6">
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-          {[{ id: '', label: 'Toutes les formules' }, ...RENTAL_TYPES].map((rt) => (
-            <button key={rt.id} onClick={() => setType(rt.id)}
-              className={`shrink-0 px-4 py-2 rounded-full font-label-md text-label-md ${selectedType === rt.id ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant border border-outline-variant/40 dark:bg-slate-800 dark:text-slate-300'}`}>{t(rt.label)}</button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-          {[{ id: '', label: 'Toutes les gammes', desc: 'Économique à Super Luxe' }, ...TIERS].map((tier) => (
-            <button key={tier.id} onClick={() => setTier(tier.id)}
-              className={`p-3 rounded-xl border text-left ${selectedTier === tier.id ? 'border-primary ring-1 ring-primary bg-primary-fixed/10' : 'border-outline-variant/40 bg-surface-container-lowest dark:bg-slate-800 dark:border-slate-700'}`}>
-              <div className="font-label-lg text-label-lg text-on-surface dark:text-white">{tier.id ? vehicleLabel(tier.id, 'tier') : t(tier.label)}</div>
-              <div className="font-body-sm text-body-sm text-on-surface-variant">{t(tier.desc)}</div>
-            </button>
-          ))}
-        </div>
-
         <div className="card flex flex-col gap-4">
           <div className="flex flex-wrap gap-4 items-center">
             <ListToolbar className="min-w-64 flex-1" search={search} onSearchChange={setSearch}
@@ -482,7 +461,9 @@ export default function SearchVehicles() {
             </div>
             <label className="flex items-center gap-2 font-label-md text-label-md cursor-pointer"><input type="checkbox" checked={onlyAvailable} onChange={(e) => setOnly(e.target.checked)} className="w-4 h-4 accent-primary" />{t('Disponibles uniquement')}</label>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+            <label><span className="label">{t('Formule')}</span><select className="input-field" value={selectedType} onChange={(e) => setType(e.target.value)}><option value="">{t('Toutes les formules')}</option>{RENTAL_TYPES.map((rt) => <option key={rt.id} value={rt.id}>{t(rt.label)}</option>)}</select></label>
+            <label><span className="label">{t('Gamme')}</span><select className="input-field" value={selectedTier} onChange={(e) => setTier(e.target.value)}><option value="">{t('Toutes les gammes')}</option>{TIERS.map((tier) => <option key={tier.id} value={tier.id}>{vehicleLabel(tier.id, 'tier')}</option>)}</select></label>
             <label><span className="label">{t('Disponible à partir du')}</span><input type="date" className="input-field" value={availabilityStart} min={new Date().toISOString().slice(0, 10)} disabled={!onlyAvailable} onChange={(e) => setAvailabilityStart(e.target.value)} /></label>
             <label><span className="label">{t('Jusqu’au')}</span><input type="date" className="input-field" value={availabilityEnd} min={availabilityStart || new Date().toISOString().slice(0, 10)} disabled={!onlyAvailable} onChange={(e) => setAvailabilityEnd(e.target.value)} /></label>
             <label><span className="label">{t('Marque')}</span><select className="input-field" value={brand} onChange={(e) => { setBrand(e.target.value); setModel(''); }}><option value="">{t('Toutes les marques')}</option>{facets.brands.map((value) => <option key={value}>{value}</option>)}</select></label>

@@ -1,404 +1,159 @@
 import React from 'react';
 import DesignPage from './DesignPage';
 
-const HTML = `
-<div class="max-w-[1180px] w-full mx-auto space-y-gutter">
-<!-- Top Summary Banner & Page Header -->
-<div class="relative overflow-hidden rounded-xl bg-gradient-to-r from-surface-container-high via-surface-container to-surface-container-low p-space-lg shadow-sm">
-<div class="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-primary/10 blur-2xl pointer-events-none"></div>
-<div class="absolute right-32 -bottom-20 w-48 h-48 rounded-full bg-tertiary/10 blur-xl pointer-events-none"></div>
-<div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-space-md">
-<div class="space-y-space-xs">
-<div class="flex items-center gap-space-sm">
-<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/15 text-primary font-label-sm text-label-sm uppercase tracking-wide">
-<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-              Flux sécurisé en temps réel
-            </span>
-<span class="text-outline font-label-sm text-label-sm">• Zone Cemac / Douala</span>
-</div>
-<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">Centre de Notifications</h1>
-<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">
-            Toutes les alertes certifiées relatives à vos réservations, restitutions de cautions Mobile Money et messages hôtes.
-          </p>
-</div>
-<!-- Quick Metrics Pill -->
-<div class="flex items-center gap-space-sm bg-surface-container-lowest/80 backdrop-blur-md px-space-md py-space-sm rounded-xl shadow-sm self-start md:self-auto">
-<div class="w-10 h-10 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center font-bold">
-<span class="material-symbols-outlined text-[20px]">notifications_active</span>
-</div>
-<div class="text-left">
-<div class="flex items-center gap-1.5">
-<span class="font-headline-sm text-headline-sm text-on-surface font-extrabold" id="unread-counter">4</span>
-<span class="font-label-sm text-label-sm text-primary font-semibold">non lues</span>
-</div>
-<span class="font-body-sm text-body-sm text-outline">sur 14 réceptions</span>
-</div>
-</div>
-</div>
-</div>
-<!-- Interactive Filter & Action Bar -->
-<div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md bg-surface-container-lowest p-space-sm rounded-xl shadow-sm">
-<!-- Category Tabs -->
-<div class="flex items-center gap-1 overflow-x-auto no-scrollbar py-1">
-<button class="filter-tab px-3.5 py-2 rounded-lg font-label-lg text-label-lg transition-all text-on-surface-variant hover:bg-surface-container hover:text-on-surface whitespace-nowrap" data-filter="all" type="button">
-          Toutes <span class="ml-1 px-1.5 py-0.2 rounded-full text-label-sm text-outline bg-surface-container-high font-semibold">14</span>
-</button>
-<button class="filter-tab px-3.5 py-2 rounded-lg font-label-lg text-label-lg transition-all bg-primary text-on-primary font-semibold shadow-sm whitespace-nowrap" data-filter="unread" type="button">
-          Non lues <span class="ml-1 px-1.5 py-0.2 rounded-full text-label-sm bg-primary-container text-on-primary-container font-bold">4</span>
-</button>
-<button class="filter-tab px-3.5 py-2 rounded-lg font-label-lg text-label-lg transition-all text-on-surface-variant hover:bg-surface-container hover:text-on-surface whitespace-nowrap" data-filter="reservations" type="button">
-          Réservations
-        </button>
-<button class="filter-tab px-3.5 py-2 rounded-lg font-label-lg text-label-lg transition-all text-on-surface-variant hover:bg-surface-container hover:text-on-surface whitespace-nowrap" data-filter="finances" type="button">
-          Paiements &amp; Caution
-        </button>
-<button class="filter-tab px-3.5 py-2 rounded-lg font-label-lg text-label-lg transition-all text-on-surface-variant hover:bg-surface-container hover:text-on-surface whitespace-nowrap" data-filter="securite" type="button">
-          Sécurité
-        </button>
-</div>
-<!-- Action Buttons -->
-<div class="flex items-center gap-space-xs sm:gap-space-sm justify-end">
-<button class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-all font-label-md text-label-md" id="mark-all-read-btn" type="button">
-<span class="material-symbols-outlined text-[18px] text-primary">done_all</span>
-<span>Tout marquer comme lu</span>
-</button>
-<button class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all font-label-md text-label-md" title="Préférences de notification SMS/WhatsApp" type="button">
-<span class="material-symbols-outlined text-[18px]">tune</span>
-<span class="hidden sm:inline">Paramètres</span>
-</button>
-</div>
-</div>
-<!-- Notification Feed -->
-<div class="space-y-space-lg" id="feed-container">
-<!-- TIMEFRAME: AUJOURD'HUI -->
-<div class="space-y-space-sm timeframe-block" data-timeframe="today">
-<div class="flex items-center justify-between px-space-xs">
-<div class="flex items-center gap-2">
-<span class="font-headline-sm text-headline-sm text-on-surface font-bold tracking-tight">Aujourd'hui</span>
-<span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-semibold">2 alertes récentes</span>
-</div>
-<span class="font-label-sm text-label-sm text-outline">Fuseau horaire : GMT+1 (Douala)</span>
-</div>
-<div class="space-y-space-sm">
-<!-- Item 1: Caution Débloquée (Unread - Finance/Urgent) -->
-<article class="notification-card group relative p-space-md rounded-xl transition-all duration-200 bg-surface-container-low shadow-[0_2px_8px_rgba(0,104,92,0.06)] hover:bg-surface-container" data-category="finances" data-status="unread">
-<div class="flex items-start gap-space-md">
-<div class="relative shrink-0">
-<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-tertiary-fixed to-tertiary-container text-on-tertiary-container flex items-center justify-center shadow-sm">
-<span class="material-symbols-outlined text-[24px]">lock_open</span>
-</div>
-<span class="unread-dot absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary ring-2 ring-surface-container-low"></span>
-</div>
-<div class="flex-1 min-w-0 space-y-space-xs">
-<div class="flex flex-wrap items-center justify-between gap-space-xs">
-<div class="flex items-center gap-2 flex-wrap">
-<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold truncate">Caution débloquée #ALP-8812</h2>
-<span class="px-2 py-0.5 rounded font-label-sm text-label-sm bg-tertiary-fixed text-on-tertiary-fixed-variant font-bold">150 000 FCFA Libérés</span>
-<span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-label-sm text-label-sm">Inspecté conforme</span>
-</div>
-<time class="font-label-sm text-label-sm text-outline shrink-0">Il y a 25 min</time>
-</div>
-<p class="font-body-md text-body-md text-on-surface-variant">
-                  Votre caution de <strong class="text-on-surface font-semibold">150 000 FCFA</strong> pour la location du <strong class="text-on-surface">Toyota RAV4 (LT 892 AB)</strong> a été intégralement libérée suite à l'état des lieux de retour validé sans dommage. Votre plafond carte / solde mobile a été restauré.
-                </p>
-<div class="pt-space-xs flex flex-wrap items-center justify-between gap-space-sm">
-<div class="flex items-center gap-space-sm">
-<button class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-primary text-on-primary hover:bg-primary-container font-label-md text-label-md transition-all shadow-sm" type="button">
-<span class="material-symbols-outlined text-[16px]">receipt_long</span>
-                      Voir le reçu officiel
-                    </button>
-<span class="font-label-sm text-label-sm text-outline hidden sm:inline">Réf Banque: CM-XAF-902810</span>
-</div>
-<div class="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-<button class="mark-read-toggle p-1.5 rounded-lg text-outline hover:text-primary hover:bg-surface-container-high transition-colors" title="Marquer comme lu" type="button">
-<span class="material-symbols-outlined text-[18px]">done</span>
-</button>
-<button class="archive-btn p-1.5 rounded-lg text-outline hover:text-error hover:bg-error-container/30 transition-colors" title="Supprimer de l'affichage" type="button">
-<span class="material-symbols-outlined text-[18px]">delete</span>
-</button>
-</div>
-</div>
-</div>
-</div>
-</article>
-<!-- Item 2: Réservation Confirmée (Unread - Reservation) -->
-<article class="notification-card group relative p-space-md rounded-xl transition-all duration-200 bg-surface-container-low shadow-[0_2px_8px_rgba(70,97,125,0.06)] hover:bg-surface-container" data-category="reservations" data-status="unread">
-<div class="flex items-start gap-space-md">
-<div class="relative shrink-0">
-<div class="w-12 h-12 rounded-xl bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center shadow-sm">
-<span class="material-symbols-outlined text-[24px]">key</span>
-</div>
-<span class="unread-dot absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary ring-2 ring-surface-container-low"></span>
-</div>
-<div class="flex-1 min-w-0 space-y-space-xs">
-<div class="flex flex-wrap items-center justify-between gap-space-xs">
-<div class="flex items-center gap-2 flex-wrap">
-<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold truncate">Réservation confirmée #ALP-8924</h2>
-<span class="px-2 py-0.5 rounded-full bg-secondary text-on-secondary font-label-sm text-label-sm">Prise en charge validée</span>
-</div>
-<time class="font-label-sm text-label-sm text-outline shrink-0">Il y a 2 heures</time>
-</div>
-<p class="font-body-md text-body-md text-on-surface-variant">
-                  Le propriétaire partenaire <strong class="text-on-surface font-semibold">Marc T.</strong> a validé votre demande. Rendez-vous confirmé pour le départ de demain à <strong class="text-on-surface">08h30</strong> au <strong class="text-on-surface">Hub AutoLink d'Akwa (Douala)</strong>. Votre contrat numérique est prêt pour émargement.
-                </p>
-<div class="pt-space-xs flex flex-wrap items-center justify-between gap-space-sm">
-<div class="flex items-center gap-space-sm">
-<button class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high font-label-md text-label-md transition-all shadow-sm" type="button">
-<span class="material-symbols-outlined text-[16px] text-secondary">visibility</span>
-                      Détail de la réservation
-                    </button>
-<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-primary hover:bg-primary/10 font-label-md text-label-md transition-all" type="button">
-<span class="material-symbols-outlined text-[16px]">location_on</span>
-                      Itinéraire vers le Hub
-                    </button>
-</div>
-<div class="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-<button class="mark-read-toggle p-1.5 rounded-lg text-outline hover:text-primary hover:bg-surface-container-high transition-colors" title="Marquer comme lu" type="button">
-<span class="material-symbols-outlined text-[18px]">done</span>
-</button>
-<button class="archive-btn p-1.5 rounded-lg text-outline hover:text-error hover:bg-error-container/30 transition-colors" title="Supprimer de l'affichage" type="button">
-<span class="material-symbols-outlined text-[18px]">delete</span>
-</button>
-</div>
-</div>
-</div>
-</div>
-</article>
-</div>
-</div>
-<!-- TIMEFRAME: HIER -->
-<div class="space-y-space-sm timeframe-block" data-timeframe="yesterday">
-<div class="flex items-center justify-between px-space-xs">
-<div class="flex items-center gap-2">
-<span class="font-headline-sm text-headline-sm text-on-surface font-bold tracking-tight">Hier</span>
-<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold">2 événements</span>
-</div>
-<span class="font-label-sm text-label-sm text-outline">18 Mars 2025</span>
-</div>
-<div class="space-y-space-sm">
-<!-- Item 3: Message Propriétaire (Unread - Message) -->
-<article class="notification-card group relative p-space-md rounded-xl transition-all duration-200 bg-surface-container-low shadow-[0_2px_8px_rgba(0,104,92,0.06)] hover:bg-surface-container" data-category="messages" data-status="unread">
-<div class="flex items-start gap-space-md">
-<div class="relative shrink-0">
-<div class="w-12 h-12 rounded-xl bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center shadow-sm">
-<span class="material-symbols-outlined text-[24px]">chat_bubble</span>
-</div>
-<span class="unread-dot absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary ring-2 ring-surface-container-low"></span>
-</div>
-<div class="flex-1 min-w-0 space-y-space-xs">
-<div class="flex flex-wrap items-center justify-between gap-space-xs">
-<div class="flex items-center gap-2 flex-wrap">
-<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold truncate">Nouveau message de Samuel Transport</h2>
-<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">Équipe Hôte</span>
-</div>
-<time class="font-label-sm text-label-sm text-outline shrink-0">Hier à 18:30</time>
-</div>
-<div class="p-3 rounded-lg bg-surface-container-lowest/80 text-on-surface font-body-md text-body-md italic shadow-inner">
-                  "Bonjour Emmanuel, le véhicule a été nettoyé, désinfecté et le plein de gasoil est fait. Je vous attends demain avec la fiche d'inspection prête."
-                </div>
-<div class="pt-space-xs flex flex-wrap items-center justify-between gap-space-sm">
-<div class="flex items-center gap-space-sm">
-<button class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-primary text-on-primary hover:bg-primary-container font-label-md text-label-md transition-all shadow-sm" type="button">
-<span class="material-symbols-outlined text-[16px]">reply</span>
-                      Répondre via la messagerie
-                    </button>
-</div>
-<div class="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-<button class="mark-read-toggle p-1.5 rounded-lg text-outline hover:text-primary hover:bg-surface-container-high transition-colors" title="Marquer comme lu" type="button">
-<span class="material-symbols-outlined text-[18px]">done</span>
-</button>
-<button class="archive-btn p-1.5 rounded-lg text-outline hover:text-error hover:bg-error-container/30 transition-colors" title="Supprimer de l'affichage" type="button">
-<span class="material-symbols-outlined text-[18px]">delete</span>
-</button>
-</div>
-</div>
-</div>
-</div>
-</article>
-<!-- Item 4: Rappel Inspection (Unread - Rappel) -->
-<article class="notification-card group relative p-space-md rounded-xl transition-all duration-200 bg-surface-container-low shadow-[0_2px_8px_rgba(161,104,0,0.06)] hover:bg-surface-container" data-category="reservations" data-status="unread">
-<div class="flex items-start gap-space-md">
-<div class="relative shrink-0">
-<div class="w-12 h-12 rounded-xl bg-tertiary-fixed-dim text-on-tertiary-fixed flex items-center justify-center shadow-sm">
-<span class="material-symbols-outlined text-[24px]">event_available</span>
-</div>
-<span class="unread-dot absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary ring-2 ring-surface-container-low"></span>
-</div>
-<div class="flex-1 min-w-0 space-y-space-xs">
-<div class="flex flex-wrap items-center justify-between gap-space-xs">
-<div class="flex items-center gap-2 flex-wrap">
-<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold truncate">Inspection de départ programmée</h2>
-<span class="px-2 py-0.5 rounded-full bg-tertiary/15 text-tertiary font-label-sm text-label-sm font-semibold">Protocole Check-in</span>
-</div>
-<time class="font-label-sm text-label-sm text-outline shrink-0">Hier à 14:10</time>
-</div>
-<p class="font-body-md text-body-md text-on-surface-variant">
-                  Rendez-vous fixé pour demain à <strong class="text-on-surface">08h00 précises</strong> au <strong class="text-on-surface font-semibold">Hub AutoLink Douala Akwa (face Direction MTN)</strong> pour la signature biométrique et la remise sécurisée des clés de bord.
-                </p>
-<div class="pt-space-xs flex flex-wrap items-center justify-between gap-space-sm">
-<div class="flex items-center gap-space-sm">
-<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high font-label-md text-label-md transition-all shadow-sm" type="button">
-<span class="material-symbols-outlined text-[16px] text-tertiary">fact_check</span>
-                      Consulter le guide de check-in
-                    </button>
-</div>
-<div class="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-<button class="mark-read-toggle p-1.5 rounded-lg text-outline hover:text-primary hover:bg-surface-container-high transition-colors" title="Marquer comme lu" type="button">
-<span class="material-symbols-outlined text-[18px]">done</span>
-</button>
-<button class="archive-btn p-1.5 rounded-lg text-outline hover:text-error hover:bg-error-container/30 transition-colors" title="Supprimer de l'affichage" type="button">
-<span class="material-symbols-outlined text-[18px]">delete</span>
-</button>
-</div>
-</div>
-</div>
-</div>
-</article>
-</div>
-</div>
-<!-- TIMEFRAME: CETTE SEMAINE -->
-<div class="space-y-space-sm timeframe-block" data-timeframe="this-week">
-<div class="flex items-center justify-between px-space-xs">
-<div class="flex items-center gap-2">
-<span class="font-headline-sm text-headline-sm text-on-surface font-bold tracking-tight">Cette semaine</span>
-<span class="px-2 py-0.5 rounded-full bg-surface-container text-outline font-label-sm text-label-sm">Historique lu</span>
-</div>
-<span class="font-label-sm text-label-sm text-outline">Semaine 12</span>
-</div>
-<div class="space-y-space-sm">
-<!-- Item 5: Sécurité (Read - Purple/Safety) -->
-<article class="notification-card group relative p-space-md rounded-xl transition-all duration-200 bg-surface-container-lowest shadow-sm hover:bg-surface-container-low" data-category="securite" data-status="read">
-<div class="flex items-start gap-space-md">
-<div class="relative shrink-0">
-<div class="w-12 h-12 rounded-xl bg-inverse-surface text-inverse-on-surface flex items-center justify-center shadow-sm">
-<span class="material-symbols-outlined text-[24px]">devices</span>
-</div>
-</div>
-<div class="flex-1 min-w-0 space-y-space-xs">
-<div class="flex flex-wrap items-center justify-between gap-space-xs">
-<div class="flex items-center gap-2 flex-wrap">
-<h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">Connexion depuis un nouvel appareil</h2>
-<span class="px-2 py-0.5 rounded-full bg-surface-container text-outline font-label-sm text-label-sm">Authentification 2FA</span>
-</div>
-<time class="font-label-sm text-label-sm text-outline shrink-0">Il y a 3 jours</time>
-</div>
-<p class="font-body-md text-body-md text-on-surface-variant">
-                  Nouvelle session authentifiée détectée sur <strong class="text-on-surface">Chrome / macOS</strong> à <strong class="text-on-surface">Douala (Cameroun)</strong> suite à la validation réussie du code SMS OTP envoyé sur votre numéro Orange.
-                </p>
-<div class="pt-space-xs flex flex-wrap items-center justify-between gap-space-sm">
-<div class="flex items-center gap-space-sm">
-<span class="inline-flex items-center gap-1 font-label-sm text-label-sm text-primary font-medium">
-<span class="material-symbols-outlined text-[15px]">verified_user</span>
-                      Session validée et sécurisée
-                    </span>
-<button class="text-outline hover:text-error font-label-md text-label-md transition-colors" type="button">
-                      Ce n'était pas vous ?
-                    </button>
-</div>
-<div class="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-<button class="archive-btn p-1.5 rounded-lg text-outline hover:text-error hover:bg-error-container/30 transition-colors" title="Supprimer de l'affichage" type="button">
-<span class="material-symbols-outlined text-[18px]">delete</span>
-</button>
-</div>
-</div>
-</div>
-</div>
-</article>
-</div>
-</div>
-<!-- TIMEFRAME: PLUS ANCIEN -->
-<div class="space-y-space-sm timeframe-block" data-timeframe="older">
-<div class="flex items-center justify-between px-space-xs">
-<div class="flex items-center gap-2">
-<span class="font-headline-sm text-headline-sm text-on-surface font-bold tracking-tight">Plus ancien</span>
-</div>
-<span class="font-label-sm text-label-sm text-outline">Archives financières</span>
-</div>
-<div class="space-y-space-sm">
-<!-- Item 6: Recharge Portefeuille (Read - Finance) -->
-<article class="notification-card group relative p-space-md rounded-xl transition-all duration-200 bg-surface-container-lowest shadow-sm hover:bg-surface-container-low" data-category="finances" data-status="read">
-<div class="flex items-start gap-space-md">
-<div class="relative shrink-0">
-<div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shadow-sm">
-<span class="material-symbols-outlined text-[24px]">account_balance_wallet</span>
-</div>
-</div>
-<div class="flex-1 min-w-0 space-y-space-xs">
-<div class="flex flex-wrap items-center justify-between gap-space-xs">
-<div class="flex items-center gap-2 flex-wrap">
-<h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">Recharge portefeuille réussie</h2>
-<span class="px-2 py-0.5 rounded font-label-sm text-label-sm bg-primary/15 text-primary font-bold">+ 50 000 FCFA</span>
-</div>
-<time class="font-label-sm text-label-sm text-outline shrink-0">Il y a 4 jours</time>
-</div>
-<p class="font-body-md text-body-md text-on-surface-variant">
-                  Crédit immédiat de <strong class="text-on-surface font-semibold">50 000 FCFA</strong> ajouté à votre portefeuille AutoLink via <strong class="text-on-surface">MTN Mobile Money</strong> (Réf transaction #MTN-8930129). Solde actualisé disponible pour réservations et dépôts.
-                </p>
-<div class="pt-space-xs flex flex-wrap items-center justify-between gap-space-sm">
-<div class="flex items-center gap-space-sm">
-<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high font-label-md text-label-md transition-all" type="button">
-<span class="material-symbols-outlined text-[16px]">receipt</span>
-                      Télécharger reçu XAF
-                    </button>
-</div>
-<div class="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-<button class="archive-btn p-1.5 rounded-lg text-outline hover:text-error hover:bg-error-container/30 transition-colors" title="Supprimer de l'affichage" type="button">
-<span class="material-symbols-outlined text-[18px]">delete</span>
-</button>
-</div>
-</div>
-</div>
-</div>
-</article>
-</div>
-</div>
-</div>
-<!-- Empty State Fallback -->
-<div class="hidden flex-col items-center justify-center p-space-xl rounded-xl bg-surface-container-lowest text-center space-y-space-sm" id="empty-state">
-<div class="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center text-outline">
-<span class="material-symbols-outlined text-[32px]">notifications_off</span>
-</div>
+const HTML = `<div class="flex flex-col w-full pb-16">
+<!-- Page Header -->
+<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-6">
 <div class="space-y-1">
-<h3 class="font-headline-sm text-headline-sm text-on-surface font-bold">Aucune alerte trouvée</h3>
-<p class="font-body-md text-body-md text-on-surface-variant max-w-sm">
-          Vous êtes parfaitement à jour ! Toutes les alertes pour ce filtre ont été traitées ou archivées.
-        </p>
+<h1 class="font-headline-xl text-headline-xl text-on-surface">Notifications</h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">
+        Suivez en temps réel vos réservations, cautions et échanges AutoLink.
+      </p>
 </div>
-<button class="px-4 py-2 rounded-lg bg-primary text-on-primary font-label-md text-label-md shadow-sm" data-reset-filter="1" type="button">
-        Afficher toutes les alertes
-      </button>
+<button class="px-5 py-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors flex items-center gap-2 shadow-sm shrink-0" type="button">
+<span class="material-symbols-outlined text-[18px]">done_all</span>
+    Tout marquer comme lu
+  </button>
 </div>
-<!-- Trust & Verification Footer Strip -->
-<div class="p-space-md rounded-xl bg-gradient-to-r from-surface-container-low to-surface-container-lowest flex flex-col md:flex-row items-center justify-between gap-space-md shadow-sm">
-<div class="flex items-center gap-space-sm">
-<div class="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-<span class="material-symbols-outlined text-[20px]">shield_with_heart</span>
+<!-- Barre : recherche + filtre catégorie -->
+<div class="bg-surface-container-lowest rounded-2xl p-4 mb-8 shadow-sm flex flex-col md:flex-row items-center gap-3">
+<div class="relative w-full md:flex-1">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+<input class="w-full pl-9 pr-3 py-2.5 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface placeholder:text-outline outline-none focus:bg-surface-container-lowest transition-colors" placeholder="Rechercher une notification (caution, réservation, message…)" type="text">
 </div>
-<div class="text-left">
-<p class="font-label-lg text-label-lg font-bold text-on-surface">Protocole de Traçabilité AutoLink Assurance</p>
-<p class="font-body-sm text-body-sm text-outline">Chaque déblocage de caution fait l'objet d'un rapport certifié horodaté opposable aux tiers et banques agréées COBAC.</p>
-</div>
-</div>
-<div class="flex items-center gap-space-md shrink-0">
-<div class="flex items-center gap-1.5 text-on-surface-variant font-label-sm text-label-sm">
-<span class="w-2 h-2 rounded-full bg-primary"></span>
-          MTN MoMo API v2
-        </div>
-<div class="flex items-center gap-1.5 text-on-surface-variant font-label-sm text-label-sm">
-<span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim"></span>
-          Orange Money Webhook
-        </div>
+<div class="relative bg-surface-container-low rounded-lg px-3 py-2 min-w-[200px] shrink-0">
+<label class="block font-label-sm text-[10px] text-on-surface-variant">Catégorie</label>
+<select class="w-full bg-transparent font-label-sm text-label-sm text-on-surface outline-none cursor-pointer">
+<option selected="">Toutes (14)</option>
+<option>Non lues (4)</option>
+<option>Réservations</option>
+<option>Paiements & Caution</option>
+<option>Sécurité</option>
+</select>
 </div>
 </div>
+<!-- Tableau des notifications -->
+<div class="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse min-w-[860px]">
+<thead>
+<tr class="font-label-sm text-label-sm uppercase tracking-wide text-on-surface-variant border-b border-outline-variant/30 bg-surface-container-low/50">
+<th class="px-5 py-3.5 font-semibold">Notification</th>
+<th class="px-4 py-3.5 font-semibold">Catégorie</th>
+<th class="px-4 py-3.5 font-semibold">Reçue</th>
+<th class="px-4 py-3.5 font-semibold">Statut</th>
+<th class="px-4 py-3.5 font-semibold text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md">
+<!-- Ligne 1 : Caution débloquée (non lue) -->
+<tr class="border-b border-outline-variant/20 bg-primary-fixed/10 hover:bg-surface-container-low/60 transition-colors">
+<td class="px-5 py-4">
+<div class="flex items-start gap-3">
+<div class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-primary shrink-0"><span class="material-symbols-outlined text-[20px]">lock_open</span></div>
+<div class="min-w-0">
+<span class="block font-label-md text-label-md font-bold text-on-surface">Caution débloquée #ALP-8812 — 150 000 FCFA libérés</span>
+<span class="block font-body-sm text-body-sm text-on-surface-variant truncate max-w-md">État des lieux validé sans dommage. Votre plafond a été restauré.</span>
 </div>
-`;
-
+</div>
+</td>
+<td class="px-4 py-4 whitespace-nowrap"><span class="font-label-sm text-label-sm text-on-surface-variant">Paiements & Caution</span></td>
+<td class="px-4 py-4 whitespace-nowrap font-body-sm text-body-sm text-on-surface-variant">Il y a 25 min</td>
+<td class="px-4 py-4 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-fixed text-primary font-label-sm text-label-sm font-bold"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>Non lue</span></td>
+<td class="px-4 py-4">
+<div class="flex items-center justify-end gap-1">
+<button class="w-8 h-8 rounded-lg text-primary hover:bg-primary-fixed flex items-center justify-center transition-colors" title="Voir en détail" type="button"><span class="material-symbols-outlined text-[18px]">visibility</span><span class="sr-only">Voir le reçu</span></button>
+<button class="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container flex items-center justify-center transition-colors" title="Marquer comme lu" type="button"><span class="material-symbols-outlined text-[18px]">done</span><span class="sr-only">Marquer lu</span></button>
+<button class="w-8 h-8 rounded-lg text-error hover:bg-error-container flex items-center justify-center transition-colors" title="Supprimer" type="button"><span class="material-symbols-outlined text-[18px]">delete</span><span class="sr-only">Supprimer</span></button>
+</div>
+</td>
+</tr>
+<!-- Ligne 2 : Réservation confirmée (non lue) -->
+<tr class="border-b border-outline-variant/20 bg-primary-fixed/10 hover:bg-surface-container-low/60 transition-colors">
+<td class="px-5 py-4">
+<div class="flex items-start gap-3">
+<div class="w-10 h-10 rounded-xl bg-secondary-fixed flex items-center justify-center text-secondary shrink-0"><span class="material-symbols-outlined text-[20px]">key</span></div>
+<div class="min-w-0">
+<span class="block font-label-md text-label-md font-bold text-on-surface">Réservation confirmée #ALP-8924</span>
+<span class="block font-body-sm text-body-sm text-on-surface-variant truncate max-w-md">Départ demain 08h30 au Hub AutoLink d'Akwa (Douala). Contrat prêt pour émargement.</span>
+</div>
+</div>
+</td>
+<td class="px-4 py-4 whitespace-nowrap"><span class="font-label-sm text-label-sm text-on-surface-variant">Réservations</span></td>
+<td class="px-4 py-4 whitespace-nowrap font-body-sm text-body-sm text-on-surface-variant">Il y a 2 heures</td>
+<td class="px-4 py-4 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-fixed text-primary font-label-sm text-label-sm font-bold"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>Non lue</span></td>
+<td class="px-4 py-4">
+<div class="flex items-center justify-end gap-1">
+<button class="w-8 h-8 rounded-lg text-primary hover:bg-primary-fixed flex items-center justify-center transition-colors" title="Voir en détail" type="button"><span class="material-symbols-outlined text-[18px]">visibility</span><span class="sr-only">Détail de la réservation</span></button>
+<button class="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container flex items-center justify-center transition-colors" title="Marquer comme lu" type="button"><span class="material-symbols-outlined text-[18px]">done</span><span class="sr-only">Marquer lu</span></button>
+<button class="w-8 h-8 rounded-lg text-error hover:bg-error-container flex items-center justify-center transition-colors" title="Supprimer" type="button"><span class="material-symbols-outlined text-[18px]">delete</span><span class="sr-only">Supprimer</span></button>
+</div>
+</td>
+</tr>
+<!-- Ligne 3 : Message Samuel Transport -->
+<tr class="border-b border-outline-variant/20 hover:bg-surface-container-low/60 transition-colors">
+<td class="px-5 py-4">
+<div class="flex items-start gap-3">
+<div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-on-surface-variant shrink-0"><span class="material-symbols-outlined text-[20px]">chat_bubble</span></div>
+<div class="min-w-0">
+<span class="block font-label-md text-label-md font-semibold text-on-surface">Nouveau message de Samuel Transport</span>
+<span class="block font-body-sm text-body-sm text-on-surface-variant truncate max-w-md">« Le véhicule a été nettoyé et le plein fait. Je vous attends demain. »</span>
+</div>
+</div>
+</td>
+<td class="px-4 py-4 whitespace-nowrap"><span class="font-label-sm text-label-sm text-on-surface-variant">Messagerie</span></td>
+<td class="px-4 py-4 whitespace-nowrap font-body-sm text-body-sm text-on-surface-variant">Hier à 18:30</td>
+<td class="px-4 py-4 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">Lue</span></td>
+<td class="px-4 py-4">
+<div class="flex items-center justify-end gap-1">
+<button class="w-8 h-8 rounded-lg text-primary hover:bg-primary-fixed flex items-center justify-center transition-colors" title="Répondre" type="button"><span class="material-symbols-outlined text-[18px]">reply</span><span class="sr-only">Répondre via la messagerie</span></button>
+<button class="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container flex items-center justify-center transition-colors" title="Marquer comme lu" type="button"><span class="material-symbols-outlined text-[18px]">done</span><span class="sr-only">Marquer lu</span></button>
+<button class="w-8 h-8 rounded-lg text-error hover:bg-error-container flex items-center justify-center transition-colors" title="Supprimer" type="button"><span class="material-symbols-outlined text-[18px]">delete</span><span class="sr-only">Supprimer</span></button>
+</div>
+</td>
+</tr>
+<!-- Ligne 4 : Inspection programmée -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="px-5 py-4">
+<div class="flex items-start gap-3">
+<div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-800 shrink-0"><span class="material-symbols-outlined text-[20px]">event_available</span></div>
+<div class="min-w-0">
+<span class="block font-label-md text-label-md font-semibold text-on-surface">Inspection de départ programmée</span>
+<span class="block font-body-sm text-body-sm text-on-surface-variant truncate max-w-md">Rendez-vous demain 08h00 au Hub Akwa pour signature et remise des clés.</span>
+</div>
+</div>
+</td>
+<td class="px-4 py-4 whitespace-nowrap"><span class="font-label-sm text-label-sm text-on-surface-variant">Réservations</span></td>
+<td class="px-4 py-4 whitespace-nowrap font-body-sm text-body-sm text-on-surface-variant">Hier à 14:10</td>
+<td class="px-4 py-4 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">Lue</span></td>
+<td class="px-4 py-4">
+<div class="flex items-center justify-end gap-1">
+<button class="w-8 h-8 rounded-lg text-primary hover:bg-primary-fixed flex items-center justify-center transition-colors" title="Consulter" type="button"><span class="material-symbols-outlined text-[18px]">fact_check</span><span class="sr-only">Consulter le guide</span></button>
+<button class="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container flex items-center justify-center transition-colors" title="Marquer comme lu" type="button"><span class="material-symbols-outlined text-[18px]">done</span><span class="sr-only">Marquer lu</span></button>
+<button class="w-8 h-8 rounded-lg text-error hover:bg-error-container flex items-center justify-center transition-colors" title="Supprimer" type="button"><span class="material-symbols-outlined text-[18px]">delete</span><span class="sr-only">Supprimer</span></button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Pagination -->
+<div class="mt-6 flex items-center justify-between text-on-surface-variant">
+<p class="font-body-sm text-body-sm">Affichage de <span class="font-semibold text-on-surface">4 notifications</span> sur un total de 14.</p>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface-variant cursor-not-allowed font-label-sm text-label-sm" disabled="" type="button">Précédent</button>
+<button class="w-8 h-8 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm flex items-center justify-center" type="button">1</button>
+<button class="w-8 h-8 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm flex items-center justify-center transition-colors" type="button">2</button>
+<button class="px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm transition-colors" type="button">Suivant</button>
+</div>
+</div>
+</div>`;
 const LINKS = {
+  'Voir le reçu': '/client/wallet',
   'Détail de la réservation': '/client/bookings/1',
   'Répondre via la messagerie': '/messages',
-  'Consulter le guide de check-in': '/client/bookings/1',
-  'Voir le reçu officiel': '/client/wallet',
-  'Paramètres': '/settings',
+  'Consulter le guide': '/client/bookings/1',
 };
 
 export default function c8notifications({ role = 'client' }) {

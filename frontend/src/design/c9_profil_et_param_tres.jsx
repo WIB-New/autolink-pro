@@ -5,37 +5,12 @@ const HTML = `<div class="flex flex-col w-full">
 <!-- Page Header -->
 <div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md mb-space-lg">
 <div class="flex flex-col gap-1 max-w-3xl">
-<div class="flex items-center gap-space-xs text-primary font-label-sm uppercase tracking-widest font-bold">
-<span class="material-symbols-outlined text-[16px]">verified_user</span>
-<span>Espace Légal & Conformité CEMAC</span>
-</div>
 <h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">Mon Profil & Paramètres de Compte</h1>
 <p class="font-body-md text-on-surface-variant">Gérez vos informations personnelles, le statut légal de vos pièces justificatives CEMAC et la sécurité de votre compte.</p>
 </div>
-<!-- Quick Sync / Audit indicator -->
-<div class="flex items-center gap-space-sm bg-surface-container-low px-4 py-2 rounded-xl self-start md:self-auto shadow-sm">
-<span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
-<span class="font-label-md text-label-md text-on-surface">Audit KYC à jour : Octobre 2025</span>
 </div>
 </div>
-<!-- Horizontal Tab Navigation -->
-<div class="flex items-center gap-2 overflow-x-auto pb-2 mb-space-lg scrollbar-none">
-<button class="px-4 py-2.5 rounded-xl font-label-lg text-label-lg bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors whitespace-nowrap">
-      Informations personnelles
-    </button>
-<button class="px-4 py-2.5 rounded-xl font-label-lg text-label-lg bg-primary text-on-primary shadow-sm flex items-center gap-2 whitespace-nowrap">
-<span>Pièces d'identité & Documents</span>
-<span class="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm">1 à renouveler</span>
-</button>
-<button class="px-4 py-2.5 rounded-xl font-label-lg text-label-lg bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors whitespace-nowrap">
-      Sécurité & Authentification (2FA)
-    </button>
-<button class="px-4 py-2.5 rounded-xl font-label-lg text-label-lg bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors whitespace-nowrap">
-      Préférences & Notifications
-    </button>
-<button class="px-4 py-2.5 rounded-xl font-label-lg text-label-lg bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors whitespace-nowrap">
-      Données personnelles & RGPD/CEMAC
-    </button>
+</div>
 </div>
 <!-- Section 1: Informations Personnelles (Summary Banner) -->
 <div class="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm mb-space-lg relative overflow-hidden">
@@ -75,21 +50,17 @@ const HTML = `<div class="flex flex-col w-full">
 </div>
 </div>
 <!-- Trust Score & Rank Widget -->
-<div class="flex items-center gap-space-md bg-surface-container-low p-4 rounded-xl">
-<div class="relative w-14 h-14 shrink-0 flex items-center justify-center">
-<svg class="w-14 h-14 -rotate-90" viewbox="0 0 48 48">
-<circle class="text-surface-variant" cx="24" cy="24" fill="none" r="20" stroke="currentColor" stroke-width="4"></circle>
-<circle class="text-primary" cx="24" cy="24" fill="none" r="20" stroke="currentColor" stroke-dasharray="125.6" stroke-dashoffset="0" stroke-linecap="round" stroke-width="4"></circle>
-</svg>
-<span class="absolute font-label-md text-label-md text-primary font-extrabold">100%</span>
+
+<details class="relative shrink-0">
+<summary class="list-none cursor-pointer inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-on-primary font-label-md text-label-md font-bold shadow-sm hover:bg-primary-container transition-all"><span class="material-symbols-outlined text-[18px]">edit</span>Modifier mon profil</summary>
+<div class="absolute right-0 top-full mt-2 w-72 bg-surface-container-lowest rounded-xl shadow-elevation-3 border border-outline-variant/30 py-2 z-50">
+<button class="flex items-center gap-2 px-4 py-2.5 w-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors">Informations personnelles</button>
+<button class="flex items-center gap-2 px-4 py-2.5 w-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors">Pièces d'identité & Documents 1 à renouveler</button>
+<button class="flex items-center gap-2 px-4 py-2.5 w-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors">Sécurité & Authentification (2FA)</button>
+<button class="flex items-center gap-2 px-4 py-2.5 w-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors">Préférences & Notifications</button>
+<button class="flex items-center gap-2 px-4 py-2.5 w-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors">Données personnelles & RGPD/CEMAC</button>
 </div>
-<div class="flex flex-col">
-<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline font-bold">Statut de confiance</span>
-<span class="font-headline-sm text-headline-sm text-on-surface font-bold">Locataire Certifié Or</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Caution standard remboursée à 100%</span>
-</div>
-</div>
-</div>
+</details>
 </div>
 <!-- Section 2: Pièces d'identité & Justificatifs Réglementaires -->
 <div class="flex flex-col gap-space-md mb-space-lg">
@@ -151,11 +122,11 @@ const HTML = `<div class="flex flex-col w-full">
 </div>
 <!-- Card 2: Permis à renouveler -->
 <div class="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col justify-between gap-space-md relative overflow-hidden">
-<div class="absolute top-0 right-0 w-2 h-full bg-tertiary"></div>
+<div class="absolute top-0 right-0 w-2 h-full bg-blue-100"></div>
 <div class="flex flex-col gap-space-sm">
 <div class="flex items-start justify-between gap-space-sm">
 <div class="flex items-center gap-3">
-<div class="w-12 h-12 rounded-xl bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center shrink-0">
+<div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center shrink-0">
 <span class="material-symbols-outlined text-[26px]">drive_eta</span>
 </div>
 <div class="flex flex-col">
@@ -163,8 +134,8 @@ const HTML = `<div class="flex flex-col w-full">
 <span class="font-body-sm text-body-sm text-on-surface-variant">Indispensable pour auto-partage sans chauffeur</span>
 </div>
 </div>
-<span class="px-2.5 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm font-bold flex items-center gap-1 shrink-0">
-<span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
+<span class="px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 font-label-sm text-label-sm font-bold flex items-center gap-1 shrink-0">
+<span class="w-2 h-2 rounded-full bg-blue-100 animate-pulse"></span>
               À RENOUVELER (15j)
             </span>
 </div>
@@ -176,9 +147,9 @@ const HTML = `<div class="flex flex-col w-full">
 </div>
 <div class="flex items-center justify-between text-on-surface">
 <span class="text-outline font-label-sm text-label-sm">Date d'expiration :</span>
-<span class="font-semibold text-tertiary">12 Novembre 2025</span>
+<span class="font-semibold text-blue-700">12 Novembre 2025</span>
 </div>
-<p class="text-tertiary font-label-sm text-label-sm font-semibold pt-1">
+<p class="text-blue-700 font-label-sm text-label-sm font-semibold pt-1">
               Important : passée cette date, les clés ne pourront pas vous être transmises sans chauffeur.
             </p>
 </div>
@@ -270,9 +241,7 @@ const HTML = `<div class="flex flex-col w-full">
 </div>
 <!-- Security & Legal Guarantee Callout -->
 <div class="rounded-2xl bg-surface-container-low p-space-md flex items-center gap-space-md">
-<div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-<span class="material-symbols-outlined text-[24px]">lock</span>
-</div>
+
 <div class="flex flex-col">
 <span class="font-headline-sm text-headline-sm text-on-surface font-bold">Protection et Chiffrement Bancaire</span>
 <p class="font-body-sm text-body-sm text-on-surface-variant">
@@ -288,7 +257,7 @@ const HTML = `<div class="flex flex-col w-full">
 <div class="flex flex-col gap-space-md">
 <div class="flex items-center justify-between">
 <div class="flex items-center gap-3">
-<div class="w-10 h-10 rounded-xl bg-secondary-container text-on-secondary-container flex items-center justify-center">
+<div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center">
 <span class="material-symbols-outlined text-[22px]">security</span>
 </div>
 <div>
@@ -350,7 +319,7 @@ const HTML = `<div class="flex flex-col w-full">
 <div class="lg:col-span-5 bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col justify-between gap-space-lg">
 <div class="flex flex-col gap-space-md">
 <div class="flex items-center gap-3">
-<div class="w-10 h-10 rounded-xl bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center">
+<div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center">
 <span class="material-symbols-outlined text-[22px]">tune</span>
 </div>
 <div>
@@ -395,7 +364,7 @@ const HTML = `<div class="flex flex-col w-full">
 <button class="text-error font-label-sm text-label-sm hover:underline font-semibold">
           Supprimer mon compte définitivement
         </button>
-<span class="text-outline text-[11px]">AutoLink Pro v2.4</span>
+
 </div>
 </div>
 </div>
