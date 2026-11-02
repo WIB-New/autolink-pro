@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 export default function DriverUpsell() {
   const navigate = useNavigate();
   return (
-    <div className="bg-teal-700 rounded-3xl p-6 sm:p-7 flex flex-col sm:flex-row items-start sm:items-center gap-5 text-white">
+    <div className="bg-teal-700 rounded-2xl p-6 sm:p-7 flex flex-col sm:flex-row items-start sm:items-center gap-5 text-white">
       <div className="w-12 h-12 bg-white/15 rounded-2xl flex items-center justify-center shrink-0">
         <Lightbulb size={22} className="text-teal-100" />
       </div>

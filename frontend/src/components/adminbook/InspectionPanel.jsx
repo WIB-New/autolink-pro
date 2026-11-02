@@ -6,7 +6,7 @@ const shortDate = iso => iso ? new Date(iso).toLocaleDateString('fr-FR', { day: 
 /* Contrôles techniques & états des lieux numérisés. */
 export default function InspectionPanel({ booking: b }) {
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
           <ClipboardCheck size={15} className="text-teal-600" /> Contrôles Techniques &amp; États des Lieux Numérisés

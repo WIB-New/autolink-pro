@@ -35,7 +35,7 @@ export default function StepRecap({ form, photos, certify, setCertify }) {
       <div className="grid lg:grid-cols-[1fr_360px] gap-6 items-start">
         <div className="space-y-5">
           {/* Aperçu fiche client */}
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-black text-slate-900 text-sm flex items-center gap-2"><Eye size={15} className="text-teal-600" /> Aperçu fiche client (Public Preview)</h3>
               <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg">Telle que vue par les locataires</span>
@@ -94,7 +94,7 @@ export default function StepRecap({ form, photos, certify, setCertify }) {
           </div>
 
           {/* Pièces administratives */}
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-black text-slate-900 text-sm">Pièces administratives et conformité CEMAC</h3>
               <span className="text-[9px] font-black bg-teal-50 text-teal-700 px-2.5 py-1 rounded-md">3/3 Documents — Conformité OK</span>
@@ -120,7 +120,7 @@ export default function StepRecap({ form, photos, certify, setCertify }) {
 
         {/* Colonne droite */}
         <div className="space-y-4 lg:sticky lg:top-4">
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
             <h4 className="font-black text-slate-900 text-sm mb-2 flex items-center gap-2"><ClipboardCheck size={15} className="text-teal-600" /> Certification &amp; Envoi officiel</h4>
             <p className="text-[10px] text-slate-500 leading-relaxed mb-4">
               Conformément au droit commercial OHADA et à la charte de qualité AutoLink Pro Mobility, la validation
@@ -141,7 +141,7 @@ export default function StepRecap({ form, photos, certify, setCertify }) {
             </div>
           </div>
 
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
             <h4 className="font-black text-slate-900 text-sm mb-1">Feuille de route de mise en ligne</h4>
             <p className="text-[9px] text-slate-400 mb-4">Votre dossier passe par 3 étapes rigoureuses avant son apparition sur l'application mobile et le site public.</p>
             <div className="space-y-0">

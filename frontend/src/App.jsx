@@ -27,8 +27,10 @@ import AdminBookings from './pages/admin/AdminBookings';
 import AdminBookingDetail from './pages/admin/AdminBookingDetail';
 import AdminVehicleDetail from './pages/admin/AdminVehicleDetail';
 import AdminPartners from './pages/admin/AdminPartners';
+import AdminPartnerDetail from './pages/admin/AdminPartnerDetail';
 import AdminDisputes from './pages/admin/AdminDisputes';
 import AdminClients from './pages/admin/AdminClients';
+import AdminClientDetail from './pages/admin/AdminClientDetail';
 import AdminSettings from './pages/admin/AdminSettings';
 import DriverRecruitment from './pages/admin/DriverRecruitment';
 import Finance from './pages/admin/Finance';
@@ -82,8 +84,10 @@ function AppRoutes() {
       <Route path="/admin/reservations/:id" element={<Guard roles={['ADMIN']}><AdminBookingDetail /></Guard>} />
       <Route path="/admin/vehicles/:id" element={<Guard roles={['ADMIN']}><AdminVehicleDetail /></Guard>} />
       <Route path="/admin/partenaires" element={<Guard roles={['ADMIN']}><AdminPartners /></Guard>} />
+      <Route path="/admin/partenaires/:id" element={<Guard roles={['ADMIN']}><AdminPartnerDetail /></Guard>} />
       <Route path="/admin/litiges" element={<Guard roles={['ADMIN']}><AdminDisputes /></Guard>} />
       <Route path="/admin/clients" element={<Guard roles={['ADMIN']}><AdminClients /></Guard>} />
+      <Route path="/admin/clients/:id" element={<Guard roles={['ADMIN']}><AdminClientDetail /></Guard>} />
       <Route path="/admin/drivers" element={<Guard roles={['ADMIN']}><DriverRecruitment /></Guard>} />
       <Route path="/admin/finance" element={<Guard roles={['ADMIN']}><Finance /></Guard>} />
       <Route path="/admin/inspections" element={<Guard roles={['ADMIN', 'CONTROLLER']}><VehicleInspection /></Guard>} />

@@ -3,5 +3,7 @@ export { default as BalanceCard } from './BalanceCard';
 export { default as PriorityRequests } from './PriorityRequests';
 export { default as StatsRow } from './StatsRow';
 export { default as RevenueChart } from './RevenueChart';
+export { default as StatusDonut } from './StatusDonut';
+export { default as RecentPayments } from './RecentPayments';
 export { default as AdvicePanel } from './AdvicePanel';
 export { default as UpcomingBookings } from './UpcomingBookings';

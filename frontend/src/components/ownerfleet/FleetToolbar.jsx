@@ -1,5 +1,6 @@
 import React from 'react';
-import { Search, ChevronDown, LayoutGrid, List } from 'lucide-react';
+import { Search, LayoutGrid, List, MapPin, ArrowUpDown } from 'lucide-react';
+import FilterField from '../FilterField';
 
 export const TABS = [
   { id: 'all',         label: 'Tous les véhicules' },
@@ -15,57 +16,45 @@ const matchTab = (v, tab) =>
   : v.status === tab;
 export const filterByTab = (vehicles, tab) => vehicles.filter(v => matchTab(v, tab));
 
-/* Onglets de filtre + barre de recherche / tri de la page flotte. */
+/* Barre d'outils flotte — carte unique : onglets soulignés en haut, filtres en dessous. */
 export default function FleetToolbar({ vehicles, tab, setTab, search, setSearch, city, setCity, cities, sort, setSort, grid, setGrid }) {
   return (
-    <div className="space-y-4">
-      {/* Onglets */}
-      <div className="flex flex-wrap gap-2">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+      {/* Onglets + toggle vue */}
+      <div className="flex items-center gap-1 px-2 border-b border-slate-100 overflow-x-auto">
         {TABS.map(t => {
           const count = filterByTab(vehicles, t.id).length;
           const active = tab === t.id;
           return (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all ${active ? 'bg-slate-900 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-500 hover:border-teal-400 hover:text-teal-700'}`}>
+              className={`relative flex items-center gap-1.5 px-3 py-3.5 text-[11px] font-bold whitespace-nowrap transition-colors ${active ? 'text-teal-700' : 'text-slate-400 hover:text-slate-600'}`}>
               {t.label}
-              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${active ? 'bg-teal-500 text-white' : 'bg-slate-100 text-slate-500'}`}>{count}</span>
+              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${active ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-400'}`}>{count}</span>
+              {active && <span className="absolute bottom-0 inset-x-1 h-[2.5px] bg-teal-600 rounded-t-full" />}
             </button>
           );
         })}
+        <div className="ml-auto pl-3 shrink-0 flex border border-slate-200 rounded-xl overflow-hidden mb-1.5">
+          <button onClick={() => setGrid(false)} title="Vue liste"
+            className={`p-2 ${!grid ? 'bg-teal-600 text-white' : 'text-slate-400 hover:text-slate-600'}`}><List size={14} /></button>
+          <button onClick={() => setGrid(true)} title="Vue grille"
+            className={`p-2 ${grid ? 'bg-teal-600 text-white' : 'text-slate-400 hover:text-slate-600'}`}><LayoutGrid size={14} /></button>
+        </div>
       </div>
 
-      {/* Recherche + filtres */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[220px]">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher par modèle, marque, immatric…"
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500" />
-        </div>
-        <div className="relative">
-          <select value={city} onChange={e => setCity(e.target.value)}
-            className="appearance-none pl-4 pr-9 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-            <option value="">Toutes les villes</option>
-            {cities.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-        </div>
-        <div className="relative">
-          <select value={sort} onChange={e => setSort(e.target.value)}
-            className="appearance-none pl-4 pr-9 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-            <option value="revenue">Tri : Revenus générés</option>
-            <option value="rate">Tri : Tarif journalier</option>
-            <option value="score">Tri : Score qualité</option>
-            <option value="recent">Tri : Plus récents</option>
-          </select>
-          <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-        </div>
-        <div className="flex bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <button onClick={() => setGrid(false)} title="Vue liste"
-            className={`p-2.5 ${!grid ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-600'}`}><List size={15} /></button>
-          <button onClick={() => setGrid(true)} title="Vue grille"
-            className={`p-2.5 ${grid ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-600'}`}><LayoutGrid size={15} /></button>
-        </div>
+      {/* Filtres */}
+      <div className="p-4 grid sm:grid-cols-2 lg:grid-cols-[1fr_190px_200px] gap-3.5 items-end">
+        <FilterField label="Recherche" icon={Search} value={search} onChange={setSearch}
+          placeholder="Modèle, marque, immatriculation…" />
+        <FilterField label="Ville" icon={MapPin} type="select" value={city} onChange={setCity}
+          options={[{ value: '', label: 'Toutes les villes' }, ...cities.map(c => ({ value: c, label: c }))]} />
+        <FilterField label="Tri" icon={ArrowUpDown} type="select" value={sort} onChange={setSort}
+          options={[
+            { value: 'revenue', label: 'Revenus générés' },
+            { value: 'rate', label: 'Tarif journalier' },
+            { value: 'score', label: 'Score qualité' },
+            { value: 'recent', label: 'Plus récents' },
+          ]} />
       </div>
     </div>
   );

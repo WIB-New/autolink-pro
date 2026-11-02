@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import AdminLayout from '../../components/admindash/AdminLayout';
-import { PriorityQueue, KpiCards, RevenueChart, TierRepartition, HubActivity, AuditLog } from '../../components/admindash';
+import { PriorityQueue, KpiCards, RevenueChart, TierRepartition, PlatformRevenue, AuditLog, RecentBookings } from '../../components/admindash';
 import { bookingsAPI, usersAPI, vehiclesAPI } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import { AlertTriangle, CheckCircle2, XCircle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 
 const POLL_INTERVAL = 8000;
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [users, setUsers] = useState([]);
@@ -77,16 +79,16 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout
-      title="Tableau de Bord Opérations & File Prioritaire"
+      title={`Bienvenue, ${user?.first_name || user?.firstName || 'Admin'}`}
       subtitle={
         <span className="flex items-center gap-3">
-          <span>Supervision en direct de la flotte, des réservations et des flux financiers — {online ? `synchro ${lastSync?.toLocaleTimeString('fr-FR')}` : 'API injoignable'}</span>
+          <span>{online ? `Synchro ${lastSync?.toLocaleTimeString('fr-FR')}` : 'API injoignable'}</span>
           {online ? <Wifi size={11} className="text-emerald-500" /> : <WifiOff size={11} className="text-red-500" />}
         </span>
       }
       badges={badges}
     >
-      {/* File prioritaire */}
+      {/* Bandeau urgences */}
       <PriorityQueue
         pendingVehicles={pendingVehicles}
         disputedBookings={disputedBookings}
@@ -105,43 +107,47 @@ export default function AdminDashboard() {
         sparkData={sparkData}
       />
 
-      {/* Graphique + répartitions */}
-      <div className="grid lg:grid-cols-[1fr_340px] gap-5 mb-6 items-start">
+      {/* Donut + rapports + revenus plateforme */}
+      <div className="grid lg:grid-cols-[280px_1fr_280px] gap-5 mb-6 items-stretch">
+        <TierRepartition vehicles={vehicles} />
         <RevenueChart bookings={bookings} />
-        <div>
-          <TierRepartition vehicles={vehicles} />
-          <HubActivity bookings={bookings} />
-        </div>
+        <PlatformRevenue
+          commission={commission || (stats?.commission_total ?? 0)}
+          grossRevenue={grossRevenue}
+          sparkData={sparkData}
+        />
       </div>
 
       {/* Actions — litiges + véhicules à valider */}
       {(disputedBookings.length > 0 || pendingVehicles.length > 0) && (
         <div className="grid lg:grid-cols-2 gap-5 mb-6">
           {disputedBookings.length > 0 && (
-            <div className="bg-white rounded-3xl border-2 border-red-200 p-5">
-              <h3 className="font-black text-red-700 text-sm mb-1 flex items-center gap-2">
-                <AlertTriangle size={16} /> Litiges à arbitrer
+            <div className="bg-white rounded-2xl border border-red-200 p-4">
+              <h3 className="font-black text-red-700 text-sm mb-3 flex items-center gap-2">
+                <AlertTriangle size={15} /> Litiges à arbitrer
               </h3>
-              <p className="text-[11px] text-slate-400 mb-4">La caution est gelée jusqu'à votre décision.</p>
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {disputedBookings.map(b => (
                   <div key={b.id} className="border border-red-100 bg-red-50/50 rounded-xl p-3">
-                    <p className="text-sm font-bold text-slate-800">
-                      BK-{String(b.id).padStart(4, '0')} — {b.client_name} · {b.vehicle_name}
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      {b.start_date} → {b.end_date} · {Number(b.subtotal).toLocaleString('fr-FR')} F bloqués
-                    </p>
-                    {b.dispute_reason && <p className="text-[11px] text-red-700 mt-1 italic">« {b.dispute_reason} »</p>}
-                    <div className="flex gap-2 mt-3">
-                      <button disabled={busy === b.id} onClick={() => resolveDispute(b.id, 'refund')}
-                        className="text-[11px] font-bold px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">
-                        Rembourser le client
-                      </button>
-                      <button disabled={busy === b.id} onClick={() => resolveDispute(b.id, 'release')}
-                        className="text-[11px] font-bold px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
-                        Payer le propriétaire
-                      </button>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-bold text-slate-800 truncate">
+                          BK-{String(b.id).padStart(4, '0')} — {b.client_name} · {b.vehicle_name}
+                        </p>
+                        <p className="text-[10px] text-slate-500">
+                          {b.start_date} → {b.end_date} · {Number(b.subtotal).toLocaleString('fr-FR')} F gelés
+                        </p>
+                      </div>
+                      <div className="flex gap-1.5 shrink-0">
+                        <button disabled={busy === b.id} onClick={() => resolveDispute(b.id, 'refund')}
+                          className="text-[10px] font-bold px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">
+                          Rembourser
+                        </button>
+                        <button disabled={busy === b.id} onClick={() => resolveDispute(b.id, 'release')}
+                          className="text-[10px] font-bold px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+                          Payer
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -150,13 +156,13 @@ export default function AdminDashboard() {
           )}
 
           {pendingVehicles.length > 0 && (
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
-              <h3 className="font-black text-slate-900 text-sm mb-4">Véhicules à valider</h3>
-              <div className="space-y-2.5">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+              <h3 className="font-black text-slate-900 text-sm mb-3">Véhicules à valider</h3>
+              <div className="space-y-2">
                 {pendingVehicles.map(v => (
-                  <div key={v.id} className="flex items-center justify-between border border-slate-100 rounded-xl p-3">
+                  <div key={v.id} className="flex items-center justify-between border border-slate-100 rounded-xl px-3 py-2.5">
                     <Link to={`/admin/vehicles/${v.id}`} className="min-w-0 hover:text-teal-600 transition-colors">
-                      <p className="text-[13px] font-bold truncate">{v.brand} {v.model}</p>
+                      <p className="text-[12px] font-bold truncate">{v.brand} {v.model}</p>
                       <p className="text-[10px] text-slate-400">{v.plate} · {v.owner_name}</p>
                     </Link>
                     <div className="flex gap-1.5 shrink-0">
@@ -173,8 +179,11 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Journal d'audit */}
-      <AuditLog bookings={bookings} vehicles={vehicles} users={users} />
+      {/* Réservations récentes + activité */}
+      <div className="grid lg:grid-cols-[1fr_320px] gap-5 items-start">
+        <RecentBookings bookings={bookings} />
+        <AuditLog bookings={bookings} vehicles={vehicles} users={users} />
+      </div>
 
       <div className="mt-5 flex items-center justify-between text-[10px] font-bold text-slate-400">
         <span className="flex items-center gap-1.5">

@@ -11,7 +11,7 @@ const CHECKS = [
 /* Checklist d'homologation technique — points de contrôle validés par le Hub. */
 export default function HomologationChecklist() {
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <h3 className="font-black text-slate-900 text-sm flex items-center gap-2 mb-1">
         <ListChecks size={15} className="text-teal-600" /> Checklist d'Homologation Technique
         <span className="text-teal-600">100 % Validé</span>

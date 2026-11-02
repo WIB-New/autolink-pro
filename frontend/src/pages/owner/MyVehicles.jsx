@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlusCircle, SlidersHorizontal, Car, RefreshCw } from 'lucide-react';
 import { OwnerLayout } from '../../components/ownerdash';
-import { FleetKpis, FleetToolbar, FleetCard, DriverUpsell, filterByTab } from '../../components/ownerfleet';
+import { FleetKpis, FleetToolbar, FleetCard, filterByTab } from '../../components/ownerfleet';
 import { vehiclesAPI, bookingsAPI } from '../../services/api';
 
 const SORTERS = {
@@ -63,13 +63,10 @@ export default function MyVehicles() {
       <div className="max-w-7xl mx-auto space-y-6">
 
         {/* En-tête */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-3xl font-black text-slate-900">Mes Véhicules &amp; <span className="text-teal-600">Flotte</span></h1>
-            <p className="text-sm text-slate-500 mt-1.5 max-w-2xl">
-              Gérez la visibilité, les tarifs et l'état opérationnel de vos véhicules enregistrés à Douala et Yaoundé.
-              {!online && <button onClick={load} className="ml-2 inline-flex items-center gap-1 text-red-500 font-bold"><RefreshCw size={11} /> API injoignable — réessayer</button>}
-            </p>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-black text-slate-900">Mes véhicules</h1>
+            {!online && <button onClick={load} className="inline-flex items-center gap-1 text-[11px] text-red-500 font-bold"><RefreshCw size={11} /> Hors ligne</button>}
           </div>
           <div className="flex gap-3 flex-wrap">
             <button className="flex items-center gap-2 bg-white border border-slate-200 hover:border-teal-400 hover:text-teal-700 text-slate-600 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors">
@@ -105,7 +102,7 @@ export default function MyVehicles() {
 
         {/* Liste */}
         {vehicles.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-dashed border-slate-200 text-center py-16 text-slate-400">
+          <div className="bg-white rounded-2xl border border-dashed border-slate-200 text-center py-16 text-slate-400">
             <Car size={44} className="mx-auto mb-4 opacity-40" />
             <p className="font-bold text-slate-500">Aucun véhicule enregistré</p>
             <p className="text-sm mt-1">Ajoutez votre premier véhicule pour commencer à gagner.</p>
@@ -115,7 +112,7 @@ export default function MyVehicles() {
             </button>
           </div>
         ) : visible.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-dashed border-slate-200 text-center py-14 text-slate-400">
+          <div className="bg-white rounded-2xl border border-dashed border-slate-200 text-center py-14 text-slate-400">
             <p className="font-bold text-slate-500">Aucun véhicule ne correspond à ces filtres.</p>
             <button onClick={() => { setTab('all'); setSearch(''); setCity(''); }}
               className="mt-3 text-xs font-bold text-teal-600 hover:text-teal-700">Réinitialiser les filtres</button>
@@ -127,7 +124,7 @@ export default function MyVehicles() {
         )}
 
         {/* Upsell chauffeur */}
-        <DriverUpsell />
+        {/* <DriverUpsell /> */}
       </div>
     </OwnerLayout>
   );

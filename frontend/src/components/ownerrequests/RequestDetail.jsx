@@ -9,7 +9,7 @@ const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
 /* Panneau droit — dossier locataire, itinéraire et décomposition financière. */
 export default function RequestDetail({ b, onDecide, busy }) {
   if (!b) return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8 text-center text-slate-400 text-sm sticky top-4">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 text-center text-slate-400 text-sm sticky top-4">
       Sélectionnez une demande pour consulter le dossier locataire.
     </div>
   );
@@ -19,7 +19,7 @@ export default function RequestDetail({ b, onDecide, busy }) {
   const commission = Number(b.commission_amount || gross - net);
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 space-y-5 sticky top-4">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-5 sticky top-4">
       {/* En-tête dossier */}
       <div className="flex items-start justify-between">
         <div>

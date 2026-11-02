@@ -188,7 +188,7 @@ export default function VehicleInspection() {
   const [tab, setTab] = useState('pending');
 
   return (
-    <AdminLayout title="Inspections et Audits Techniques" subtitle="Contrôles physiques des véhicules, checklists Hub et homologation CEMAC.">
+    <AdminLayout title="Inspections et Audits Techniques" subtitle="Checklists hub & homologation">
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="card bg-gradient-to-r from-primary-700 to-primary-900 text-white">
           <div className="flex items-start gap-4">
@@ -202,10 +202,12 @@ export default function VehicleInspection() {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm inline-flex items-center gap-1 px-2">
           {[['pending', `À inspecter (${PENDING_INSPECTIONS.length})`], ['completed', `Complétées (${COMPLETED.length})`]].map(([val, label]) => (
-            <button key={val} onClick={() => setTab(val)} className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${tab === val ? 'bg-primary-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+            <button key={val} onClick={() => setTab(val)}
+              className={`relative px-4 py-3.5 text-[11px] font-bold whitespace-nowrap transition-colors ${tab === val ? 'text-teal-700' : 'text-slate-400 hover:text-slate-600'}`}>
               {label}
+              {tab === val && <span className="absolute bottom-0 inset-x-1 h-[2.5px] bg-teal-600 rounded-t-full" />}
             </button>
           ))}
         </div>

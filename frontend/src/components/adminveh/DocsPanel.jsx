@@ -10,7 +10,7 @@ export default function DocsPanel({ vehicle: v }) {
   ];
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <div className="flex items-center justify-between mb-1">
         <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
           <FileText size={15} className="text-teal-600" /> Documents Réglementaires CEMAC

@@ -16,7 +16,7 @@ const STATUS = {
 export default function VehicleHero({ v }) {
   const st = STATUS[v.status] || STATUS.approved;
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 flex flex-col md:flex-row gap-5">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col md:flex-row gap-5">
       <img src={fleetImage(v)} alt="" className="w-full md:w-40 h-28 object-cover rounded-2xl shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-3 flex-wrap">

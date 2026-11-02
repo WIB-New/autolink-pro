@@ -5,6 +5,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY', default='autolink-dev-secret-key-change-in-production-!@#$%^')
 DEBUG = config('DEBUG', default=True, cast=bool)
+
+# OAuth Google — client ID de l'application web (Google Cloud Console)
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
 INSTALLED_APPS = [

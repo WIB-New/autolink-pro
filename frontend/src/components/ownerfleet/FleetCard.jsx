@@ -84,7 +84,7 @@ export default function FleetCard({ v, activeBooking }) {
   }[v.status] || { text: 'En ligne', cls: 'text-teal-600' };
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 flex flex-col lg:flex-row gap-5">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col lg:flex-row gap-5">
       {/* Photo + badges */}
       <div className="lg:w-64 shrink-0">
         <div className="relative rounded-2xl overflow-hidden h-44 lg:h-40 cursor-pointer" onClick={() => navigate(`/owner/vehicles/${v.id}`)}>

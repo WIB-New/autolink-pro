@@ -34,7 +34,7 @@ export default function RequestCard({ b, selected, onSelect, onDecide, busy }) {
 
   return (
     <div onClick={() => onSelect?.(b)}
-      className={`bg-white rounded-3xl border p-5 cursor-pointer transition-all ${selected ? 'border-teal-500 ring-2 ring-teal-500/20 shadow-lg' : 'border-slate-100 shadow-sm hover:border-teal-200 hover:shadow-md'}`}>
+      className={`bg-white rounded-2xl border p-5 cursor-pointer transition-all ${selected ? 'border-teal-500 ring-2 ring-teal-500/20 shadow-lg' : 'border-slate-100 shadow-sm hover:border-teal-200 hover:shadow-md'}`}>
       {/* Client */}
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">

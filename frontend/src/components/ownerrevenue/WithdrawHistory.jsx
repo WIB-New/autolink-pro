@@ -13,11 +13,11 @@ const KIND = {
 /* « Historique des retraits & Reçus télécom » — transactions wallet réelles. */
 export default function WithdrawHistory({ transactions = [] }) {
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
       <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
         <div>
-          <h3 className="font-black text-slate-900">Historique des retraits &amp; Reçus télécom</h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">Traçabilité complète des virements exécutés vers vos comptes certifiés.</p>
+          <h3 className=" text-slate-500">Historique des retraits &amp; Reçus télécom</h3>
+          {/* <p className="text-[11px] text-slate-400 mt-0.5">Traçabilité complète des virements exécutés vers vos comptes certifiés.</p> */}
         </div>
         <button className="flex items-center gap-1.5 text-[10px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 px-3 py-2 rounded-xl transition-colors">
           <FileDown size={11} /> Registre d'audit vérifié BEAC

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { CheckCircle, XCircle, Eye, Clock, User, AlertTriangle, FileText, Shield, Award, X, Car, Calendar } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, Clock, User, AlertTriangle, Shield, X, UserCheck } from 'lucide-react';
 import AdminLayout from '../../components/admindash/AdminLayout';
+import StatCard from '../../components/StatCard';
+import DataTable from '../../components/DataTable';
 
 const CRITERIA = [
   { id: 'license', label: 'Permis de conduire valide (catégorie B min.)', required: true },
@@ -24,11 +26,13 @@ const CANDIDATES = [
 ];
 
 const STATUS_CONFIG = {
-  pending: { label: 'En attente', style: 'badge-warning', icon: Clock },
-  review: { label: 'En cours d\'examen', style: 'badge-info', icon: Eye },
-  approved: { label: 'Approuvé', style: 'badge-success', icon: CheckCircle },
-  rejected: { label: 'Refusé', style: 'badge-error', icon: XCircle },
+  pending:  { label: 'En attente',        cls: 'bg-amber-100 text-amber-700' },
+  review:   { label: 'En cours d\'examen', cls: 'bg-blue-100 text-blue-700' },
+  approved: { label: 'Approuvé',          cls: 'bg-teal-100 text-teal-700' },
+  rejected: { label: 'Refusé',            cls: 'bg-red-100 text-red-600' },
 };
+
+const scoreOf = c => Math.round((Object.values(c.checks).filter(Boolean).length / CRITERIA.length) * 100);
 
 function CandidateModal({ candidate, onClose }) {
   const [checks, setChecks] = useState({ ...candidate.checks });
@@ -46,7 +50,7 @@ function CandidateModal({ candidate, onClose }) {
           : <XCircle size={52} className="text-red-500 mx-auto mb-3" />}
         <h3 className="text-xl font-bold text-slate-900 mb-2">{decision === 'approved' ? 'Candidature approuvée !' : 'Candidature refusée'}</h3>
         <p className="text-slate-500 mb-5">{candidate.name} {decision === 'approved' ? 'peut maintenant rejoindre AutoLink.' : 'a été informé(e) du refus.'}</p>
-        <button onClick={onClose} className="btn-primary w-full">Fermer</button>
+        <button onClick={onClose} className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl transition-colors">Fermer</button>
       </div>
     </div>
   );
@@ -113,97 +117,79 @@ function CandidateModal({ candidate, onClose }) {
 }
 
 export default function DriverRecruitment() {
-  const [tab, setTab] = useState('pending');
+  const [tab, setTab] = useState('all');
   const [selected, setSelected] = useState(null);
 
   const filtered = CANDIDATES.filter(c => tab === 'all' || c.status === tab);
   const counts = { all: CANDIDATES.length, pending: CANDIDATES.filter(c => c.status === 'pending').length, review: CANDIDATES.filter(c => c.status === 'review').length, approved: CANDIDATES.filter(c => c.status === 'approved').length, rejected: CANDIDATES.filter(c => c.status === 'rejected').length };
 
   return (
-    <AdminLayout title="Recrutement et Onboarding Chauffeurs" subtitle="Dossiers candidats, contrôles CEMAC et certification des chauffeurs partenaires.">
-      <div className="max-w-5xl mx-auto space-y-6">
-        {/* Criteria info */}
-        <div className="card bg-gradient-to-br from-slate-900 to-primary-900 text-white">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-accent-500 rounded-xl flex items-center justify-center shrink-0">
-              <Shield size={24} className="text-white" />
-            </div>
-            <div>
-              <h3 className="font-bold text-lg mb-1">Processus de recrutement strict AutoLink</h3>
-              <p className="text-slate-300 text-sm">Nous appliquons des critères exigeants pour garantir la sécurité de nos clients. <strong>{CRITERIA.filter(c => c.required).length} critères obligatoires</strong> doivent être validés avant toute approbation.</p>
-              <div className="flex flex-wrap gap-2 mt-3">
-                {['Vérification permis', 'Casier judiciaire', 'Test de conduite', 'Visite médicale', 'Formation obligatoire'].map(t => (
-                  <span key={t} className="text-xs bg-white/10 text-white px-2.5 py-1 rounded-full">{t}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+    <AdminLayout title="Recrutement et Onboarding Chauffeurs" subtitle="Candidats & certification">
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
+        <StatCard icon={User} iconCls="bg-blue-50 text-blue-600" value={CANDIDATES.length} label="Candidatures" />
+        <StatCard icon={Clock} iconCls="bg-amber-50 text-amber-600" value={counts.pending + counts.review} label="À examiner" />
+        <StatCard icon={UserCheck} iconCls="bg-emerald-50 text-emerald-600" value={counts.approved} label="Approuvés" />
+        <StatCard icon={Shield} iconCls="bg-violet-50 text-violet-600" value={CRITERIA.filter(c => c.required).length} label="Critères obligatoires" />
+      </div>
 
-        {/* Tabs */}
-        <div className="flex flex-wrap gap-2">
+      {/* Onglets + table — carte unique */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-1 px-2 border-b border-slate-100 overflow-x-auto">
           {[['all', 'Tous'], ['pending', 'En attente'], ['review', 'En examen'], ['approved', 'Approuvés'], ['rejected', 'Refusés']].map(([val, label]) => (
-            <button key={val} onClick={() => setTab(val)} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all relative ${tab === val ? 'bg-primary-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+            <button key={val} onClick={() => setTab(val)}
+              className={`relative flex items-center gap-1.5 px-3 py-3.5 text-[11px] font-bold whitespace-nowrap transition-colors ${tab === val ? 'text-teal-700' : 'text-slate-400 hover:text-slate-600'}`}>
               {label}
-              {counts[val] > 0 && <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${tab === val ? 'bg-white text-primary-600' : 'bg-slate-100 text-slate-600'}`}>{counts[val]}</span>}
+              {counts[val] > 0 && <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${tab === val ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-400'}`}>{counts[val]}</span>}
+              {tab === val && <span className="absolute bottom-0 inset-x-1 h-[2.5px] bg-teal-600 rounded-t-full" />}
             </button>
           ))}
         </div>
 
-        {/* List */}
-        <div className="space-y-4">
-          {filtered.map(c => {
-            const SC = STATUS_CONFIG[c.status];
-            const Icon = SC.icon;
-            const score = Math.round((Object.values(c.checks).filter(Boolean).length / CRITERIA.length) * 100);
-            return (
-              <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 hover:shadow-md transition-all">
-                <div className="flex items-start gap-4 flex-wrap">
-                  <div className="w-12 h-12 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white text-lg font-bold shrink-0">
-                    {c.name.charAt(0)}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 flex-wrap mb-1">
-                      <h3 className="font-bold text-slate-900">{c.name}</h3>
-                      <span className={SC.style}><Icon size={12} className="inline mr-1" />{SC.label}</span>
-                    </div>
-                    <div className="text-sm text-slate-500 flex items-center gap-3 flex-wrap">
-                      <span className="inline-flex items-center gap-1"><User size={13} /> {c.age} ans</span>
-                      <span className="inline-flex items-center gap-1"><Car size={13} /> {c.experience} ans d'exp.</span>
-                      <span className="inline-flex items-center gap-1"><Calendar size={13} /> {c.applied}</span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden" style={{ maxWidth: 120 }}>
-                        <div className={`h-full rounded-full ${score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${score}%` }} />
-                      </div>
-                      <span className="text-xs font-bold text-slate-600">{score}%</span>
-                      <span className="text-xs text-slate-400">{Object.values(c.checks).filter(Boolean).length}/{CRITERIA.length} critères</span>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    {c.status !== 'approved' && c.status !== 'rejected' && (
-                      <button onClick={() => setSelected(c)} className="flex items-center gap-1.5 text-sm bg-primary-600 text-white py-2 px-4 rounded-xl hover:bg-primary-700 transition-colors font-medium">
-                        <Eye size={14} /> Évaluer
-                      </button>
-                    )}
-                    {(c.status === 'approved' || c.status === 'rejected') && (
-                      <button onClick={() => setSelected(c)} className="flex items-center gap-1.5 text-sm bg-slate-100 text-slate-600 py-2 px-4 rounded-xl hover:bg-slate-200 transition-colors font-medium">
-                        <FileText size={14} /> Détails
-                      </button>
-                    )}
-                  </div>
+        <DataTable
+          title={`Candidats (${filtered.length})`}
+          loading={false} emptyText="Aucun candidat dans cette catégorie."
+          rows={filtered}
+          onRowClick={c => setSelected(c)}
+          columns={[
+            { label: 'Candidat', render: c => (
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-teal-700 rounded-lg flex items-center justify-center text-white text-[10px] font-black shrink-0">{c.name.charAt(0)}</div>
+                <div className="min-w-0">
+                  <div className="text-[11px] font-black text-slate-900 truncate">{c.name}</div>
+                  <div className="text-[9px] text-slate-400 truncate">{c.age} ans · {c.experience} ans d'exp.</div>
                 </div>
               </div>
-            );
-          })}
-          {filtered.length === 0 && (
-            <div className="text-center py-16">
-              <Award size={48} className="mx-auto text-slate-300 mb-4" />
-              <h3 className="font-bold text-slate-900 mb-2">Aucun candidat dans cette catégorie</h3>
-            </div>
-          )}
-        </div>
+            )},
+            { label: 'Contact', render: c => (
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold text-slate-700">{c.phone}</div>
+                <div className="text-[9px] text-slate-400 truncate">{c.email}</div>
+              </div>
+            )},
+            { label: 'Postulé', render: c => <span className="text-[10px] font-semibold text-slate-500">{c.applied}</span> },
+            { label: 'Conformité', render: c => {
+              const score = scoreOf(c);
+              return (
+                <div className="flex items-center gap-2">
+                  <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${score}%` }} />
+                  </div>
+                  <span className="text-[10px] font-black text-slate-700">{score}%</span>
+                </div>
+              );
+            }},
+            { label: 'Statut', render: c => <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${STATUS_CONFIG[c.status].cls}`}>{STATUS_CONFIG[c.status].label}</span> },
+            { label: 'Action', align: 'right', render: c => (
+              <button onClick={e => { e.stopPropagation(); setSelected(c); }}
+                className="inline-flex items-center gap-1 text-[9px] font-black text-teal-700 bg-teal-50 hover:bg-teal-100 px-2.5 py-1.5 rounded-lg transition-colors">
+                <Eye size={10} /> Détails
+              </button>
+            )},
+          ]}
+        />
       </div>
+
       {selected && <CandidateModal candidate={selected} onClose={() => setSelected(null)} />}
     </AdminLayout>
   );

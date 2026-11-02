@@ -24,7 +24,7 @@ export default function InspectorChat() {
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-teal-600 rounded-full flex items-center justify-center text-white text-xs font-black">GM</div>

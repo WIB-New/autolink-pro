@@ -3,13 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admindash/AdminLayout';
 import { usersAPI, bookingsAPI } from '../../services/api';
 import {
-  Search, Star, CheckCircle2, ShieldCheck, FileText, Wallet, Lock, Send,
-  Loader, MessageCircle, Flag, UserCheck, AlertTriangle,
+  Users, UserCheck, Clock, Flag, Eye,
 } from 'lucide-react';
+import StatCard from '../../components/StatCard';
+import DataTable from '../../components/DataTable';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
 const initialsOf = name => (name || 'C').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
-const BSTATUS = { completed: ['Terminée', 'bg-slate-100 text-slate-500'], confirmed: ['Confirmée', 'bg-blue-100 text-blue-700'], active: ['En cours', 'bg-emerald-100 text-emerald-700'], pending: ['En attente', 'bg-amber-100 text-amber-700'], cancelled: ['Refusée', 'bg-red-100 text-red-600'], disputed: ['Litige', 'bg-red-500 text-white'] };
 
 export default function AdminClients() {
   const navigate = useNavigate();
@@ -18,12 +17,6 @@ export default function AdminClients() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
-  const [sel, setSel] = useState(null);
-  const [note, setNote] = useState('');
-  const [notes, setNotes] = useState([
-    { by: 'Audrey S. (Lead Arbitrage)', at: '22/09/2025', txt: 'Client à surveiller : deux annulations tardives le mois dernier. Exiger caution renforcée sur véhicules Premium.' },
-    { by: 'Marc K. (Support Client Assuré)', at: '11/10/2025', txt: 'Aucun incident majeur sur les 6 derniers trajets. Très bonne tenue du véhicule — candidat statut Privilège.' },
-  ]);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -40,215 +33,59 @@ export default function AdminClients() {
     (filter === 'all' || (filter === 'verified' && c.is_verified !== false) || (filter === 'pending' && c.is_verified === false))
   ), [clients, query, filter]);
 
-  const c = sel || filtered[0];
-  const cBookings = useMemo(() => c ? bookings.filter(b => (b.client === c.id) || (b.client_name || '').toLowerCase().includes((c.first_name || '').toLowerCase())) : [], [bookings, c]);
-  const spent = cBookings.reduce((s, b) => s + Number(b.subtotal || 0), 0);
-  const escrow = cBookings.filter(b => b.escrow_status === 'held').reduce((s, b) => s + Number(b.deposit_amount || 0), 0);
+  const bookingsOf = useCallback(c => bookings.filter(b => (b.client === c.id) || (b.client_name || '').toLowerCase().includes((c.first_name || '').toLowerCase())), [bookings]);
   const pendingKyc = clients.filter(x => x.is_verified === false).length;
-
-  const addNote = () => { if (note.trim()) { setNotes(n => [{ by: 'Super-Admin', at: new Date().toLocaleDateString('fr-FR'), txt: note.trim() }, ...n]); setNote(''); } };
 
   return (
     <AdminLayout
       title="Clients & Dossiers KYC CEMAC"
-      subtitle="Console Ops · Supervision Particuliers CEMAC · Paiement OHADA — Douala + Yaoundé"
+      subtitle="Dossiers KYC & portefeuille clients"
       badges={{ clients: clients.length }}
     >
       {/* KPI strip */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
-        {[
-          { l: 'Total portefeuille clients', v: fmt(clients.length), s: '+15 % nouveaux ce mois' },
-          { l: 'KYC conformes (DSGN)', v: fmt(clients.length - pendingKyc), s: `${clients.length ? Math.round((clients.length - pendingKyc) / clients.length * 100) : 0} % du portefeuille` },
-          { l: 'En attente vérification', v: pendingKyc, s: 'Dossiers KYC à valider', warn: true },
-          { l: 'Sous surveillance / Gelés', v: cBookings.filter(b => b.status === 'disputed').length || 4, s: 'Score risque élevé' },
-        ].map(k => (
-          <div key={k.l} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">{k.l}</div>
-            <div className="text-2xl font-black text-slate-900 leading-none">{k.v} <span className="text-[10px] font-bold text-slate-400">{k.s}</span></div>
-          </div>
-        ))}
+        <StatCard icon={Users} iconCls="bg-blue-50 text-blue-600" value={clients.length} label="Portefeuille clients" />
+        <StatCard icon={UserCheck} iconCls="bg-emerald-50 text-emerald-600" value={clients.length - pendingKyc} unit={`· ${clients.length ? Math.round((clients.length - pendingKyc) / clients.length * 100) : 0} %`} label="KYC conformes" />
+        <StatCard icon={Clock} iconCls="bg-amber-50 text-amber-600" value={pendingKyc} label="En attente de vérification" />
+        <StatCard icon={Flag} iconCls="bg-red-50 text-red-600" value={bookings.filter(b => b.status === 'disputed').length} label="Sous surveillance" />
       </div>
 
-      <div className="grid xl:grid-cols-[300px_1fr] gap-5 items-start">
-        {/* Liste clients */}
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-4">
-          <h3 className="font-black text-slate-900 text-sm mb-3">Clients &amp; KYC ({filtered.length})</h3>
-          <div className="relative mb-3">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Emmanuel Kouam…"
-              className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] focus:outline-none focus:ring-2 focus:ring-teal-500" />
-          </div>
-          <div className="flex gap-1.5 mb-3">
-            {[['all', `Tous(${clients.length})`], ['verified', 'Vérifié'], ['pending', 'KYC en cours']].map(([id, l]) => (
-              <button key={id} onClick={() => setFilter(id)}
-                className={`text-[9px] font-black px-2 py-1 rounded-lg transition-colors ${filter === id ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{l}</button>
-            ))}
-          </div>
-          <div className="space-y-2 max-h-[480px] overflow-y-auto">
-            {loading && <div className="text-center py-10 text-slate-400 text-xs"><Loader size={16} className="animate-spin mx-auto mb-2" />Chargement…</div>}
-            {filtered.map(u => (
-              <button key={u.id} onClick={() => setSel(u)}
-                className={`w-full text-left border rounded-2xl p-3 transition-colors ${c?.id === u.id ? 'border-teal-500 bg-teal-50/50 ring-1 ring-teal-500/20' : 'border-slate-100 hover:border-teal-300'}`}>
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 bg-teal-700 rounded-xl flex items-center justify-center text-white text-[11px] font-black shrink-0">
-                    {initialsOf(`${u.first_name} ${u.last_name}`)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[12px] font-black text-slate-900 truncate">{u.first_name} {u.last_name}</div>
-                    <div className="text-[9px] text-slate-400 truncate">{u.city || 'Douala'} · {u.email || ''}</div>
-                  </div>
-                  <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md shrink-0 ${u.is_verified !== false ? 'bg-teal-100 text-teal-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {u.is_verified !== false ? 'Vérifié' : 'En revue'}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Fiche client */}
-        {c && (
-          <div className="space-y-5">
-            {/* En-tête */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="w-14 h-14 bg-teal-700 rounded-2xl flex items-center justify-center text-white text-lg font-black">{initialsOf(`${c.first_name} ${c.last_name}`)}</div>
-                <div className="flex-1 min-w-[180px]">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-black text-slate-900">{c.first_name} {c.last_name}</h2>
-                    {c.is_verified !== false && <span className="bg-teal-600 text-white text-[8px] font-black px-2 py-0.5 rounded-md">Client Vérifié</span>}
-                    <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1"><Star size={10} className="text-amber-400 fill-amber-400" /> 4.95 (12 avis)</span>
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Inscrit {c.date_joined ? new Date(c.date_joined).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : 'Fév. 2023'} · {c.email} · {c.phone || '+237 6·· ·· ·· 90'}</div>
-                </div>
-                <div className="flex gap-2">
-                  <button className="flex items-center gap-1.5 text-[10px] font-black text-white bg-emerald-600 hover:bg-emerald-700 px-3.5 py-2 rounded-xl transition-colors"><MessageCircle size={11} /> WhatsApp</button>
-                  <button className="flex items-center gap-1.5 text-[10px] font-black text-red-500 border border-red-200 px-3.5 py-2 rounded-xl hover:bg-red-50 transition-colors"><Flag size={11} /> Signaler</button>
-                </div>
+      {/* Table des clients — composant DataTable réutilisable */}
+      <DataTable
+        title={`Clients & KYC (${filtered.length})`}
+        filters={[['all', `Tous(${clients.length})`], ['verified', `Vérifié(${clients.length - pendingKyc})`], ['pending', `KYC en cours(${pendingKyc})`]]}
+        filter={filter} setFilter={setFilter}
+        search={query} setSearch={setQuery} searchPlaceholder="Nom, email…"
+        loading={loading} emptyText="Aucun client trouvé."
+        rows={filtered}
+        onRowClick={c => navigate(`/admin/clients/${c.id}`)}
+        columns={[
+          { label: 'Client', render: c => (
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-teal-700 rounded-lg flex items-center justify-center text-white text-[10px] font-black shrink-0">
+                {initialsOf(`${c.first_name} ${c.last_name}`)}
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] font-black text-slate-900 truncate">{c.first_name} {c.last_name}</div>
+                <div className="text-[9px] text-slate-400 truncate">{c.email || '—'}</div>
               </div>
             </div>
-
-            <div className="grid lg:grid-cols-2 gap-5">
-              {/* Pièces d'identité */}
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
-                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2 mb-4"><FileText size={15} className="text-teal-600" /> Pièces d'identité &amp; Justificatifs Réglementaires</h3>
-                <div className="space-y-2.5">
-                  {[
-                    { t: 'CNI Biométrique', d: `N° 10023489169 · Expire 14/09/2029 · Relevé conforme`, s: 'Conforme' },
-                    { t: 'Permis de conduire cat. B', d: `N° DLA-KYC-0825-${c.id} · Vérifié centre d'examen`, s: 'Vérifié' },
-                    { t: 'Justificatif de domicile', d: `${c.city || 'Douala'} — Facture ENEO/CPA du mois`, s: 'Valide' },
-                    { t: 'Photo d\'identité + Selfie', d: 'Score biométrique 98.4 %" — CamCheck conforme', s: 'Validé' },
-                  ].map(d => (
-                    <div key={d.t} className="flex items-start gap-2.5 border border-slate-100 rounded-xl p-3">
-                      <UserCheck size={14} className="text-teal-600 mt-0.5 shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[11px] font-black text-slate-800">{d.t}</div>
-                        <div className="text-[9px] text-slate-400">{d.d}</div>
-                      </div>
-                      <span className="bg-teal-50 text-teal-700 text-[8px] font-black px-1.5 py-0.5 rounded-md shrink-0">{d.s}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Portefeuille & cautions */}
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
-                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2 mb-4"><Wallet size={15} className="text-teal-600" /> Portefeuille &amp; Cautions Mobilier</h3>
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="bg-teal-50 border border-teal-100 rounded-xl p-3.5">
-                    <div className="text-[8px] font-black uppercase tracking-widest text-teal-600">Solde client</div>
-                    <div className="text-xl font-black text-slate-900 mt-1">{fmt(spent || 65000)} <span className="text-[10px]">FCFA</span></div>
-                  </div>
-                  <div className="bg-slate-900 rounded-xl p-3.5">
-                    <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">Caution séquestre en cours</div>
-                    <div className="text-xl font-black text-white mt-1">{fmt(escrow || 150000)} <span className="text-[10px]">FCFA</span></div>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  {cBookings.slice(0, 4).map(b => (
-                    <div key={b.id} className="flex items-center justify-between text-[10px] border-b border-slate-50 pb-1.5">
-                      <span className="font-bold text-slate-700">#ALP-{String(b.id).padStart(4, '0')} · {b.vehicle_name || 'Location'}</span>
-                      <span className="font-black text-slate-900">{fmt(b.subtotal)} F</span>
-                    </div>
-                  ))}
-                  {cBookings.length === 0 && <p className="text-[10px] text-slate-400">Aucune transaction enregistrée.</p>}
-                </div>
-              </div>
-            </div>
-
-            {/* Dernières locations + litiges */}
-            <div className="grid lg:grid-cols-2 gap-5">
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-black text-slate-900 text-sm">Dernières Locations</h3>
-                  <span className="text-[9px] font-bold text-slate-400">{cBookings.length} au total</span>
-                </div>
-                <div className="space-y-2">
-                  {cBookings.slice(0, 5).map(b => {
-                    const st = BSTATUS[b.status] || BSTATUS.pending;
-                    return (
-                      <button key={b.id} onClick={() => navigate(`/admin/reservations/${b.id}`)}
-                        className="w-full flex items-center justify-between border border-slate-100 rounded-xl px-3.5 py-2.5 hover:border-teal-400 transition-colors text-left">
-                        <div>
-                          <div className="text-[11px] font-bold text-slate-800">#ALP-{String(b.id).padStart(4, '0')} · {b.vehicle_name}</div>
-                          <div className="text-[9px] text-slate-400">{b.start_date} → {b.end_date}</div>
-                        </div>
-                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-md ${st[1]}`}>{st[0]}</span>
-                      </button>
-                    );
-                  })}
-                  {cBookings.length === 0 && <p className="text-[10px] text-slate-400 text-center py-4">Aucune location pour ce client.</p>}
-                </div>
-              </div>
-
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
-                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2 mb-3"><ShieldCheck size={15} className="text-teal-600" /> Arbitrage &amp; Historique Litiges</h3>
-                {cBookings.filter(b => b.status === 'disputed').length === 0 ? (
-                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 text-center">
-                    <CheckCircle2 size={20} className="mx-auto mb-2 text-emerald-500" />
-                    <div className="text-[11px] font-black text-emerald-800">Aucun litige ouvert</div>
-                    <div className="text-[9px] text-emerald-600 mt-1">Incident aéroport résolu à l'amiable (2024) · Score de crédibilité client : <strong>95/100</strong></div>
-                  </div>
-                ) : (
-                  cBookings.filter(b => b.status === 'disputed').map(b => (
-                    <div key={b.id} className="flex items-center gap-2.5 bg-red-50 border border-red-100 rounded-xl p-3">
-                      <AlertTriangle size={14} className="text-red-500" />
-                      <span className="text-[10px] font-bold text-red-700">Litige #LIT-{String(b.id).padStart(4, '0')} — {fmt(b.deposit_amount)} F gelés</span>
-                    </div>
-                  ))
-                )}
-                <div className="mt-4 bg-slate-50 rounded-xl p-3 text-[9px] text-slate-500">
-                  <strong className="text-slate-700">Comportement observé :</strong> restitutions ponctuelles 11/12, paiement MoMo sans échec, caution toujours débloquée sans friction.
-                </div>
-              </div>
-            </div>
-
-            {/* Notes internes */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2"><Lock size={14} className="text-slate-400" /> Notes Internes d'Exploitation &amp; Fraude</h3>
-                <span className="bg-red-50 text-red-600 text-[9px] font-black px-2 py-1 rounded-md">Invisibles pour le client</span>
-              </div>
-              <div className="space-y-2.5 mb-4">
-                {notes.map((n, i) => (
-                  <div key={i} className="bg-slate-50 rounded-xl px-3.5 py-2.5">
-                    <div className="flex justify-between gap-2 mb-0.5">
-                      <span className="text-[10px] font-black text-slate-700">{n.by}</span>
-                      <span className="text-[9px] text-slate-400">{n.at}</span>
-                    </div>
-                    <p className="text-[10px] text-slate-500 leading-relaxed">{n.txt}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <input value={note} onChange={e => setNote(e.target.value)} placeholder="Consigner une note d'exploitation ou d'alerte sur le dossier d'Emmanuel Kouam…"
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-[11px] focus:outline-none focus:ring-2 focus:ring-teal-500" />
-                <button onClick={addNote} className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-black px-4 py-2 rounded-xl transition-colors"><Send size={11} /> Enregistrer</button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+          )},
+          { label: 'Ville', render: c => <span className="text-[10px] font-semibold text-slate-500">{c.city || 'Douala'}</span> },
+          { label: 'Locations', render: c => <span className="text-[11px] font-black text-slate-800">{bookingsOf(c).length}</span> },
+          { label: 'Statut', render: c => (
+            <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${c.is_verified !== false ? 'bg-teal-100 text-teal-700' : 'bg-amber-100 text-amber-700'}`}>
+              {c.is_verified !== false ? 'Vérifié' : 'KYC en revue'}
+            </span>
+          )},
+          { label: 'Action', align: 'right', render: c => (
+            <button onClick={e => { e.stopPropagation(); navigate(`/admin/clients/${c.id}`); }}
+              className="inline-flex items-center gap-1 text-[9px] font-black text-teal-700 bg-teal-50 hover:bg-teal-100 px-2.5 py-1.5 rounded-lg transition-colors">
+              <Eye size={10} /> Détails
+            </button>
+          )},
+        ]}
+      />
     </AdminLayout>
   );
 }

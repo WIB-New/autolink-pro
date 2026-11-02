@@ -1,33 +1,36 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
 import {
   OwnerLayout, BalanceCard, PriorityRequests, StatsRow,
-  RevenueChart, AdvicePanel, UpcomingBookings,
+  RevenueChart, StatusDonut, RecentPayments, UpcomingBookings,
 } from '../../components/ownerdash';
-import { PlusCircle, FileText, ShieldCheck, MapPin, RefreshCw } from 'lucide-react';
+import { PlusCircle, Wifi, WifiOff } from 'lucide-react';
 import { bookingsAPI, vehiclesAPI, walletAPI } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 const POLL = 15000;
 const MONTHS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sept', 'Oct', 'Nov', 'Déc'];
 
-/* Revenus nets (85 %) agrégés par mois à partir des réservations. */
+/* Revenus nets (85 %) + nombre de locations agrégés par mois. */
 const revenueSeries = (bookings) => {
   const now = new Date();
   const months = [];
   for (let i = 5; i >= 0; i--) months.push(new Date(now.getFullYear(), now.getMonth() - i, 1));
-  return months.map(m => ({
-    month: MONTHS[m.getMonth()],
-    revenue: bookings
+  return months.map(m => {
+    const monthBookings = bookings
       .filter(b => ['completed', 'active', 'confirmed'].includes(b.status))
-      .filter(b => { const d = new Date(b.start_date || b.created_at); return d.getMonth() === m.getMonth() && d.getFullYear() === m.getFullYear(); })
-      .reduce((s, b) => s + Number(b.owner_amount || b.total_price || 0) * 0.85, 0),
-  }));
+      .filter(b => { const d = new Date(b.start_date || b.created_at); return d.getMonth() === m.getMonth() && d.getFullYear() === m.getFullYear(); });
+    return {
+      month: MONTHS[m.getMonth()],
+      revenue: monthBookings.reduce((s, b) => s + Number(b.owner_amount || b.total_price || 0) * 0.85, 0),
+      count: monthBookings.length,
+    };
+  });
 };
 
 export default function OwnerDashboard() {
-  const { user } = useAuth();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [vehicles, setVehicles] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [balance, setBalance] = useState(0);
@@ -65,49 +68,32 @@ export default function OwnerDashboard() {
   const pendingPayout = bookings.filter(b => ['confirmed', 'active'].includes(b.status))
     .reduce((s, b) => s + Number(b.owner_amount || b.total_price || 0) * 0.85, 0);
 
+  const series = revenueSeries(bookings);
+  const spark = series.map((m, i) => ({ i, v: m.revenue / 1000 }));
+
   return (
     <OwnerLayout badges={{ demandes: pendingCount, messages: 0 }} balance={balance}>
       <div className="max-w-7xl mx-auto space-y-6">
 
-        {/* En-tête + carte solde */}
-        <div className="grid lg:grid-cols-[1fr_380px] gap-6 items-start">
-          <div>
-            <div className="flex flex-wrap items-center gap-2.5 mb-4">
-              <span className="flex items-center gap-1.5 bg-teal-50 text-teal-700 text-[11px] font-black uppercase tracking-wide px-3 py-1.5 rounded-full">
-                <MapPin size={11} /> Flotte active · Douala
-              </span>
-              <button onClick={load} className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-teal-600 transition-colors">
-                <RefreshCw size={11} className={online ? '' : 'text-red-400'} />
-                {online ? 'Synchronisé' : 'Hors ligne — réessayer'}
-              </button>
-            </div>
-            <h1 className="text-3xl font-black text-slate-900 mb-2">
-              Tableau de bord <span className="text-teal-600">Propriétaire</span>
-            </h1>
-            <p className="text-sm text-slate-500 leading-relaxed mb-6 max-w-xl">
-              Bonjour {user?.firstName || user?.first_name} — voici les performances consolidées de vos
-              réservations et urgences de votre flotte automobile au Cameroun.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <button onClick={() => navigate('/owner/add-vehicle')}
-                className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm px-5 py-3 rounded-xl transition-colors shadow-md">
-                <PlusCircle size={16} /> Ajouter un véhicule
-              </button>
-              <button className="flex items-center gap-2 bg-white border border-slate-200 hover:border-teal-400 hover:text-teal-700 text-slate-600 font-bold text-sm px-5 py-3 rounded-xl transition-colors">
-                <FileText size={15} /> Rapport mensuel CEMAC
-              </button>
-              <span className="flex items-center gap-1.5 text-xs font-bold text-teal-700 bg-teal-50 px-4 py-3 rounded-xl">
-                <ShieldCheck size={14} /> Compte certifié
-              </span>
-            </div>
+        {/* En-tête compact */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-black text-slate-900">Bienvenue, {user?.firstName || 'Partenaire'}</h1>
+            <button onClick={load} className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 hover:text-teal-600 transition-colors">
+              {online ? <Wifi size={11} className="text-emerald-500" /> : <WifiOff size={11} className="text-red-500" />}
+              {online ? 'Synchro' : 'Hors ligne'}
+            </button>
           </div>
-          <BalanceCard available={balance} pending={pendingPayout} total={totalEarned} />
+          <button onClick={() => navigate('/owner/add-vehicle')}
+            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-colors shadow-sm">
+            <PlusCircle size={14} /> Ajouter un véhicule
+          </button>
         </div>
 
         {/* Demandes urgentes */}
         <PriorityRequests bookings={bookings} onChanged={load} />
 
-        {/* KPI */}
+        {/* KPIs */}
         <StatsRow
           occupancy={occupancy}
           rating={4.92}
@@ -115,14 +101,18 @@ export default function OwnerDashboard() {
           revenuePerDay={revenuePerDay}
         />
 
-        {/* Graphique + conseils */}
-        <div className="grid lg:grid-cols-[1fr_340px] gap-6 items-start">
-          <RevenueChart data={revenueSeries(bookings)} />
-          <AdvicePanel />
+        {/* Donut + rapports + solde */}
+        <div className="grid lg:grid-cols-[280px_1fr_280px] gap-5 items-stretch">
+          <StatusDonut bookings={bookings} />
+          <RevenueChart data={series} />
+          <BalanceCard available={balance} pending={pendingPayout} total={totalEarned} spark={spark} />
         </div>
 
-        {/* Planning */}
-        <UpcomingBookings bookings={bookings} />
+        {/* Locations + transactions */}
+        <div className="grid lg:grid-cols-[1fr_320px] gap-5 items-start">
+          <UpcomingBookings bookings={bookings} />
+          <RecentPayments bookings={bookings} />
+        </div>
       </div>
     </OwnerLayout>
   );
