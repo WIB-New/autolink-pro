@@ -4,15 +4,6 @@ import '@fontsource-variable/inter';
 import './index.css';
 import './i18n';
 import App from './App';
-import iconFontUrl from '@fontsource/material-symbols-outlined/files/material-symbols-outlined-latin-400-normal.woff2';
-
-const iconFontPreload = document.createElement('link');
-iconFontPreload.rel = 'preload';
-iconFontPreload.as = 'font';
-iconFontPreload.type = 'font/woff2';
-iconFontPreload.crossOrigin = 'anonymous';
-iconFontPreload.href = iconFontUrl;
-document.head.appendChild(iconFontPreload);
 
 // Rendu identique à 100 % de zoom sur tout écran paysage : on met à l'échelle
 // la page en fonction de la largeur réelle du viewport (référence 1600px).
