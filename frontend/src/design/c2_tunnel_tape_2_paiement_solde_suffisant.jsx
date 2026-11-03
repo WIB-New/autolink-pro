@@ -1,5 +1,12 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import DesignPage from './DesignPage';
+import useApiData from '../utils/useApiData';
+import { bookingsAPI, authAPI, vehiclesAPI } from '../services/api';
+
+const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
+const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const dmy = (isoStr) => new Date(isoStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 
 const HTML = `<div class="flex flex-col w-full">
 <!-- Progress Stepper Header -->
@@ -42,10 +49,7 @@ const HTML = `<div class="flex flex-col w-full">
 </div>
 </div>
 <!-- Trust Mini Pill -->
-<div class="inline-flex items-center gap-space-xs self-start md:self-auto bg-surface-container-lowest px-space-md py-space-xs rounded-full shadow-sm text-primary font-label-md text-label-md">
-<span class="material-symbols-outlined text-[18px]">verified_user</span>
-<span class="text-on-surface font-medium">Opération garantie Banque CEMAC</span>
-</div>
+<div></div>
 </div>
 </div>
 </section>
@@ -56,12 +60,7 @@ const HTML = `<div class="flex flex-col w-full">
 <div class="lg:col-span-7 xl:col-span-8 flex flex-col gap-space-lg">
 <!-- Payment Header -->
 <div class="flex flex-col gap-space-xs">
-<div class="flex items-center gap-space-xs text-primary font-label-sm text-label-sm uppercase tracking-wider font-semibold">
-<span class="material-symbols-outlined text-[16px]">account_balance_wallet</span>
-<span>Règlement Direct Portefeuille</span>
-</div>
 <h1 class="font-headline-xl text-headline-xl text-on-surface">Paiement sécurisé par Portefeuille AutoLink</h1>
-<p class="font-body-md text-body-md text-on-surface-variant">Toutes les réservations sont réglées directement depuis votre solde numérique sécurisé et audité.</p>
 </div>
 <!-- Balance Status Card (Solde Suffisant) -->
 <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
@@ -73,13 +72,8 @@ const HTML = `<div class="flex flex-col w-full">
 </span>
 <div>
 <p class="font-label-lg text-label-lg text-primary font-bold">Solde suffisant pour régler cette réservation</p>
-<p class="font-body-sm text-body-sm text-on-surface-variant">Transaction immédiate, sans frais de change ni commission bancaire.</p>
 </div>
 </div>
-<span class="inline-flex items-center gap-1 font-label-sm text-label-sm px-space-sm py-0.5 rounded-full bg-primary text-on-primary font-semibold">
-<span class="w-2 h-2 rounded-full bg-primary-fixed animate-ping"></span>
-              Prêt au débit
-            </span>
 </div>
 <!-- Financial Flow Breakdown -->
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-space-md pt-space-xs">
@@ -116,18 +110,6 @@ const HTML = `<div class="flex flex-col w-full">
 <span class="px-space-sm py-space-xs bg-surface-container-high text-on-secondary-container font-label-md text-label-md rounded-full font-bold">
               Séquestre garanti : 150 000 FCFA
             </span>
-</div>
-<p class="font-body-md text-body-md text-on-surface-variant">
-            La caution ne constitue pas un prélèvement effectif. Il s'agit d'une pré-autorisation conservée sur un compte tiers régulé. Aucune retenue unilatérale n'est permise.
-          </p>
-<div class="bg-surface-container-low p-space-md rounded-lg flex flex-col sm:flex-row items-start sm:items-center gap-space-md">
-<div class="w-10 h-10 rounded-full bg-primary-fixed text-on-primary-fixed flex items-center justify-center shrink-0">
-<span class="material-symbols-outlined text-[20px]">timer</span>
-</div>
-<div class="flex flex-col">
-<span class="font-label-md text-label-md text-on-surface font-semibold">Restitution automatique en 15 minutes chrono</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Dès signature contradictoire du bon de restitution numérique avec le transporteur partenaire à Douala.</span>
-</div>
 </div>
 <!-- Escrow Method Selector -->
 <div class="flex flex-col gap-space-xs pt-space-xs">
@@ -173,10 +155,6 @@ const HTML = `<div class="flex flex-col w-full">
 <span class="material-symbols-outlined text-[20px]">lock</span>
 <span>Confirmer et Payer 73 500 FCFA</span>
 </button>
-<div class="flex items-center justify-center gap-space-xs text-on-surface-variant font-body-sm text-body-sm text-center">
-<span class="material-symbols-outlined text-[16px] text-primary">bolt</span>
-<span>Validation instantanée. Votre véhicule sera immédiatement réservé et votre bon de prise en charge généré.</span>
-</div>
 </div>
 <!-- Return / Back link -->
 <div class="pt-space-xs pb-space-lg">
@@ -192,9 +170,6 @@ const HTML = `<div class="flex flex-col w-full">
 <!-- Card Header & Badge -->
 <div class="flex items-center justify-between">
 <h2 class="font-headline-sm text-headline-sm text-on-surface">Récapitulatif financier</h2>
-<span class="px-space-sm py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-bold uppercase">
-              Premium
-            </span>
 </div>
 <!-- Vehicle Thumbnail Card -->
 <div class="relative w-full h-40 rounded-lg overflow-hidden bg-surface-container shadow-inner">
@@ -260,23 +235,6 @@ const HTML = `<div class="flex flex-col w-full">
 <span class="font-bold text-on-secondary-container">150 000 FCFA</span>
 </div>
 </div>
-<!-- Trust Badges & Help -->
-<div class="flex flex-col gap-space-xs pt-space-xs bg-surface-container-low p-space-md rounded-lg">
-<div class="flex items-center gap-space-xs text-primary font-label-sm text-label-sm font-semibold">
-<span class="material-symbols-outlined text-[18px]">lock</span>
-<span>Chiffrement bancaire SSL 256-bit</span>
-</div>
-<p class="font-body-sm text-body-sm text-on-surface-variant">
-              Reçu officiel et contrat électronique d'assurance édités instantanément par email et SMS.
-            </p>
-<div class="pt-space-xs flex items-center justify-between">
-<span class="font-label-sm text-label-sm text-outline">Assistance prioritaire</span>
-<a class="inline-flex items-center gap-1 text-primary font-label-md text-label-md font-semibold hover:underline" href="https://wa.me/237600000000" target="_blank">
-<span class="material-symbols-outlined text-[16px]">chat</span>
-                WhatsApp Direct 24/7
-              </a>
-</div>
-</div>
 </div>
 </div>
 </div>
@@ -289,6 +247,67 @@ const LINKS = {
   'Assistance 24/7': '/help',
 };
 
-export default function c2tunneltape2paiementsoldesuffisant() {
-  return <DesignPage html={HTML} links={LINKS} />;
+export default function C2TunnelEtape2PaiementSoldeSuffisant() {
+  const [params] = useSearchParams();
+  const vid = params.get('vehicle') || '';
+  const start = params.get('start') || new Date(Date.now() + 864e5).toISOString().slice(0, 10);
+  const end = params.get('end') || new Date(Date.now() + 2 * 864e5).toISOString().slice(0, 10);
+  const driver = params.get('driver') || 'none';
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const { data: v } = useApiData(() => (vid ? vehiclesAPI.detail(vid) : Promise.resolve({ data: null })), [vid]);
+  const { data: me } = useApiData(() => authAPI.me(), []);
+
+  const days = Math.max(1, Math.round((new Date(end) - new Date(start)) / 864e5));
+  const rate = Number(v?.daily_rate || v?.computed_rate || 55000);
+  const total = rate * days + 18500;
+  const deposit = Number(v?.deposit_amount || 150000);
+  const balance = Number(me?.balance || 0);
+
+  useEffect(() => {
+    const click = (e) => {
+      const btn = e.target.closest('button, a');
+      if (!btn || !btn.textContent.includes('Confirmer et Payer')) return;
+      e.preventDefault();
+      if (busy) return;
+      setBusy(true); setErr('');
+      bookingsAPI.create({
+        vehicle: Number(vid), start_date: start, end_date: end,
+        driver_type: driver, payment_method: 'wallet',
+      }).then(({ data }) => {
+        window.location.href = `/client/booking/confirmation?booking=${data.id}`;
+      }).catch((error) => {
+        setBusy(false);
+        const msg = error.response?.data?.detail || Object.values(error.response?.data || {}).flat()[0] || 'Erreur lors du paiement.';
+        setErr(typeof msg === 'string' ? msg : 'Erreur lors du paiement.');
+      });
+    };
+    document.addEventListener('click', click);
+    return () => document.removeEventListener('click', click);
+  }, [busy, vid, start, end, driver]);
+
+  const html = useMemo(() => {
+    let h = HTML;
+    if (v) {
+      const name = `${v.brand || ''} ${v.model || ''} ${v.year || ''}`.trim();
+      h = h
+        .replace(/Toyota RAV4 AWD Hybrid/g, esc(name))
+        .replace(/Toyota RAV4 \(24h\)/g, `${esc(name)} (${days * 24}h)`)
+        .replace('29 Oct, 08:30', `${dmy(start)}, 08:30`)
+        .replace('30 Oct, 08:30', `${dmy(end)}, 08:30`)
+        .replace('55 000 FCFA', `${fmt(rate * days)} FCFA`);
+    }
+    return h
+      .replace('73 500 FCFA', `${fmt(total)} FCFA`)
+      .replace('150 000 FCFA', `${fmt(deposit)} FCFA`)
+      .replace('100 000 FCFA', `${fmt(balance)} FCFA`)
+      .replace('Confirmer et Payer 73 500 FCFA', `Confirmer et Payer ${fmt(total)} FCFA`);
+  }, [v, balance, total, deposit, rate, days, start, end]);
+
+  return (
+    <>
+      {err && <div className="mx-4 mb-4 p-3 rounded-xl bg-error-container text-on-error-container font-label-md">{err}</div>}
+      <DesignPage html={html} links={LINKS} />
+    </>
+  );
 }

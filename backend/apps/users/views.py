@@ -474,6 +474,34 @@ class MeView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
 
+class MeReferralView(APIView):
+    """Parrainage client : code unique, filleuls et crédits cumulés."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if not user.referral_code:
+            import secrets
+            user.referral_code = f'ALP-{(user.username or "U").upper()[:8]}-{secrets.token_hex(3).upper()}'
+            user.save(update_fields=['referral_code'])
+        referred = list(user.referrals.all())
+        completed = sum(
+            1 for u in referred
+            if u.bookings.filter(status='completed').exists()
+        ) if referred else 0
+        return Response({
+            'code': user.referral_code,
+            'referred_count': len(referred),
+            'referred_active': completed,
+            'credits': str(user.referral_credits),
+            'referred': [
+                {'name': u.get_full_name() or u.username, 'date': u.created_at,
+                 'status': 'active' if u.bookings.filter(status='completed').exists() else 'pending'}
+                for u in referred
+            ],
+        })
+
+
 # ─── Connexion par code email (OTP) ───────────────────────────────────────────
 
 def _otp_email_html(code, first_name, language='fr'):

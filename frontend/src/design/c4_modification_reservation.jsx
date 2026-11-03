@@ -1,5 +1,12 @@
-import React from 'react';
+import React, { useMemo, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import DesignPage from './DesignPage';
+import useApiData from '../utils/useApiData';
+import { bookingsAPI } from '../services/api';
+
+const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const dmy = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+const dtLocal = (d) => (d ? new Date(new Date(d).getTime() - new Date(d).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '');
 
 const HTML = `<div class="flex flex-col w-full max-w-4xl mx-auto py-8 px-4">
 <div class="mb-6">
@@ -70,5 +77,45 @@ const LINKS = {
 };
 
 export default function C4ModificationReservation() {
-  return <DesignPage html={HTML} links={LINKS} role="client" />;
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { data: b } = useApiData(() => bookingsAPI.detail(id), [id]);
+
+  useEffect(() => {
+    if (!b) return undefined;
+    const inputs = [...document.querySelectorAll('input')];
+    inputs.forEach((inp) => {
+      if (inp.type === 'datetime-local' || inp.value?.match(/\d{2}\/\d{2}\/\d{4}/)) {
+        if (!inp.dataset.filled) { inp.dataset.filled = '1'; inp.value = inputs.indexOf(inp) < 2 ? dtLocal(b.start_date) : dtLocal(b.end_date); }
+      }
+    });
+    const click = (e) => {
+      const el = e.target.closest('button, a');
+      if (!el || !el.textContent.includes('Enregistrer les modifications')) return;
+      e.preventDefault();
+      const inps = [...document.querySelectorAll('input')];
+      const [startI, endI] = inps.filter((i) => i.type === 'datetime-local' || i.value.includes('/'));
+      const [pickupI, dropI] = inps.filter((i) => i.type === 'text' || (!i.type && i.value));
+      bookingsAPI.update(id, {
+        ...(startI?.value ? { start_date: startI.value.slice(0, 10) } : {}),
+        ...(endI?.value ? { end_date: endI.value.slice(0, 10) } : {}),
+        ...(pickupI?.value ? { pickup_address: pickupI.value } : {}),
+        ...(dropI?.value ? { dropoff_address: dropI.value } : {}),
+      }).then(() => navigate(`/client/bookings/${id}`)).catch(() => navigate(`/client/bookings/${id}`));
+    };
+    document.addEventListener('click', click);
+    return () => document.removeEventListener('click', click);
+  }, [b, id, navigate]);
+
+  const html = useMemo(() => {
+    if (!b) return HTML;
+    return HTML
+      .replace(/Toyota RAV4 AWD Hybrid 2022/g, esc(b.vehicle_name || 'Véhicule'))
+      .replace('#ALP-2025-DLA-8924', `#${esc(b.reference || `BK-${String(b.id).padStart(4, '0')}`)}`)
+      .replace('29 Oct 2025 08:30', dmy(b.start_date))
+      .replace('Douala - Hub Akwa', esc(b.pickup_address || b.vehicle_city || ''))
+      .replace('Aéroport DLA', esc(b.dropoff_address || ''));
+  }, [b]);
+
+  return <DesignPage html={html} links={LINKS} role="client" />;
 }

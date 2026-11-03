@@ -1,5 +1,7 @@
 from datetime import date
+from django.shortcuts import get_object_or_404
 from django.db.models import Max, Q
+from rest_framework.exceptions import PermissionDenied
 from django.db.models.deletion import ProtectedError
 import django_filters
 from rest_framework import generics, permissions, filters, status, viewsets
@@ -107,6 +109,26 @@ class VehicleViewSet(ModelViewSet):
             )
         vehicle.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['get'], url_path='reviews', permission_classes=[permissions.AllowAny])
+    def reviews(self, request, pk=None):
+        vehicle = self.get_object()
+        qs = vehicle.bookings.exclude(client_rating__isnull=True).select_related('client').order_by('-updated_at')[:20]
+        return Response([{
+            'id': b.id,
+            'rating': b.client_rating,
+            'review': b.client_review,
+            'client': (f"{b.client.first_name} {b.client.last_name[:1]}.").strip() or b.client.username,
+            'date': b.updated_at,
+            'verified': True,
+        } for b in qs])
+
+    @action(detail=True, methods=['get'], url_path='similar', permission_classes=[permissions.AllowAny])
+    def similar(self, request, pk=None):
+        vehicle = self.get_object()
+        qs = Vehicle.objects.filter(status='approved').exclude(pk=vehicle.pk)
+        qs = qs.filter(Q(tier=vehicle.tier) | Q(category=vehicle.category) | Q(city__iexact=vehicle.city)).distinct()[:6]
+        return Response(VehicleSerializer(qs, many=True, context={'request': request}).data)
 
     @action(detail=True, methods=['post', 'get'], parser_classes=[MultiPartParser, FormParser])
     def media(self, request, pk=None):
@@ -272,4 +294,8 @@ class VehicleAvailabilityView(generics.ListCreateAPIView):
         return VehicleAvailability.objects.filter(vehicle_id=self.kwargs['vehicle_id'])
 
     def perform_create(self, serializer):
-        serializer.save(vehicle_id=self.kwargs['vehicle_id'])
+        vehicle = get_object_or_404(Vehicle, pk=self.kwargs['vehicle_id'])
+        user = self.request.user
+        if vehicle.owner_id != user.id and user.role not in ('ADMIN', 'CONTROLLER'):
+            raise PermissionDenied('Seul le propriétaire du véhicule peut déclarer une indisponibilité.')
+        serializer.save(vehicle=vehicle)

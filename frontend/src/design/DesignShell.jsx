@@ -57,7 +57,15 @@ export default function DesignShell({ children, role = 'client' }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef(null);
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, user: authUser } = useAuth();
+  const realUser = authUser ? {
+    ...user,
+    init: `${(authUser.first_name || authUser.username || 'U')[0]}${(authUser.last_name || ' ')[0] || ''}`.toUpperCase(),
+    name: `${authUser.first_name || ''} ${authUser.last_name || ''}`.trim() || authUser.username,
+    short: authUser.first_name ? `${authUser.first_name} ${(authUser.last_name || '')[0] || ''}.` : authUser.username,
+    email: authUser.email || user.email,
+  } : user;
+  const displayUser = realUser;
   const doLogout = () => { logout(); navigate('/login'); };
 
   useEffect(() => {
@@ -125,17 +133,17 @@ export default function DesignShell({ children, role = 'client' }) {
             </button>
             <div className="relative" ref={profileRef}>
               <button onClick={() => setProfileOpen((o) => !o)} className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-surface-container-low hover:bg-surface-container transition-colors">
-                <span className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-label-md text-label-md">{user.init}</span>
+                <span className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-label-md text-label-md">{displayUser.init}</span>
                 <span className="hidden md:block text-left leading-tight">
-                  <span className="block font-label-md text-label-md text-on-surface">{user.short}</span>
+                  <span className="block font-label-md text-label-md text-on-surface">{displayUser.short}</span>
                 </span>
                 <Icon name="expand_more" size={18} className="text-on-surface-variant" />
               </button>
               {profileOpen && (
                 <div className="absolute right-0 top-full mt-2 w-56 bg-surface-container-lowest rounded-xl shadow-elevation-3 border border-outline-variant/30 py-2 z-50">
                   <div className="px-4 py-2 border-b border-outline-variant/30">
-                    <div className="font-body-sm text-body-sm text-on-surface-variant uppercase tracking-wide">{user.space}</div>
-                    <div className="font-label-lg text-label-lg text-on-surface">{user.name}</div>
+                    <div className="font-body-sm text-body-sm text-on-surface-variant uppercase tracking-wide">{displayUser.space}</div>
+                    <div className="font-label-lg text-label-lg text-on-surface">{displayUser.name}</div>
                   </div>
                   <div className="flex items-center justify-between px-4 py-2">
                     <span className="flex items-center gap-2 font-body-md text-body-md text-on-surface-variant"><Icon name="dark_mode" size={18} />Thème</span>

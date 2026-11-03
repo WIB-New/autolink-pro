@@ -1,5 +1,29 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import DesignPage from './DesignPage';
+import useApiData from '../utils/useApiData';
+import api from '../services/api';
+
+const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
+const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const dt = (iso) => (iso ? new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
+const hm = (iso) => (iso ? new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '');
+const KIND_UI = {
+  topup: ['Recharge', 'text-primary', '+'], debit: ['Paiement', 'text-error', '-'], refund: ['Remboursement', 'text-primary', '+'],
+};
+const txRow = (t) => {
+  const [label, cls, sign] = KIND_UI[t.kind] || [t.kind || 'Transaction', 'text-on-surface', ''];
+  const done = t.status === 'completed' || t.status === 'succeeded';
+  return `<tr class="hover:bg-surface-container-low/70 transition-colors">
+<td class="py-3.5 px-4 whitespace-nowrap"><div class="flex flex-col"><span class="font-label-md text-label-md text-on-surface">${dt(t.created_at)}</span><span class="text-on-surface-variant text-[11px]">${hm(t.created_at)}</span></div></td>
+<td class="py-3.5 px-4 whitespace-nowrap"><span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container font-label-sm text-label-sm text-on-surface">${esc(label)}</span></td>
+<td class="py-3.5 px-4 font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap">${esc(t.reference || t.id)}</td>
+<td class="py-3.5 px-4"><span class="font-label-md text-label-md text-on-surface">${esc(t.note || label)}</span></td>
+<td class="py-3.5 px-4 whitespace-nowrap text-on-surface-variant">${esc(t.method || '—')}</td>
+<td class="py-3.5 px-4 text-right whitespace-nowrap font-headline-sm text-headline-sm ${cls}">${sign}${fmt(t.amount)} FCFA</td>
+<td class="py-3.5 px-4 text-center whitespace-nowrap"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${done ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant'} font-label-sm text-label-sm"><span class="w-1.5 h-1.5 rounded-full ${done ? 'bg-primary' : 'bg-on-surface-variant'}"></span>${esc(t.status || '')}</span></td>
+<td class="py-3.5 px-4 text-center whitespace-nowrap"><button class="p-1.5 rounded-lg bg-surface-container-low text-secondary" title="Reçu" type="button"><span class="material-symbols-outlined text-[18px]">receipt</span></button></td>
+</tr>`;
+};
 
 const HTML = `<div class="flex flex-col w-full">
 <div class="flex flex-col gap-8 pb-12 max-w-[1360px] mx-auto w-full">
@@ -717,6 +741,25 @@ const LINKS = {
   'Annuler': 'close-modal',
 };
 
-export default function c5portefeuilleetcaution() {
-  return <DesignPage html={HTML} links={LINKS} modalHtml={MODAL} />;
+export default function C5PortefeuilleEtCaution() {
+  const { data } = useApiData(() => api.get('/payments/wallet/'), []);
+  const html = useMemo(() => {
+    if (!data) return HTML;
+    let h = HTML;
+    const patch = (val, label) => {
+      h = h.replace(new RegExp(`>([\\d\\s\\u00a0]+) <span class="font-label-sm text-label-sm text-on-surface-variant font-normal">FCFA</span></span>\\s*<span class="font-label-md text-label-md text-on-surface-variant mt-1">${label}<`, 'g'),
+        `>${fmt(val)} <span class="font-label-sm text-label-sm text-on-surface-variant font-normal">FCFA</span></span><span class="font-label-md text-label-md text-on-surface-variant mt-1">${label}<`);
+    };
+    patch(data.balance, 'Solde disponible');
+    patch(data.held_deposit, 'Caution bloquée');
+    const txs = data.transactions || [];
+    const reloaded = txs.filter((t) => t.kind === 'topup').reduce((a, t) => a + Number(t.amount || 0), 0);
+    const released = txs.filter((t) => t.kind === 'refund').reduce((a, t) => a + Number(t.amount || 0), 0);
+    patch(reloaded, 'Rechargé');
+    patch(released, 'Caution restituée');
+    const rows = txs.length ? txs.map(txRow).join('')
+      : '<tr><td class="py-10 px-4 text-center text-on-surface-variant" colspan="8">Aucune transaction pour le moment.</td></tr>';
+    return h.replace(/<tbody[^>]*>[\s\S]*?<\/tbody>/, `<tbody>${rows}</tbody>`);
+  }, [data]);
+  return <DesignPage html={html} links={LINKS} modalHtml={MODAL} />;
 }

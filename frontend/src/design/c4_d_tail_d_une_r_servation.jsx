@@ -1,5 +1,13 @@
-import React from 'react';
+import React, { useMemo, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import DesignPage from './DesignPage';
+import useApiData from '../utils/useApiData';
+import { bookingsAPI } from '../services/api';
+
+const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
+const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const dmy = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '');
+const ST = { pending: 'En attente', confirmed: 'Confirmée', active: 'En cours', completed: 'Terminée', cancelled: 'Annulée', disputed: 'Litige' };
 
 const HTML = `<div class="flex flex-col w-full pb-16">
 <!-- Top Navigation Context / Breadcrumb & Header Action Strip -->
@@ -15,7 +23,6 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 </nav>
 <div class="flex items-center gap-2">
 <span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
-<span class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">Synchronisé avec le Hub Akwa</span>
 </div>
 </div>
 <!-- Main Title & Operational Actions Header -->
@@ -35,7 +42,6 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <span class="">•</span>
 <span class="flex items-center gap-1">
 <span class="material-symbols-outlined text-[15px] text-primary">security</span>
-            Contrat certifié CEMAC n° CT-DLA-2025-441
           </span>
 </div>
 </div>
@@ -43,15 +49,12 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <div class="flex flex-wrap items-center gap-2.5">
 <button class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors shadow-sm font-label-lg text-label-lg" type="button">
 <span class="material-symbols-outlined text-[18px] text-secondary">print</span>
-          Imprimer le voucher
         </button>
 <button class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors shadow-sm font-label-lg text-label-lg" type="button">
 <span class="material-symbols-outlined text-[18px] text-secondary">download</span>
-          Télécharger contrat PDF
         </button>
 <a class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-on-primary hover:bg-primary-container transition-all shadow-md font-label-lg text-label-lg" href="https://wa.me/237670421890" rel="noopener noreferrer" target="_blank">
 <span class="material-symbols-outlined text-[18px]">chat</span>
-          Assistance WhatsApp
         </a>
 </div>
 </div>
@@ -248,134 +251,6 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 </div>
 </div>
 </section>
-<!-- Bloc État des lieux contradictoire numérique -->
-<section class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col gap-6">
-<div class="flex items-start justify-between">
-<div class="flex flex-col gap-1">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-primary text-[22px]">photo_camera</span>
-<h2 class="font-headline-sm text-headline-sm text-on-surface">État des Lieux Contradictoire Numérique</h2>
-</div>
-<p class="font-body-sm text-body-sm text-on-surface-variant">
-              Check-in & Check-out infalsifiables horodatés sur registre décentralisé CEMAC.
-            </p>
-</div>
-<span class="px-2.5 py-1 rounded bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-semibold">
-            Départ prévu demain 08:15
-          </span>
-</div>
-<div class="p-4 rounded-xl bg-surface-container-low flex items-start gap-3">
-<span class="material-symbols-outlined text-primary text-[20px] mt-0.5">info</span>
-<div class="flex flex-col gap-1">
-<span class="font-label-md text-label-md text-on-surface">Protocole de protection du locataire</span>
-<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
-              Tout dégât préexistant est enregistré numériquement dans le rapport certifié CEMAC infalsifiable. Lors de la remise des clés, Jean-Pierre et vous validerez ensemble 8 angles photos avant de prendre la route.
-            </p>
-</div>
-</div>
-<!-- 4 Pré-photos du Hub -->
-<div class="flex flex-col gap-3">
-<span class="font-label-md text-label-md text-on-surface font-semibold">Photos de préparation préparées par l'équipe du Hub Akwa (4/8 pré-chargées)</span>
-<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-<div class="group relative rounded-lg overflow-hidden bg-surface-container aspect-video shadow-sm">
-<img class="w-full h-full object-cover" data-alt="High resolution clean front view of a white Toyota RAV4 AWD Hybrid inside a clean professional vehicle preparation garage" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDSMPHct4UcY48FnjrHst5mpbACPEu2_YWAUyyl-6oIBlEwN4sFhgGBASrl0z599k0TVUnjgLJdBkXkJQ9Hl1_BqM44GfBS20hJU5PSCWIMhkBuxJIlhg438ffCUJ-0w5EiL59wfHAJVeQSbIghxAjd5UUy0bmpEaiPe_ApcdyT1YGT0QAhbh_ZIcV5fEU0d1xsZsvKajszSqc4pJN249tJzgCGhdeLyMvyDSf_Q36EBCS6arBX8yNlGQ">
-<div class="absolute inset-0 bg-on-background/30 group-hover:bg-on-background/10 transition-colors"></div>
-<span class="absolute bottom-1.5 left-2 text-[11px] font-label-sm text-on-primary bg-on-background/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
-                1. Face avant
-              </span>
-</div>
-<div class="group relative rounded-lg overflow-hidden bg-surface-container aspect-video shadow-sm">
-<img class="w-full h-full object-cover" data-alt="High resolution side angle photo of passenger side profile of white Toyota RAV4, immaculate paint condition, automotive inspection studio" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAOl5JsY41mGoOMCGFwED8CAnMtgroRCYse9juzmtgbU66uucAr-XWluCnO11663xxjYNK1fZMr2Il-l97IEg9Wuq705x03aRho_fVLtgWwYRYI2552VP5LNpo-dTCiSX1iaghASpngpOqtTF165qTMp6LgPtHDseCSyHWQxtbF7FTGv7whmsHm0c8Iy69WEKiXBgMhLsSsqLnY7viVxz5Jt9dVtsYv9OTUn79l1kxEHLIwWwTdBvVzNA">
-<div class="absolute inset-0 bg-on-background/30 group-hover:bg-on-background/10 transition-colors"></div>
-<span class="absolute bottom-1.5 left-2 text-[11px] font-label-sm text-on-primary bg-on-background/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
-                2. Côté droit
-              </span>
-</div>
-<div class="group relative rounded-lg overflow-hidden bg-surface-container aspect-video shadow-sm">
-<img class="w-full h-full object-cover" data-alt="High resolution side angle photo of driver side profile of white Toyota RAV4, spotless condition, bright inspection daylight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCouHQFdpsiYm16A12f8shtauP0S-UH6R3SW1KvdXiPsUB3qsDmQJNqiMq1tdyyloYWBtlroCfitYrk_ueIfLeTKaTt0BZVXJsMml3iTzqrjXYKBN4yLV-ai6UotimDStkFPHQqet0VjpIl747EUWU7Pm_2LtqcRZ1b9DbSi109QzHvafvSSwbPI7D8-lscDOC1MppU93v-TxWoV20rTaYKqLmh1Vv-32UtgCGIcVqsZkskYNfLl2w6cw">
-<div class="absolute inset-0 bg-on-background/30 group-hover:bg-on-background/10 transition-colors"></div>
-<span class="absolute bottom-1.5 left-2 text-[11px] font-label-sm text-on-primary bg-on-background/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
-                3. Côté gauche
-              </span>
-</div>
-<div class="group relative rounded-lg overflow-hidden bg-surface-container aspect-video shadow-sm">
-<img class="w-full h-full object-cover" data-alt="Dashboard instrument cluster close up of a modern 2022 Toyota RAV4 displaying full fuel gauge 100% and digital odometer showing 42310 km crisp LED numbers" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDOMQ0PgrXkpzigSbu7pZDO5vVwsHmnESRKxDZL6_Z8AZYyX2m3AX9mNOJctZ2hKI6igc_pVdogZ-Tu4Ajg6LqaDJchleOM4reQMJG12PVVV6WBJlnzBStDcCgbzqxm0F07m8uwk6NChE4T60j11StOp6hh6klmidAfB_l9xSQztClBrktTyS2fkckgUpAYa6BCwxMuosjONP9FyU1iN40Q2PQG03yeArjcxnv-5d3eDnYKTDfZuyk4Hw">
-<div class="absolute inset-0 bg-on-background/30 group-hover:bg-on-background/10 transition-colors"></div>
-<span class="absolute bottom-1.5 left-2 text-[11px] font-label-sm text-on-primary bg-on-background/60 backdrop-blur-sm px-1.5 py-0.5 rounded">
-                4. Compteur & Plein
-              </span>
-</div>
-</div>
-</div>
-<div class="flex items-center justify-between pt-2">
-<span class="text-body-sm font-body-sm text-on-surface-variant">Validation contradictoire déverrouillée demain matin</span>
-<button class="inline-flex items-center gap-1.5 text-primary font-label-md text-label-md hover:underline" type="button">
-<span class="">Consulter les photos en haute résolution</span>
-<span class="material-symbols-outlined text-[16px]">open_in_new</span>
-</button>
-</div>
-</section>
-<!-- Bloc Documents & Pièces Contractuelles -->
-<section class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col gap-4">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-primary text-[22px]">folder_shared</span>
-<h2 class="font-headline-sm text-headline-sm text-on-surface">Documents & Conformité Légale</h2>
-</div>
-<span class="px-2.5 py-0.5 rounded-full bg-primary-container text-on-primary-container font-label-sm text-label-sm font-semibold">
-            Dossier 100% Conforme
-          </span>
-</div>
-<div class="divide-y-0 flex flex-col gap-3">
-<!-- Document item 1 -->
-<div class="p-3.5 rounded-lg bg-surface-container-low flex items-center justify-between">
-<div class="flex items-center gap-3">
-<div class="w-9 h-9 rounded-lg bg-surface-container-highest text-on-surface flex items-center justify-center">
-<span class="material-symbols-outlined text-[20px]">badge</span>
-</div>
-<div class="flex flex-col">
-<span class="font-label-md text-label-md text-on-surface">CNI / Passeport biométrique</span>
-<span class="text-body-sm font-body-sm text-on-surface-variant">Emmanuel K. • Validité Août 2028</span>
-</div>
-</div>
-<div class="flex items-center gap-1.5 text-primary font-label-md text-label-md">
-<span class="material-symbols-outlined text-[18px]">verified_user</span>
-              Validé
-            </div>
-</div>
-<!-- Document item 2 -->
-<div class="p-3.5 rounded-lg bg-surface-container-low flex items-center justify-between">
-<div class="flex items-center gap-3">
-<div class="w-9 h-9 rounded-lg bg-surface-container-highest text-on-surface flex items-center justify-center">
-<span class="material-symbols-outlined text-[20px]">drive_eta</span>
-</div>
-<div class="flex flex-col">
-<span class="font-label-md text-label-md text-on-surface">Permis de conduire personnel</span>
-<span class="text-body-sm font-body-sm text-on-surface-variant">Non requis (Option chauffeur certifié incluse)</span>
-</div>
-</div>
-<span class="px-2.5 py-1 rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm">
-              Non applicable
-            </span>
-</div>
-<!-- Document item 3 -->
-<div class="p-3.5 rounded-lg bg-surface-container-low flex items-center justify-between">
-<div class="flex items-center gap-3">
-<div class="w-9 h-9 rounded-lg bg-surface-container-highest text-on-surface flex items-center justify-center">
-<span class="material-symbols-outlined text-[20px]">policy</span>
-</div>
-<div class="flex flex-col">
-<span class="font-label-md text-label-md text-on-surface">Police d'Assurance Tous Risques Activa</span>
-<span class="text-body-sm font-body-sm text-on-surface-variant">N° POL-ACT-88421 • Couverture passagers & tiers</span>
-</div>
-</div>
-<button class="inline-flex items-center gap-1 text-primary font-label-md text-label-md hover:underline" type="button">
-<span class="material-symbols-outlined text-[18px]">download</span>
-              Télécharger
-            </button>
-</div>
-</div>
-</section>
 </div>
 <!-- RIGHT COLUMN (Span 5) -->
 <div class="xl:col-span-5 flex flex-col gap-6">
@@ -431,11 +306,9 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <span class="font-currency-display text-[17px] font-bold text-on-surface">150 000 FCFA</span>
 </div>
 <p class="font-body-sm text-body-sm text-on-surface-variant leading-snug">
-            Fonds garantis sur compte tiers de séquestre (Banque Atlantique / CEMAC). Restitution automatique programmée sous 15 minutes dès clôture du rapport de retour conforme.
           </p>
 <div class="flex items-center gap-2 pt-1 text-[11px] font-label-sm text-primary">
 <span class="material-symbols-outlined text-[15px]">verified</span>
-            Zéro frais de retenue en l'absence de dommage
           </div>
 </div>
 </section>
@@ -467,10 +340,8 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 </div>
 <div class="flex items-center justify-between font-label-md text-label-md text-on-surface">
 <span class="">Déblocage caution :</span>
-<span class="font-bold text-primary">150 000 FCFA (Immédiat)</span>
 </div>
 <span class="text-body-sm font-body-sm text-[11px] text-on-surface-variant mt-1">
-            Les fonds sont crédités sans délai sur votre solde portefeuille AutoLink ou reversés sur votre compte Mobile Money d'origine.
           </span>
 </div>
 <button class="w-full py-2.5 px-4 rounded-lg bg-error-container text-error hover:bg-error hover:text-on-error transition-all font-label-md text-label-md font-semibold flex items-center justify-center gap-2" type="button">
@@ -522,19 +393,110 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <div class="p-4 rounded-xl bg-surface-container-low flex items-center gap-3 text-on-surface-variant">
 <span class="material-symbols-outlined text-primary text-[24px]">verified_user</span>
 <div class="flex flex-col">
-<span class="font-label-sm text-label-sm font-semibold text-on-surface">AutoLink SafeRide Guarantee™</span>
 <span class="text-body-sm font-body-sm text-[11px]">Véhicule de remplacement garanti sous 45 min en cas de panne technique à Douala.</span>
 </div>
 </div>
 </div>
 </div>
 `;
+
 const LINKS = {
   'Mes réservations': '/client/bookings',
   'Ouvrir une médiation / Signaler un litige': '/messages',
   'Assistance WhatsApp': '/messages',
 };
 
-export default function c4dtaildunerservation() {
-  return <DesignPage html={HTML} links={LINKS} />;
+export default function C4DetailReservation() {
+  const { id } = useParams();
+  const { data: b } = useApiData(() => bookingsAPI.detail(id), [id]);
+
+  useEffect(() => {
+    const click = (e) => {
+      const el = e.target.closest('button, a');
+      if (!el) return;
+      const t = el.textContent || '';
+      if (t.includes("Demander l'annulation")) {
+        e.preventDefault();
+        if (window.confirm('Annuler cette réservation ?')) {
+          bookingsAPI.updateStatus(id, 'cancelled').then(() => window.location.reload()).catch(() => {});
+        }
+      } else if (t.trim() === 'star' && el.closest('[data-rate-zone]')) {
+        e.preventDefault();
+        const stars = [...el.closest('[data-rate-zone]').querySelectorAll('button')];
+        window._rating = stars.indexOf(el.closest('button') || el) + 1;
+        if (window._rating < 1) window._rating = 1;
+        stars.slice(0, window._rating).forEach((s) => { s.style.color = '#f59e0b'; });
+      } else if (t.includes('Envoyer mon évaluation') || t.includes('Soumettre')) {
+        e.preventDefault();
+        const ta = document.querySelector('[data-rate-zone] textarea');
+        bookingsAPI.rate(id, window._rating || 5, ta?.value || '')
+          .then(() => window.location.reload())
+          .catch((err) => alert(err?.response?.data?.detail || 'Évaluation impossible.'));
+      } else if (t.includes('médiation') || t.includes('Signaler un litige')) {
+        e.preventDefault();
+        const reason = window.prompt('Décrivez le problème rencontré :');
+        if (reason !== null) {
+          bookingsAPI.dispute(id, reason || 'Problème signalé par le client')
+            .then(() => window.location.reload())
+            .catch((err) => alert(err?.response?.data?.status || err?.response?.data?.detail || "Impossible d'ouvrir un litige sur cette réservation."));
+        }
+      }
+    };
+    document.addEventListener('click', click);
+    return () => document.removeEventListener('click', click);
+  }, [id]);
+
+  const html = useMemo(() => {
+    if (!b) return HTML;
+    const name = b.vehicle_name || 'Véhicule';
+    const days = Math.max(1, Math.round((new Date(b.end_date) - new Date(b.start_date)) / 864e5));
+    let h = HTML
+      .replace(/Toyota RAV4 AWD Hybrid 2022/g, esc(name))
+      .replace(/Toyota RAV4 AWD Hybrid/g, esc(name))
+      .replace('#ALP-2025-DLA-8924', `#${esc(b.reference || `BK-${String(b.id).padStart(4, '0')}`)}`)
+      .replace(/data-alt="[^"]*" src="[^"]+">/, b.vehicle_image ? `src="${b.vehicle_image}">` : (m) => m)
+      .replace('MAT-LT-4921-CM', esc(b.vehicle_plate || ''))
+      .replace('Confirmée • Clés prêtes pour demain', ST[b.status] || b.status)
+      .replace(/55 000 FCFA\/j/g, `${fmt(b.daily_rate)} FCFA/j`)
+      .replace(/55 000 FCFA/g, `${fmt(b.subtotal)} FCFA`)
+      .replace(/73 500 FCFA/g, `${fmt(b.subtotal)} FCFA`)
+      .replace(/150 000 FCFA/g, `${fmt(b.deposit_amount)} FCFA`)
+      .replace('Déblocage caution :', `Déblocage caution : ${fmt(b.deposit_amount)} FCFA`)
+      .replace('Mercredi 29 Octobre 2025 • 08:30', dmy(b.start_date))
+      .replace('Jeudi 30 Octobre 2025 • 08:30', dmy(b.end_date))
+      .replace('Location véhicule (24 heures)', `Location véhicule (${days} jour${days > 1 ? 's' : ''} / ${days * 24}h)`)
+      .replace('Jean-Pierre Mbida', esc(b.driver_name || 'Sans chauffeur'))
+      .replace(/\+237 670 42 18 90|\+237 699 12 34 56/g, esc(b.driver_phone || b.owner_phone || ''))
+      .replace(/Douala - Hub Akwa( \(Face Direction MTN\))?/g, esc(b.pickup_address || b.vehicle_city || ''))
+      .replace(/Hub Akwa ou D.pose A.roport International DLA/g, esc(b.dropoff_address || b.pickup_address || ''))
+      .replace('Hub Central Akwa, Douala (Face Direction MTN)', esc(b.pickup_address || b.vehicle_city || ''))
+      .replace('Douala - Hub Central Akwa', esc(b.dropoff_address || b.vehicle_city || ''));
+    // Bloc Avis : interactif si terminée non notée, note affichée si notée
+    if (b.status === 'completed' && !b.client_rating) {
+      h = h.replace(/<section class="[^"]*"[^>]*>[\s\S]*?Avis & Évaluation[\s\S]*?<\/section>/,
+        `<section class="bg-surface-container-lowest rounded-xl p-5 shadow-sm flex flex-col gap-3" data-rate-zone>
+          <h2 class="font-headline-sm text-headline-sm text-on-surface">Avis & Évaluation</h2>
+          <div class="flex gap-1">${[1, 2, 3, 4, 5].map(() => '<button type="button" class="material-symbols-outlined text-[32px] text-outline hover:text-amber-500 transition-colors">star</button>').join('')}</div>
+          <textarea class="w-full rounded-lg border border-outline-variant p-3 text-sm" rows="3" placeholder="Décrivez votre expérience..."></textarea>
+          <button class="self-start px-4 py-2 rounded-lg bg-primary text-on-primary font-label-md font-semibold">Envoyer mon évaluation</button>
+        </section>`);
+    } else if (b.client_rating) {
+      h = h.replace(/<section class="[^"]*"[^>]*>[\s\S]*?Avis & Évaluation[\s\S]*?<\/section>/,
+        `<section class="bg-surface-container-lowest rounded-xl p-5 shadow-sm flex flex-col gap-2 opacity-90">
+          <h2 class="font-headline-sm text-headline-sm text-on-surface">Avis & Évaluation</h2>
+          <div class="flex gap-0.5 text-amber-500">${'<span class="material-symbols-outlined text-[24px]">star</span>'.repeat(b.client_rating)}${'<span class="material-symbols-outlined text-[24px] text-outline">star</span>'.repeat(5 - b.client_rating)}</div>
+          ${b.client_review ? `<p class="text-body-sm text-on-surface-variant italic">“${esc(b.client_review)}”</p>` : ''}
+          <span class="text-label-sm text-on-surface-variant">Merci pour votre évaluation.</span>
+        </section>`);
+    }
+    if (b.driver_type === 'none') {
+      h = h.replace(/Chauffeur privé certifié \(24h\)[^<]*/g, '')
+           .replace(/<span[^>]*>10 000 FCFA<\/span>/, '')
+           .replace(/Livraison personnalisée \(Hub \/ Aéroport DLA\)[^<]*/g, '')
+           .replace(/<span[^>]*>5 000 FCFA<\/span>/, '');
+    }
+    return h;
+  }, [b]);
+
+  return <DesignPage html={html} links={LINKS} />;
 }

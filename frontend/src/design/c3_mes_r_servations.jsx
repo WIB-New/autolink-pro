@@ -1,5 +1,42 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import DesignPage from './DesignPage';
+import useApiData from '../utils/useApiData';
+import { bookingsAPI } from '../services/api';
+
+const STATUS_UI = {
+  pending: ['En attente', 'bg-surface-container-high text-on-surface-variant'],
+  confirmed: ['Confirmée', 'bg-primary-fixed text-primary'],
+  active: ['En cours', 'bg-blue-100 text-blue-800'],
+  completed: ['Terminée', 'bg-green-100 text-green-600'],
+  cancelled: ['Annulée', 'bg-error-container text-on-error-container'],
+  disputed: ['Litige', 'bg-secondary-fixed text-secondary'],
+};
+const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
+const dt = (iso) => (iso ? new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : '');
+const hm = (iso) => (iso ? new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '');
+const FALLBACK_IMG = 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=200&q=70';
+
+const row = (b) => {
+  const [label, cls] = STATUS_UI[b.status] || [b.status, 'bg-surface-container-high text-on-surface-variant'];
+  const img = b.vehicle_image || FALLBACK_IMG;
+  return `<tr class="booking-row hover:bg-surface-container-low/60 transition-colors" data-status="${b.status}" data-city="${esc(b.pickup_city || b.vehicle_city || '').toLowerCase()}" data-date="${esc(b.start_date)}">
+<td class="px-5 py-4"><div class="flex items-center gap-3 min-w-0">
+<img class="w-12 h-9 rounded-lg object-cover bg-surface-container shrink-0" src="${esc(img)}" alt="${esc(b.vehicle_name)}"/>
+<div class="min-w-0"><span class="block font-label-md text-label-md font-semibold text-on-surface truncate">${esc(b.vehicle_name)}</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">${esc(b.vehicle_tier || '')}${b.driver_type && b.driver_type !== 'none' ? ' · Chauffeur' : ''}</span></div>
+</div></td>
+<td class="px-4 py-4 whitespace-nowrap font-label-sm text-label-sm text-on-surface-variant">#${esc(b.reference || b.id)}</td>
+<td class="px-4 py-4 whitespace-nowrap font-body-sm text-body-sm text-on-surface">${dt(b.start_date)} ${hm(b.start_date)} → ${dt(b.end_date)} ${hm(b.end_date)}</td>
+<td class="px-4 py-4 whitespace-nowrap font-body-sm text-body-sm text-on-surface-variant">${esc(b.pickup_city || b.vehicle_city || '—')}</td>
+<td class="px-4 py-4 whitespace-nowrap font-headline-sm text-headline-sm font-bold text-on-surface">${fmt(b.subtotal)} F</td>
+<td class="px-4 py-4 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-label-sm text-label-sm font-bold ${cls}">${label}</span></td>
+<td class="px-4 py-4"><div class="flex items-center justify-end gap-1">
+<button class="w-8 h-8 rounded-lg text-primary hover:bg-primary-fixed flex items-center justify-center transition-colors booking-open" data-id="${b.id}" title="Voir en détail" type="button"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+${['pending', 'confirmed'].includes(b.status) ? `<button class="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container flex items-center justify-center transition-colors booking-edit" data-id="${b.id}" title="Modifier" type="button"><span class="material-symbols-outlined text-[18px]">edit_calendar</span></button>
+<button class="w-8 h-8 rounded-lg text-error hover:bg-error-container flex items-center justify-center transition-colors booking-cancel" data-id="${b.id}" title="Annuler" type="button"><span class="material-symbols-outlined text-[18px]">cancel</span></button>` : ''}
+</div></td></tr>`;
+};
 
 const HTML = `<div class="flex flex-col w-full pb-16">
 <!-- Page Header -->
@@ -59,22 +96,12 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 </div>
 <!-- Barre unique : onglets statut + recherche + filtres -->
 <div class="bg-surface-container-lowest rounded-2xl p-4 mb-8 shadow-sm flex flex-col xl:flex-row items-center justify-between gap-4">
-<div class="relative bg-surface-container-low rounded-lg px-3 py-1.5 min-w-[140px] shrink-0">
-<label class="block font-label-sm text-[10px] text-on-surface-variant">Statut</label>
-<select class="w-full bg-transparent font-label-sm text-label-sm text-on-surface outline-none cursor-pointer">
-<option selected="">Toutes (7)</option>
-<option>À venir (1)</option>
-<option>En cours (1)</option>
-<option>Terminées (4)</option>
-<option>Annulées (1)</option>
-</select>
-</div>
 <div class="flex flex-col md:flex-row items-center gap-3 w-full xl:w-auto flex-1">
-<div class="relative w-full md:flex-1">
+<div class="relative w-full md:w-[220px] md:shrink-0">
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
 <input class="w-full pl-9 pr-3 py-2 bg-surface-container-low rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-outline outline-none focus:bg-surface-container-lowest transition-colors" placeholder="Véhicule, ville, n° de dossier..." type="text">
 </div>
-<div class="grid grid-cols-3 gap-3 w-full md:w-auto">
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full md:w-auto">
 <div class="relative bg-surface-container-low rounded-lg px-3 py-1.5 min-w-[110px]">
 <label class="block font-label-sm text-[10px] text-on-surface-variant">Période</label>
 <select class="w-full bg-transparent font-label-sm text-label-sm text-on-surface outline-none cursor-pointer">
@@ -97,6 +124,16 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <option selected="">Date la plus proche</option>
 <option>Plus récentes</option>
 <option>Montant décroissant</option>
+</select>
+</div>
+<div class="relative bg-surface-container-low rounded-lg px-3 py-1.5 min-w-[140px]">
+<label class="block font-label-sm text-[10px] text-on-surface-variant">Statut</label>
+<select class="w-full bg-transparent font-label-sm text-label-sm text-on-surface outline-none cursor-pointer">
+<option selected="">Toutes (7)</option>
+<option>À venir (1)</option>
+<option>En cours (1)</option>
+<option>Terminées (4)</option>
+<option>Annulées (1)</option>
 </select>
 </div>
 </div>
@@ -254,6 +291,83 @@ const LINKS = {
   'Contacter': '/messages',
 };
 
-export default function c3mesrservations() {
-  return <DesignPage html={HTML} links={LINKS} />;
+export default function C3MesReservations() {
+  const { data } = useApiData(() => bookingsAPI.list(), []);
+  const html = useMemo(() => {
+    const items = data?.results || (Array.isArray(data) ? data : []) || [];
+    const n = (s) => items.filter((b) => b.status === s).length;
+    const upcoming = items.filter((b) => ['pending', 'confirmed'].includes(b.status)).length;
+    const counts = { total: items.length, upcoming, active: n('active'), completed: n('completed'), cancelled: n('cancelled'), disputed: n('disputed') };
+    const rows = items.length
+      ? items.map(row).join('')
+      : '<tr><td class="px-5 py-12 text-center text-on-surface-variant" colspan="7">Aucune réservation pour le moment.</td></tr>';
+    return HTML
+      .replace(/<tbody[^>]*>[\s\S]*?<\/tbody>/, `<tbody class="font-body-md text-body-md">${rows}</tbody>`)
+      .replace('>7</span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">Réservations totales<', `>${counts.total}</span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">Réservations totales<`)
+      .replace('>1</span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">À venir<', `>${counts.upcoming}</span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">À venir<`)
+      .replace('>1</span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">En cours<', `>${counts.active}</span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">En cours<`)
+      .replace('>4</span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">Terminées<', `>${counts.completed}</span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">Terminées<`)
+      .replace('>Toutes (7)<', `>Toutes (${counts.total})<`)
+      .replace('>À venir (1)<', `>À venir (${counts.upcoming})<`)
+      .replace('>En cours (1)<', `>En cours (${counts.active})<`)
+      .replace('>Terminées (4)<', `>Terminées (${counts.completed})<`)
+      .replace('>Annulées (1)<', `>Annulées (${counts.cancelled})<`)
+      .replace('Affichage de <span class="font-semibold text-on-surface">4 réservations</span> sur un total de 7 dossiers enregistrés.',
+               `Affichage de <span class="font-semibold text-on-surface">${counts.total} réservations</span> sur un total de ${counts.total} dossiers enregistrés.`)
+      .replace(/(<option>Annulées[^<]*<\/option>\n)<\/select>/, `$1<option value="disputed">Litiges (${counts.disputed})</option>\n</select>`)
+      .replace('Année 2025', `Année ${new Date().getFullYear()}`);
+  }, [data]);
+  React.useEffect(() => {
+    const applyFilters = () => {
+      const q = (document.querySelector('input[placeholder*="dossier"]')?.value || '').toLowerCase();
+      const selects = [...document.querySelectorAll('select')];
+      const [period, city, sort, statut] = selects.slice(-4).map((s) => s.value);
+      const now = new Date();
+      const map = { 'À venir': ['pending', 'confirmed'], 'En cours': ['active'], 'Terminées': ['completed'], 'Annulées': ['cancelled'], 'Litiges': ['disputed'] };
+      const rows = [...document.querySelectorAll('.booking-row')];
+      let visible = 0;
+      rows.forEach((r) => {
+        const date = new Date(r.dataset.date || 0);
+        const okQ = !q || r.textContent.toLowerCase().includes(q);
+        const okC = !city || city === 'Toutes' || (r.dataset.city || '').includes(city.toLowerCase());
+        const okS = !statut || statut.startsWith('Toutes') || (map[statut.split(' ')[0] === 'À' ? 'À venir' : statut.split(' ')[0]] || []).includes(r.dataset.status);
+        const okP = !period || period === 'Toutes'
+          || (period === '30 derniers jours' && date >= new Date(now - 30 * 864e5))
+          || (period.startsWith('Année') && date.getFullYear() === Number(period.match(/\d{4}/)?.[1] || now.getFullYear()));
+        const show = okQ && okC && okS && okP;
+        r.style.display = show ? '' : 'none';
+        if (show) visible += 1;
+      });
+      if (sort?.includes('Montant')) {
+        const tb = rows[0]?.parentElement;
+        if (tb) rows.sort((a, b) => {
+          const n = (r) => Number((r.children[4]?.textContent || '0').replace(/\D/g, '')) || 0;
+          return n(b) - n(a);
+        }).forEach((r) => tb.appendChild(r));
+      }
+      const counter = document.querySelector('.font-semibold.text-on-surface');
+      if (counter && counter.textContent.includes('réservation')) counter.textContent = `${visible} réservations`;
+    };
+    const root = document;
+    root.addEventListener('input', applyFilters);
+    root.addEventListener('change', applyFilters);
+    applyFilters();
+    return () => { root.removeEventListener('input', applyFilters); root.removeEventListener('change', applyFilters); };
+  }, [data]);
+
+  React.useEffect(() => {
+    const click = (e) => {
+      const open = e.target.closest('.booking-open');
+      const edit = e.target.closest('.booking-edit');
+      const cancel = e.target.closest('.booking-cancel');
+      if (open) window.location.href = `/client/bookings/${open.dataset.id}`;
+      else if (edit) window.location.href = `/client/bookings/${edit.dataset.id}/modifier`;
+      else if (cancel && window.confirm('Annuler cette réservation ?')) {
+        bookingsAPI.updateStatus(cancel.dataset.id, 'cancelled').then(() => window.location.reload()).catch(() => {});
+      }
+    };
+    document.addEventListener('click', click);
+    return () => document.removeEventListener('click', click);
+  }, []);
+  return <DesignPage html={html} links={LINKS} />;
 }

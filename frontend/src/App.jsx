@@ -81,6 +81,7 @@ import D6 from './design/c6_favoris';
 import D7 from './design/c7_messagerie';
 import D9 from './design/c9_profil_et_param_tres';
 import D10 from './design/c10_aide';
+import D11 from './design/c11_vehicule_detail';
 import Referrals from './design/Referrals';
 import DesignIndex from './design/DesignIndex';
 
@@ -107,7 +108,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/catalogue" element={<Catalog />} />
-      <Route path="/vehicule/:id" element={<VehicleDetail />} />
+      <Route path="/client/vehicule/:id" element={<Guard roles={['CLIENT']}><D11 /></Guard>} />
       <Route path="/comment-ca-marche" element={<HowItWorks />} />
       <Route path="/tarifs" element={<Pricing />} />
       <Route path="/aide" element={<Help />} />

@@ -1,5 +1,35 @@
-import React from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import DesignPage from './DesignPage';
+import useApiData from '../utils/useApiData';
+import { messagingAPI } from '../services/api';
+
+const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const hh = (iso) => (iso ? new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '');
+const ini = (s) => (s || '?').split(' ').map((w) => w[0] || '').join('').slice(0, 2).toUpperCase();
+
+const convItem = (c, activeId) => {
+  const name = c.title || c.name || (c.participants || []).map((p) => p.name || p.username).filter(Boolean).join(', ') || 'Conversation';
+  const last = c.last_message?.content || c.last_message || '';
+  const time = hh(c.last_message?.created_at || c.updated_at || c.created_at);
+  return `<div class="conv-item p-3 rounded-xl ${activeId === c.id ? 'bg-surface-container-high' : 'hover:bg-surface-container-low'} cursor-pointer transition-all" data-conv="${c.id}" data-name="${esc(name)}">
+<div class="flex items-start gap-3">
+<div class="w-11 h-11 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-headline-sm text-[16px] font-bold shadow-sm shrink-0">${ini(name)}</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between mb-0.5">
+<span class="font-headline-sm text-[14px] text-on-surface font-bold truncate">${esc(name)}</span>
+<span class="font-label-sm text-label-sm text-primary font-bold">${time}</span>
+</div>
+${c.booking_label ? `<div class="flex items-center gap-1.5 mb-1"><span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container text-on-secondary-container font-label-sm text-[10px] font-semibold"><span class="material-symbols-outlined text-[11px] text-primary">directions_car</span>${esc(c.booking_label)}</span></div>` : ''}
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">${esc(last)}</p>
+</div>
+${c.unread_count ? `<div class="shrink-0"><span class="w-4 h-4 rounded-full bg-primary text-on-primary text-[10px] font-bold flex items-center justify-center shadow-sm">${c.unread_count}</span></div>` : ''}
+</div>
+</div>`;
+};
+
+const msgBubble = (m) => (m.is_mine
+  ? `<div class="flex items-end justify-end gap-2.5 w-full"><div class="p-3.5 rounded-2xl rounded-br-sm bg-primary text-on-primary text-body-md font-body-md shadow-sm max-w-md">${esc(m.content)}<div class="text-[10px] opacity-70 mt-1 text-right">${hh(m.created_at)}</div></div></div>`
+  : `<div class="flex items-end gap-2.5 w-full"><div class="p-3.5 rounded-2xl rounded-bl-sm bg-surface-container-low text-on-surface text-body-md font-body-md max-w-md">${m.sender_name ? `<div class="font-label-sm font-semibold text-primary mb-0.5">${esc(m.sender_name)}</div>` : ''}${esc(m.content)}<div class="text-[10px] text-outline mt-1">${hh(m.created_at)}</div></div></div>`);
 
 const HTML = `<div class="flex flex-col w-full lg:h-[calc(100vh/var(--vz,1)-8rem)]">
 <div class="flex items-center gap-space-sm pb-space-sm mb-space-sm">
@@ -340,8 +370,62 @@ const LINKS = {
   'Voir le dossier': '/client/bookings/1',
 };
 
-export default function c7messagerie({ role = 'client' }) {
-  const html = role === 'driver' ? HTML.replace('Voir le dossier', 'Voir la course') : HTML;
+export default function C7Messagerie({ role = 'client' }) {
+  const [active, setActive] = useState(null);
+  const [activeName, setActiveName] = useState('');
+  const [msgs, setMsgs] = useState([]);
+  const { data } = useApiData(() => messagingAPI.conversations(), []);
+  const convs = useMemo(() => data?.results || (Array.isArray(data) ? data : []) || [], [data]);
+  const unread = convs.reduce((a, c) => a + (c.unread_count || 0), 0);
+
+  useEffect(() => {
+    if (!active && convs.length) { setActive(convs[0].id); }
+  }, [convs, active]);
+
+  useEffect(() => {
+    if (!active) return;
+    messagingAPI.messages(active)
+      .then(({ data: d }) => setMsgs(d?.results || d || []))
+      .catch(() => setMsgs([]));
+  }, [active]);
+
+  useEffect(() => {
+    const click = (e) => {
+      const item = e.target.closest('.conv-item');
+      if (item) { setActive(Number(item.dataset.conv)); setActiveName(item.dataset.name); return; }
+      const sendBtn = e.target.closest('button');
+      if (sendBtn && sendBtn.querySelector('.material-symbols-outlined')?.textContent.trim() === 'send') {
+        const ta = document.querySelector('textarea');
+        const content = (ta?.value || '').trim();
+        if (content && active) {
+          messagingAPI.send(active, { content }).then(() => {
+            ta.value = '';
+            return messagingAPI.messages(active);
+          }).then(({ data: d }) => setMsgs(d?.results || d || [])).catch(() => {});
+        }
+      }
+    };
+    document.addEventListener('click', click);
+    return () => document.removeEventListener('click', click);
+  }, [active]);
+
+  const html = useMemo(() => {
+    const base = role === 'driver' ? HTML.replace('Voir le dossier', 'Voir la course') : HTML;
+    const items = convs.length
+      ? convs.map((c) => convItem(c, active)).join('')
+      : '<div class="p-6 text-center text-on-surface-variant font-body-sm">Aucune conversation.</div>';
+    const bubbles = msgs.length
+      ? msgs.map(msgBubble).join('')
+      : '<div class="text-center text-on-surface-variant font-body-sm py-8">Sélectionnez une conversation.</div>';
+    return base
+      .replace(/<!-- Conversations Scrollable Area -->[\s\S]*?<!-- Right Column/,
+        `<!-- Conversations Scrollable Area -->\n<div class="flex-1 overflow-y-auto px-2 space-y-1 max-h-72 lg:max-h-none" id="conv-list">${items}</div>\n</div>\n<!-- Right Column`)
+      .replace(/<div class="flex-1 overflow-y-auto p-space-md space-y-4">[\s\S]*?(?=<!-- Message Composer -->)/,
+        `<div class="flex-1 overflow-y-auto p-space-md space-y-4" id="msg-thread">${bubbles}</div>\n`)
+      .replace('>1 non lu<', `>${unread} non lu${unread > 1 ? 's' : ''}<`)
+      .replace('Jean-Pierre Mbida', activeName || 'Conversation');
+  }, [convs, msgs, active, activeName, unread, role]);
+
   const links = role === 'driver' ? { ...LINKS, 'Voir la course': '/driver/dashboard' } : LINKS;
   return <DesignPage html={html} links={links} role={role} />;
 }

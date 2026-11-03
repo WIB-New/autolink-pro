@@ -1,15 +1,57 @@
-import React from 'react';
+import React, { useMemo, useEffect } from 'react';
 import DesignPage from './DesignPage';
+import useApiData from '../utils/useApiData';
+import { vehiclesAPI } from '../services/api';
+
+const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
+const FALLBACK_IMG = 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800&q=70';
+const TIER = { premium: 'Gamme Premium', standard: 'Gamme Standard', basic: 'Gamme Basic', luxury: 'Gamme Luxe' };
+
+const card = (v) => {
+  const img = v.photos?.[0]?.image || v.image || FALLBACK_IMG;
+  return `<article class="fav-card group flex flex-col rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden" data-card-id="${v.id}" data-city="${esc(v.city || '')}" data-gamme="${esc(v.tier || '')}">
+<div class="relative aspect-[16/10] w-full overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="${esc(img)}" alt="${esc(v.brand)} ${esc(v.model)}"/>
+<div class="absolute inset-0 bg-gradient-to-t from-inverse-surface/80 via-transparent to-black/20"></div>
+<div class="absolute top-3 left-3"><span class="px-2.5 py-1 rounded-full bg-surface-container-low/95 backdrop-blur-md text-primary font-label-sm text-label-sm font-bold shadow-sm">${TIER[v.tier] || esc(v.tier_label || 'Standard')}</span></div>
+<button aria-label="Retirer des favoris" class="remove-fav-btn absolute top-3 right-3 w-10 h-10 rounded-full bg-surface-container-lowest/95 backdrop-blur-md text-error flex items-center justify-center shadow-md hover:bg-error-container hover:text-on-error-container transition-all" data-remove-id="${v.id}" type="button">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+<div class="absolute bottom-3 right-3"><div class="px-3 py-1.5 rounded-xl bg-inverse-surface/90 backdrop-blur-md text-inverse-on-surface flex items-baseline gap-1 shadow-md"><span class="font-currency-display text-currency-display text-primary-fixed font-black">${fmt(v.daily_rate || v.price_min)}</span><span class="font-label-sm text-label-sm font-semibold opacity-90">FCFA / j</span></div></div>
+<div class="absolute bottom-3 left-3"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-lowest/95 backdrop-blur-md font-label-sm text-label-sm font-semibold text-on-surface shadow-sm"><span class="w-2 h-2 rounded-full bg-primary"></span><span>${esc(v.city || '')}</span></span></div>
+</div>
+<div class="p-space-lg flex-1 flex flex-col justify-between space-y-space-md">
+<div class="space-y-space-xs">
+<div class="flex items-start justify-between gap-2">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold tracking-tight">${esc(v.brand)} ${esc(v.model)} ${v.year || ''}</h2>
+<div class="flex items-center gap-2 mt-1">
+<div class="flex items-center text-tertiary"><span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span><span class="font-label-md text-label-md font-bold ml-1 text-on-surface">${v.rating || '—'}</span></div>
+<span class="text-outline text-label-sm font-label-sm">·</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant font-medium">${v.rating_count || 0} avis</span>
+</div>
+</div>
+${v.driver_available ? '<span class="px-2 py-1 rounded-md bg-primary-container/15 text-primary font-label-sm text-label-sm font-semibold shrink-0">Option Chauffeur</span>' : ''}
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2">
+<div class="flex items-center gap-1.5 p-2 rounded-lg bg-surface-container-lowest text-on-surface-variant text-label-sm font-label-sm"><span class="material-symbols-outlined text-[18px] text-secondary">local_gas_station</span><span class="truncate">${esc(v.fuel || '')}</span></div>
+<div class="flex items-center gap-1.5 p-2 rounded-lg bg-surface-container-lowest text-on-surface-variant text-label-sm font-label-sm"><span class="material-symbols-outlined text-[18px] text-secondary">category</span><span class="truncate">${esc(v.category || '')}</span></div>
+<div class="flex items-center gap-1.5 p-2 rounded-lg bg-surface-container-lowest text-on-surface-variant text-label-sm font-label-sm"><span class="material-symbols-outlined text-[18px] text-secondary">location_on</span><span class="truncate">${esc(v.city || '')}</span></div>
+</div>
+</div>
+<div class="pt-2 flex items-center gap-space-sm">
+<button class="flex-1 h-12 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] fav-book" data-id="${v.id}" type="button"><span class="material-symbols-outlined text-[20px]">calendar_today</span><span>Réserver maintenant</span></button>
+<button class="h-12 px-3.5 rounded-xl bg-surface-container-high hover:bg-surface-variant text-on-surface transition-colors flex items-center justify-center fav-detail" data-id="${v.id}" title="Voir la fiche" type="button"><span class="material-symbols-outlined text-[20px]">visibility</span></button>
+</div>
+</div>
+</article>`;
+};
 
 const HTML = `<div class="flex flex-col w-full">
 <div class="w-full max-w-[1280px] mx-auto space-y-space-lg">
 <div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
 <div class="space-y-space-xs">
-<nav class="flex items-center gap-space-xs text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
-<span>Espace Client</span>
-<span class="material-symbols-outlined text-[14px]">chevron_right</span>
-<span class="text-primary font-semibold">Favoris</span>
-</nav>
 <div class="flex items-center gap-3">
 <h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight font-extrabold">
             Mes Véhicules Favoris
@@ -22,52 +64,28 @@ const HTML = `<div class="flex flex-col w-full">
           Retrouvez vos véhicules préférés à Douala et Yaoundé et réservez-les en un clic selon leurs disponibilités en temps réel.
         </p>
 </div>
-<div class="flex items-center gap-space-sm self-start md:self-auto">
-<button class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-secondary-container text-on-secondary-container hover:bg-secondary-fixed transition-colors font-label-lg text-label-lg shadow-sm" id="compare-btn">
-<span class="material-symbols-outlined text-[18px]">compare_arrows</span>
-<span>Comparer la sélection (<span id="compare-count">2</span>)</span>
-</button>
 </div>
+<div class="p-4 rounded-2xl bg-surface-container-lowest shadow-sm flex flex-col gap-4">
+<div class="flex flex-wrap gap-4 items-center">
+<div class="relative flex-1 min-w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+<input class="w-full pl-9 pr-3 py-2.5 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface placeholder:text-outline outline-none focus:bg-surface-container-lowest transition-colors" placeholder="Rechercher un véhicule, une marque…" type="text">
 </div>
-<div class="p-4 rounded-2xl bg-surface-container-low shadow-sm flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
-<div class="flex flex-wrap items-center gap-2">
-<div class="flex items-center p-1 rounded-xl bg-surface-container-lowest shadow-sm gap-1">
-<button class="filter-city-btn px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md transition-all" data-city="all">
-            Toutes les villes
-          </button>
-<button class="filter-city-btn px-3 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" data-city="douala">
-            Douala (3)
-          </button>
-<button class="filter-city-btn px-3 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" data-city="yaounde">
-            Yaoundé (1)
-          </button>
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Prix max :</span>
+<input class="w-32 accent-primary" max="280000" min="15000" step="5000" type="range" value="280000">
+<span class="font-label-lg text-label-lg text-primary whitespace-nowrap">280 000 F</span>
 </div>
-<div class="hidden sm:block w-px h-6 bg-outline-variant/30 mx-1"></div>
-<div class="flex items-center p-1 rounded-xl bg-surface-container-lowest shadow-sm gap-1 overflow-x-auto">
-<button class="filter-gamme-btn px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md transition-all" data-gamme="all">
-            Toutes gammes
-          </button>
-<button class="filter-gamme-btn px-3 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all whitespace-nowrap" data-gamme="suv">
-            SUV & 4x4
-          </button>
-<button class="filter-gamme-btn px-3 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" data-gamme="berlines">
-            Berlines
-          </button>
-<button class="filter-gamme-btn px-3 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" data-gamme="citadines">
-            Citadines
-          </button>
+<label class="flex items-center gap-2 font-label-md text-label-md cursor-pointer"><input checked="" class="w-4 h-4 accent-primary" type="checkbox">Disponibles uniquement</label>
 </div>
-</div>
-<div class="flex items-center gap-3 justify-between xl:justify-end">
-<div class="relative flex items-center bg-surface-container-lowest rounded-xl shadow-sm px-3 py-2 cursor-pointer hover:bg-surface-container-low transition-colors">
-<span class="material-symbols-outlined text-[18px] text-primary mr-2">tune</span>
-<span class="font-label-md text-label-md text-on-surface font-semibold mr-3">Tri : Disponibilité immédiate</span>
-<span class="material-symbols-outlined text-[16px] text-outline">expand_more</span>
-</div>
-<div class="hidden md:flex items-center gap-1.5 text-outline text-label-sm font-label-sm bg-surface-container-lowest px-3 py-2 rounded-xl shadow-sm">
-<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-<span>Actualisé à l'instant</span>
-</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+<label class="flex flex-col gap-1"><span class="font-label-sm text-label-sm text-on-surface-variant">Formule</span><select class="px-3 py-2 rounded-lg bg-surface-container-low font-body-sm text-body-sm text-on-surface outline-none cursor-pointer"><option selected="">Toutes les formules</option><option>3 heures</option><option>8 heures</option><option>24 heures</option><option>Interurbain</option><option>Longue durée</option></select></label>
+<label class="flex flex-col gap-1"><span class="font-label-sm text-label-sm text-on-surface-variant">Gamme</span><select class="px-3 py-2 rounded-lg bg-surface-container-low font-body-sm text-body-sm text-on-surface outline-none cursor-pointer"><option selected="">Toutes les gammes</option><option>Économique</option><option>Intermédiaire</option><option>Premium</option><option>Luxe</option><option>Super Luxe</option></select></label>
+<label class="flex flex-col gap-1"><span class="font-label-sm text-label-sm text-on-surface-variant">Disponible à partir du</span><input class="px-3 py-2 rounded-lg bg-surface-container-low font-body-sm text-body-sm text-on-surface outline-none" type="date"/></label>
+<label class="flex flex-col gap-1"><span class="font-label-sm text-label-sm text-on-surface-variant">Jusqu'au</span><input class="px-3 py-2 rounded-lg bg-surface-container-low font-body-sm text-body-sm text-on-surface outline-none" type="date"/></label>
+<label class="flex flex-col gap-1"><span class="font-label-sm text-label-sm text-on-surface-variant">Marque</span><select class="px-3 py-2 rounded-lg bg-surface-container-low font-body-sm text-body-sm text-on-surface outline-none cursor-pointer"><option selected="">Toutes les marques</option><option>Toyota</option><option>Hyundai</option><option>Peugeot</option><option>Kia</option></select></label>
+<label class="flex flex-col gap-1"><span class="font-label-sm text-label-sm text-on-surface-variant">Modèle</span><select class="px-3 py-2 rounded-lg bg-surface-container-low font-body-sm text-body-sm text-on-surface outline-none cursor-pointer"><option selected="">Tous les modèles</option><option>RAV4</option><option>Tucson</option><option>Corolla</option><option>Picanto</option></select></label>
+<label class="flex flex-col gap-1"><span class="font-label-sm text-label-sm text-on-surface-variant">Carburant</span><select class="px-3 py-2 rounded-lg bg-surface-container-low font-body-sm text-body-sm text-on-surface outline-none cursor-pointer"><option selected="">Tous les carburants</option><option>Essence</option><option>Diesel</option><option>Hybride</option></select></label>
 </div>
 </div>
 <div class="grid grid-cols-1 md:grid-cols-2 gap-space-lg" id="favorites-grid">
@@ -79,10 +97,7 @@ const HTML = `<div class="flex flex-col w-full">
 <span class="px-2.5 py-1 rounded-full bg-surface-container-low/95 backdrop-blur-md text-primary font-label-sm text-label-sm font-bold shadow-sm">
               Gamme Premium
             </span>
-<label class="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md cursor-pointer text-on-surface font-label-sm text-label-sm shadow-sm select-none">
-<input checked="" class="compare-checkbox accent-primary rounded w-3.5 h-3.5" data-id="1" type="checkbox"/>
-<span>Comparer</span>
-</label>
+
 </div>
 <button aria-label="Retirer des favoris" class="remove-fav-btn absolute top-3 right-3 w-10 h-10 rounded-full bg-surface-container-lowest/95 backdrop-blur-md text-error flex items-center justify-center shadow-md hover:bg-error-container hover:text-on-error-container transition-all" data-remove-id="1">
 <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
@@ -166,10 +181,7 @@ const HTML = `<div class="flex flex-col w-full">
 <span class="px-2.5 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm font-bold shadow-sm">
               Gamme Gold VIP
             </span>
-<label class="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md cursor-pointer text-on-surface font-label-sm text-label-sm shadow-sm select-none">
-<input checked="" class="compare-checkbox accent-primary rounded w-3.5 h-3.5" data-id="2" type="checkbox"/>
-<span>Comparer</span>
-</label>
+
 </div>
 <button aria-label="Retirer des favoris" class="remove-fav-btn absolute top-3 right-3 w-10 h-10 rounded-full bg-surface-container-lowest/95 backdrop-blur-md text-error flex items-center justify-center shadow-md hover:bg-error-container hover:text-on-error-container transition-all" data-remove-id="2">
 <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
@@ -253,10 +265,7 @@ const HTML = `<div class="flex flex-col w-full">
 <span class="px-2.5 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm font-bold shadow-sm">
               Gamme Premium
             </span>
-<label class="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md cursor-pointer text-on-surface font-label-sm text-label-sm shadow-sm select-none">
-<input class="compare-checkbox accent-primary rounded w-3.5 h-3.5" data-id="3" type="checkbox"/>
-<span>Comparer</span>
-</label>
+
 </div>
 <button aria-label="Retirer des favoris" class="remove-fav-btn absolute top-3 right-3 w-10 h-10 rounded-full bg-surface-container-lowest/95 backdrop-blur-md text-error flex items-center justify-center shadow-md hover:bg-error-container hover:text-on-error-container transition-all" data-remove-id="3">
 <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
@@ -341,10 +350,7 @@ const HTML = `<div class="flex flex-col w-full">
 <span class="px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface font-label-sm text-label-sm font-bold shadow-sm">
               Gamme Standard
             </span>
-<label class="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md cursor-pointer text-on-surface font-label-sm text-label-sm shadow-sm select-none">
-<input class="compare-checkbox accent-primary rounded w-3.5 h-3.5" data-id="4" type="checkbox"/>
-<span>Comparer</span>
-</label>
+
 </div>
 <button aria-label="Retirer des favoris" class="remove-fav-btn absolute top-3 right-3 w-10 h-10 rounded-full bg-surface-container-lowest/95 backdrop-blur-md text-error flex items-center justify-center shadow-md hover:bg-error-container hover:text-on-error-container transition-all" data-remove-id="4">
 <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
@@ -543,12 +549,37 @@ const HTML = `<div class="flex flex-col w-full">
 `;
 const LINKS = {
   'Réserver maintenant': '/client/booking/recap',
-  'Voir fiche': '/client/booking/recap',
+  'Voir fiche': '/client/vehicule/2',
   'Explorer tout le catalogue': '/client/search',
   'Comparer la séléction': '/client/search',
   "M'alerter lors du retour": '/client/bookings',
 };
 
-export default function c6favoris() {
-  return <DesignPage html={HTML} links={LINKS} />;
+export default function C6Favoris() {
+  const { data } = useApiData(() => vehiclesAPI.favorites(), []);
+  const html = useMemo(() => {
+    if (!data) return HTML;
+    const items = Array.isArray(data) ? data : data.results || [];
+    const cards = items.length
+      ? items.map(card).join('')
+      : '<div class="col-span-full text-center py-16 text-on-surface-variant">Aucun favori pour le moment.<br/><a href="/client/search" class="text-primary font-semibold underline">Explorer le catalogue</a></div>';
+    return HTML.replace(/id="favorites-grid"[^>]*>[\s\S]*?(?=<div class="rounded-2xl bg-surface-container-low p-space-md|<script)/,
+      `id="favorites-grid">${cards}`);
+  }, [data]);
+  useEffect(() => {
+    const click = (e) => {
+      const rm = e.target.closest('.remove-fav-btn');
+      const book = e.target.closest('.fav-book');
+      const detail = e.target.closest('.fav-detail');
+      if (rm) {
+        const id = rm.dataset.removeId;
+        vehiclesAPI.removeFavorite(id).catch(() => {});
+        rm.closest('.fav-card')?.remove();
+      } else if (book) window.location.href = `/client/booking/recap?vehicle=${book.dataset.id}`;
+      else if (detail) window.location.href = `/client/vehicule/${detail.dataset.id}`;
+    };
+    document.addEventListener('click', click);
+    return () => document.removeEventListener('click', click);
+  }, []);
+  return <DesignPage html={html} links={LINKS} />;
 }

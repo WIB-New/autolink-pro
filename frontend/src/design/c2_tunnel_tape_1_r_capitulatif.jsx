@@ -1,14 +1,19 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import DesignPage from './DesignPage';
+import useApiData from '../utils/useApiData';
+import { vehiclesAPI } from '../services/api';
+
+const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
+const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const iso = (d) => d.toISOString().slice(0, 10);
+const dmy = (isoStr) => new Date(isoStr).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
 const HTML = `<div class="flex flex-col w-full">
 <!-- Stepper Bar Sub-Header -->
 <div class="w-full bg-surface-container-low/80 py-space-sm px-margin">
 <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-space-sm">
-<div class="flex items-center gap-space-xs text-on-surface-variant font-label-md text-label-md">
-<span class="material-symbols-outlined text-[16px] text-primary">shield</span>
-<span>Procédure de réservation vérifiée • Agrément MINTRANS N° 0482/DTT/LC</span>
-</div>
+<!-- Interactive Visual Stepper --></div>
 <!-- Interactive Visual Stepper -->
 <nav aria-label="Progression du tunnel de réservation" class="flex items-center gap-space-xs sm:gap-space-sm">
 <!-- Step 1: Active -->
@@ -38,19 +43,12 @@ const HTML = `<div class="flex flex-col w-full">
 <!-- Title Section with Asymmetric Metadata Pill -->
 <div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md mb-space-lg">
 <div>
-<div class="flex items-center gap-space-xs font-label-md text-label-md text-primary font-bold uppercase tracking-wider mb-space-xs">
-<span>Tunnel de sécurisation</span>
-<span>•</span>
-<span>Étape 1 sur 3</span>
-</div>
 <h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">
           Finalisez votre réservation
         </h1>
 </div>
-<div class="flex items-center gap-space-sm bg-surface-container-low px-space-md py-space-xs rounded-full">
-<span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
-<span class="font-label-md text-label-md text-on-surface-variant font-medium">Disponibilité garantie 15:00 min</span>
 </div>
+<!-- 2-Column</div>
 </div>
 <!-- 2-Column Responsive Split Grid -->
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
@@ -60,15 +58,6 @@ const HTML = `<div class="flex flex-col w-full">
 <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
 <div class="flex flex-col sm:flex-row gap-space-md items-start sm:items-center justify-between">
 <div class="flex flex-col gap-space-xs">
-<div class="flex items-center gap-space-xs">
-<span class="bg-secondary-container text-on-secondary-container px-space-sm py-0.5 rounded-full font-label-sm text-label-sm font-semibold tracking-wide">
-                  Gamme Premium
-                </span>
-<span class="bg-surface-container text-on-surface-variant px-space-sm py-0.5 rounded-full font-label-sm text-label-sm flex items-center gap-1">
-<span class="material-symbols-outlined text-[14px] text-tertiary">star</span>
-                  4.95 (38 avis vérifiés)
-                </span>
-</div>
 <h2 class="font-headline-lg text-headline-lg text-on-surface">Toyota RAV4 Limited AWD 2022</h2>
 </div>
 <span class="font-label-md text-label-md px-space-sm py-1 rounded bg-surface-container-high text-on-surface-variant font-mono">
@@ -125,7 +114,7 @@ const HTML = `<div class="flex flex-col w-full">
 <div class="flex flex-col">
 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">Lieu de prise en charge</span>
 <span class="font-headline-sm text-headline-sm text-on-surface">Douala - Hub Central Akwa (ou livraison Aéroport DLA)</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Remise clés en main par l'agent AutoLink Pro au parking sécurisé</span>
+
 </div>
 </div>
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
@@ -297,29 +286,6 @@ const HTML = `<div class="flex flex-col w-full">
           </p>
 <div class="relative w-full">
 <textarea class="w-full rounded-lg bg-surface-container-low text-on-surface p-space-md font-body-md text-body-md focus:outline-none focus:bg-surface-container-lowest transition-all resize-y placeholder:text-outline" id="bookingNotes" placeholder="Ex: Arrivée vol Camair-Co QC204 à 08:15 avec 2 valises, merci de prévoir un panneau d'accueil au nom de K. Emmanuel..." rows="3"></textarea>
-<div class="absolute bottom-space-xs right-space-sm font-label-sm text-label-sm text-on-surface-variant">
-              Transmission chiffrée
-            </div>
-</div>
-</div>
-<!-- Cancellation & Deposit Release Guarantee Cards -->
-<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
-<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex items-start gap-space-sm">
-<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-primary mt-0.5 flex-shrink-0">
-<span class="material-symbols-outlined text-[18px]">event_repeat</span>
-</div>
-<div class="flex flex-col">
-<span class="font-label-lg text-label-lg font-bold text-on-surface">Annulation 100% sans frais</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Jusqu'à 48h avant la remise des clés (soit avant Lundi 27 Oct à 08:30).</span>
-</div>
-</div>
-<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex items-start gap-space-sm">
-<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-primary mt-0.5 flex-shrink-0">
-<span class="material-symbols-outlined text-[18px]">timer</span>
-</div>
-<div class="flex flex-col">
-<span class="font-label-lg text-label-lg font-bold text-on-surface">Déblocage éclair sous 15 min</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Restitution de la caution sur votre compte dès l'état des lieux contradictoire.</span>
 </div>
 </div>
 </div>
@@ -329,10 +295,8 @@ const HTML = `<div class="flex flex-col w-full">
 <span>Continuer vers le paiement (Étape 2)</span>
 <span class="material-symbols-outlined text-[24px]">arrow_forward</span>
 </button>
-<div class="flex items-center justify-center gap-space-sm mt-space-sm text-on-surface-variant font-label-sm text-label-sm">
-<span class="material-symbols-outlined text-[14px] text-primary">lock</span>
-<span>Sécurisation cryptographique TLS 1.3 • Aucun débit immédiat avant confirmation</span>
 </div>
+</section></div>
 </div>
 </section>
 <!-- RIGHT COLUMN: Sticky Financial Summary & Wallet Readiness (5 cols) -->
@@ -391,9 +355,7 @@ const HTML = `<div class="flex flex-col w-full">
 <span class="font-headline-sm text-headline-sm text-primary font-bold">FCFA</span>
 </div>
 </div>
-<span class="font-label-sm text-label-sm text-on-surface-variant">
-              TTC • Reçu et quittance téléchargeables immédiatement
-            </span>
+
 </div>
 <!-- Escrow / Caution Section -->
 <div class="p-space-md rounded-xl bg-surface-container-low flex flex-col gap-space-xs">
@@ -404,9 +366,8 @@ const HTML = `<div class="flex flex-col w-full">
 </div>
 <span class="font-currency-display text-currency-display text-on-surface">150 000 FCFA</span>
 </div>
-<div class="p-space-xs rounded bg-surface-container-lowest text-on-surface-variant font-body-sm text-body-sm">
-<strong class="text-on-surface">Non débitée immédiatement.</strong> La caution fait l'objet d'un séquestre temporaire sécurisé (pré-autorisation) et sera automatiquement restituée sous 15 minutes après le retour conforme du véhicule.
-            </div>
+</div>
+<!-- Wallet Balance Status Callout --></div>
 </div>
 <!-- Wallet Balance Status Callout -->
 <div class="p-space-md rounded-xl bg-surface-container flex flex-col gap-space-sm">
@@ -417,40 +378,7 @@ const HTML = `<div class="flex flex-col w-full">
 </div>
 <span class="font-label-lg text-label-lg font-bold text-on-surface">Solde : 45 000 FCFA</span>
 </div>
-<!-- Balance comparison warning -->
-<div class="flex items-start gap-space-xs text-on-surface-variant font-body-sm text-body-sm bg-surface-container-lowest/80 p-space-xs rounded">
-<span class="material-symbols-outlined text-[16px] text-secondary mt-0.5">info</span>
-<span>
-                Votre solde actuel (45 000 FCFA) sera complété par MTN MoMo, Orange Money ou Carte Bancaire lors de l'Étape 2 (reste : <strong>28 500 FCFA</strong>).
-              </span>
 </div>
-</div>
-<!-- Security and Regulator Badges -->
-<div class="flex items-center justify-between pt-space-xs text-on-surface-variant font-label-sm text-label-sm">
-<div class="flex items-center gap-1">
-<span class="material-symbols-outlined text-[16px] text-primary">security</span>
-<span>Chiffrement SSL 256-bit</span>
-</div>
-<div class="flex items-center gap-1">
-<span class="material-symbols-outlined text-[16px] text-primary">verified</span>
-<span>Agrément CEMAC COBAC</span>
-</div>
-</div>
-</div>
-<!-- Immediate Contact & Agency Dispatcher Card -->
-<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex items-center justify-between">
-<div class="flex items-center gap-space-sm">
-<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary">
-<span class="material-symbols-outlined text-[20px]">support_agent</span>
-</div>
-<div class="flex flex-col">
-<span class="font-label-md text-label-md font-bold text-on-surface">Coordinateur Hub Akwa</span>
-<span class="font-label-sm text-label-sm text-on-surface-variant">Jean-Pierre M. • En ligne (Douala)</span>
-</div>
-</div>
-<button class="px-space-md py-space-xs rounded-lg bg-surface-container-low hover:bg-surface-container-high text-primary font-label-md text-label-md font-bold transition-colors" type="button">
-            Appel direct
-          </button>
 </div>
 </aside>
 </div>
@@ -504,6 +432,39 @@ const LINKS = {
   'Assistance 24/7': '/help',
 };
 
-export default function c2tunneltape1rcapitulatif() {
-  return <DesignPage html={HTML} links={LINKS} />;
+export default function C2TunnelEtape1Recapitulatif() {
+  const [params] = useSearchParams();
+  const vid = params.get('vehicle') || '';
+  const start = params.get('start') || iso(new Date(Date.now() + 864e5));
+  const end = params.get('end') || iso(new Date(Date.now() + 2 * 864e5));
+  const days = Math.max(1, Math.round((new Date(end) - new Date(start)) / 864e5));
+  const { data: v } = useApiData(() => (vid ? vehiclesAPI.detail(vid) : Promise.resolve({ data: null })), [vid]);
+
+  const links = useMemo(() => ({
+    ...LINKS,
+    'Continuer vers le paiement': `/client/booking/paiement?vehicle=${vid}&start=${start}&end=${end}`,
+  }), [vid, start, end]);
+
+  const html = useMemo(() => {
+    if (!v) return HTML;
+    const name = `${v.brand || ''} ${v.model || ''} ${v.year || ''}`.trim();
+    const rate = Number(v.daily_rate || v.computed_rate || 0);
+    const deposit = Number(v.deposit_amount || 0);
+    return HTML
+      .replace(/Toyota RAV4 Limited AWD 2022/g, esc(name))
+      .replace(/Toyota RAV4 Limited/g, esc(name))
+      .replace('MAT-LT-4921-CM', esc(v.plate || ''))
+      .replace('Douala - Hub Central Akwa (ou livraison Aéroport DLA)', esc(v.city ? `${v.city} - Prise en charge à convenir` : 'Lieu de prise en charge à convenir'))
+      .replace('Mer. 29 Oct 2025', dmy(start))
+      .replace('Jeu. 30 Oct 2025', dmy(end))
+      .replace('(24h totales)', `(${days * 24}h totales)`)
+      .replace(/24h de r.servation/g, `${days * 24}h de réservation`)
+      .replace(/Location v.hicule \(1 jour \/ 24h\)/g, `Location véhicule (${days} jour${days > 1 ? 's' : ''} / ${days * 24}h)`)
+      .replace('55 000 FCFA', `${fmt(rate * days)} FCFA`)
+      .replace('73 500', `${fmt(rate * days + 18500)}`)
+      .replace('150 000 FCFA', `${fmt(deposit)} FCFA`)
+      .replace('45 000 FCFA', `${fmt(deposit)} FCFA`);
+  }, [v, start, end, days]);
+
+  return <DesignPage html={html} links={links} />;
 }

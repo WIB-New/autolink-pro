@@ -405,7 +405,7 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
     // 9) Boutons d'impression / téléchargement → boîte d'impression navigateur (démo)
     root.querySelectorAll('a, button').forEach((el) => {
       const t = text(el);
-      if (/^(Imprimer|Télécharger|Relevé PDF|Exporter CSV|Format PDF|Factures\b)/.test(t) || t === 'download') {
+      if (/^(Imprimer|Télécharger|Relevé PDF|Exporter CSV|Format PDF)/.test(t) || t === 'download') {
         el.style.cursor = 'pointer';
         on(el, (e) => { e.preventDefault(); window.print(); });
       }

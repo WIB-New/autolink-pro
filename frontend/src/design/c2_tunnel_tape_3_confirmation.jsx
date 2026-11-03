@@ -1,5 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import DesignPage from './DesignPage';
+import useApiData from '../utils/useApiData';
+import { bookingsAPI, authAPI } from '../services/api';
+
+const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
+const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const dmy = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' }) : '');
 
 const HTML = `<div class="flex flex-col w-full pb-16">
 <div class="max-w-7xl mx-auto px-margin-sm lg:px-margin w-full flex flex-col gap-8">
@@ -13,10 +20,6 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <span class="material-symbols-outlined text-4xl sm:text-5xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
 </div>
 <div class="flex flex-col gap-1.5">
-<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary font-label-sm text-label-sm w-fit">
-<span class="material-symbols-outlined text-[15px]">verified</span>
-<span>Transaction CEMAC #GIMAC-98443</span>
-</div>
 <h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">
               Paiement confirmé & Réservation enregistrée avec succès !
             </h1>
@@ -45,10 +48,7 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <div class="w-2.5 h-6 rounded-full bg-primary"></div>
 <h2 class="font-headline-lg text-headline-lg text-on-surface">Que se passe-t-il maintenant ?</h2>
 </div>
-<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant">
-<span class="material-symbols-outlined text-[18px] text-primary">schedule</span>
-<span>Délai moyen de confirmation : <strong>18 minutes</strong></span>
-</div>
+<div></div>
 </div>
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 relative">
 <!-- Step 1 (Completed) -->
@@ -63,10 +63,6 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <p class="font-body-sm text-body-sm text-on-surface-variant">
 <strong>73 500 FCFA</strong> prélevés de votre portefeuille AutoLink. Caution de <strong>150 000 FCFA</strong> isolée sous séquestre bancaire.
           </p>
-<div class="mt-4 pt-3 text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1">
-<span class="material-symbols-outlined text-[16px] text-primary">lock</span>
-<span>Séquestre certifié CEMAC</span>
-</div>
 </div>
 <!-- Step 2 (In Progress) -->
 <div class="relative flex flex-col p-5 rounded-xl bg-surface-container-high/60 shadow-sm overflow-hidden">
@@ -82,10 +78,6 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <p class="font-body-sm text-body-sm text-on-surface-variant">
             Nos agents au Hub Central de Douala vérifient la conformité de vos pièces d'identité et permis sous <strong>30 minutes</strong>.
           </p>
-<div class="mt-4 pt-3 font-label-sm text-label-sm text-primary flex items-center gap-1 font-semibold">
-<span class="material-symbols-outlined text-[16px]">sync</span>
-<span>Contrôle Akwa Hub en direct</span>
-</div>
 </div>
 <!-- Step 3 (Upcoming) -->
 <div class="relative flex flex-col p-5 rounded-xl bg-surface-container-lowest shadow-sm overflow-hidden">
@@ -99,10 +91,6 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <p class="font-body-sm text-body-sm text-on-surface-variant">
             Le propriétaire valide la mise à disposition sous 24h maximum.
           </p>
-<div class="mt-4 pt-3 font-label-sm text-label-sm text-tertiary-container flex items-center gap-1">
-<span class="material-symbols-outlined text-[16px] text-tertiary">star</span>
-<span class="font-semibold text-tertiary">Taux d'acceptation 99.2%</span>
-</div>
 </div>
 <!-- Step 4 (Delivery Day) -->
 <div class="relative flex flex-col p-5 rounded-xl bg-surface-container-lowest shadow-sm overflow-hidden">
@@ -116,10 +104,6 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <p class="font-body-sm text-body-sm text-on-surface-variant">
             Réception du code de remise et lien de l'état des lieux numérique photo avec le contact direct du chauffeur.
           </p>
-<div class="mt-4 pt-3 font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
-<span class="material-symbols-outlined text-[16px]">qr_code_2</span>
-<span>Check-in instantané</span>
-</div>
 </div>
 </div>
 </section>
@@ -130,7 +114,6 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <div class="rounded-xl bg-surface-container-lowest p-6 lg:p-8 shadow-sm flex flex-col gap-6">
 <div class="flex items-center justify-between">
 <h2 class="font-headline-lg text-headline-lg text-on-surface">Détails de la réservation</h2>
-<span class="px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm">Gamme Premium</span>
 </div>
 <!-- Car snippet card -->
 <div class="flex flex-col sm:flex-row gap-5 p-4 rounded-xl bg-surface-container-low items-center sm:items-stretch">
@@ -152,7 +135,6 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <div class="flex items-center gap-2 mt-3 pt-3">
 <span class="material-symbols-outlined text-[16px] text-tertiary" style="font-variation-settings: 'FILL' 1;">star</span>
 <span class="font-label-md text-label-md text-on-surface font-semibold">4.92</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">(48 locations réussies à Douala)</span>
 </div>
 </div>
 </div>
@@ -217,13 +199,8 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <span class="font-label-lg text-label-lg text-on-surface font-bold">Jean-Pierre M.</span>
 <span class="px-2 py-0.5 rounded bg-primary/10 text-primary font-label-sm text-label-sm font-semibold">Chauffeur certifié</span>
 </div>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Tél : +237 670 •• •• 12 (Masqué)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Tél : +237 670 •• •• 12</span>
 </div>
-</div>
-<div class="text-right">
-<span class="inline-flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant bg-surface-container-lowest px-3 py-1.5 rounded-full">
-<span class="material-symbols-outlined text-[15px] text-tertiary">lock</span> Coordonnées complètes sous 30 min
-                </span>
 </div>
 </div>
 </div>
@@ -269,9 +246,6 @@ const HTML = `<div class="flex flex-col w-full pb-16">
               </span>
 <span class="font-headline-sm text-headline-sm text-on-surface">150 000 FCFA</span>
 </div>
-<p class="font-body-sm text-body-sm text-on-surface-variant">
-              Fonds bloqués temporairement auprès de notre banque partenaire GIMAC. <strong>Restitution automatique 15 min après l'état des lieux retour</strong> contradictoire sans incident.
-            </p>
 </div>
 <!-- Remaining Wallet Balance -->
 <div class="flex items-center justify-between p-4 rounded-xl bg-surface-container-low">
@@ -353,6 +327,29 @@ const LINKS = {
   'Recharger': '/client/wallet?recharge=1',
 };
 
-export default function c2tunneltape3confirmation() {
-  return <DesignPage html={HTML} links={LINKS} />;
+export default function C2TunnelEtape3Confirmation() {
+  const [params] = useSearchParams();
+  const bid = params.get('booking') || '';
+  const { data: b } = useApiData(() => (bid ? bookingsAPI.detail(bid) : Promise.resolve({ data: null })), [bid]);
+  const { data: me } = useApiData(() => authAPI.me(), []);
+
+  const html = useMemo(() => {
+    let h = HTML;
+    if (b) {
+      const name = b.vehicle_name || `${b.vehicle_brand || ''} ${b.vehicle_model || ''}`.trim();
+      h = h
+        .replace('#ALP-2025-DLA-8924', `#${esc(b.reference || `BK-${String(b.id).padStart(4, '0')}`)}`)
+        .replace(/Toyota RAV4 Hybrid/g, esc(name))
+        .replace('Immat. LT-890-JA', `Immat. ${esc(b.vehicle_plate || '')}`)
+        .replace('Mercredi 29 Oct. 2025', dmy(b.start_date))
+        .replace('Jeudi 30 Oct. 2025', dmy(b.end_date))
+        .replace('58 000 FCFA', `${fmt(b.subtotal || b.total_price)} FCFA`)
+        .replace('73 500 FCFA', `${fmt(b.subtotal || b.total_price || 0)} FCFA`)
+        .replace('150 000 FCFA', `${fmt(b.deposit_amount)} FCFA`);
+    }
+    if (me) h = h.replace('26 500 FCFA', `${fmt(me.balance)} FCFA`);
+    return h;
+  }, [b, me]);
+
+  return <DesignPage html={html} links={LINKS} />;
 }
