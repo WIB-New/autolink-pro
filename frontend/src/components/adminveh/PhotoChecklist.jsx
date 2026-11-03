@@ -1,14 +1,19 @@
 import React, { useState } from 'react';
 import { ImageIcon, CheckCircle2, X } from 'lucide-react';
 import { getVehicleImage } from '../../utils/carImages';
+import { mediaUrl } from '../../utils/media';
+import FilePreview from '../FilePreview';
 
 const SLOTS = ['3/4 Avant gauche', 'Face Calandre', 'Profil latéral droit', '3/4 Arrière', 'Cockpit & Bord', 'Banquette & Coffre'];
 
 /* Les 6 clichés obligatoires — validation photo par photo. */
 export default function PhotoChecklist({ vehicle: v }) {
   const [valid, setValid] = useState([true, true, true, true, false, true]);
+  const [preview, setPreview] = useState(null);
   const img = v.image_url || getVehicleImage(v.category);
-  const photos = v.photos?.length ? v.photos : SLOTS.map(() => img);
+  // v.photos = [{ id, image, caption }] — fichiers réels uploadés (étape 3 wizard)
+  const uploaded = (v.photos || []).map(p => mediaUrl(p.image || p));
+  const photos = uploaded.length ? uploaded : SLOTS.map(() => img);
   const done = valid.filter(Boolean).length;
 
   return (
@@ -27,7 +32,9 @@ export default function PhotoChecklist({ vehicle: v }) {
         {SLOTS.map((label, i) => (
           <div key={label}>
             <div className={`relative rounded-xl overflow-hidden h-24 bg-slate-100 border-2 ${valid[i] ? 'border-teal-400' : i === 4 ? 'border-amber-300' : 'border-transparent'}`}>
-              <img src={photos[i] || img} alt={label} className="w-full h-full object-cover" />
+              <button type="button" onClick={() => setPreview({ url: photos[i] || img, title: label })} className="w-full h-full block" title="Voir en grand">
+                <img src={photos[i] || img} alt={label} className="w-full h-full object-cover hover:opacity-90 transition-opacity cursor-zoom-in" />
+              </button>
               <span className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm">
                 {i + 1}. {label}
               </span>
@@ -51,6 +58,8 @@ export default function PhotoChecklist({ vehicle: v }) {
           </div>
         ))}
       </div>
+
+      {preview && <FilePreview url={preview.url} title={preview.title} onClose={() => setPreview(null)} />}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   RentalConditions, VehicleReviews, SimilarVehicles, BookingSidebar,
 } from '../components/vehicle';
 import { CATALOG_VEHICLES, getVehicleImage } from '../utils/carImages';
+import { mediaUrl, vehicleCover } from '../utils/media';
 import { normalizeVehicle } from '../utils/vehicleMeta';
 import { vehiclesAPI } from '../services/api';
 
@@ -16,7 +17,8 @@ const mapApiVehicle = (v) => normalizeVehicle({
   name: `${v.brand} ${v.model} ${v.year}`,
   category: v.category,
   tier: v.tier || 'standard',
-  image: v.image_url || getVehicleImage(v.category),
+  image: vehicleCover(v) || v.image_url || getVehicleImage(v.category),
+  gallery: (v.photos || []).map(p => mediaUrl(p.image)),
   price: Number(v.daily_rate || v.computed_rate) || 25000,
   kmIncluded: v.km_included_per_day || 200,
   kmRate: v.extra_km_rate || 150,

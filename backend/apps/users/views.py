@@ -7,8 +7,8 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User, Notification, LoginCode
-from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, AdminUserSerializer, GoogleAuthSerializer, NotificationSerializer
+from .models import User, Notification, LoginCode, Agent
+from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, AdminUserSerializer, GoogleAuthSerializer, NotificationSerializer, AgentSerializer
 
 
 class LoginView(APIView):
@@ -231,3 +231,27 @@ class NotificationReadView(APIView):
             qs = qs.filter(pk=pk)
         qs.update(is_read=True)
         return Response({'unread': request.user.notifications.filter(is_read=False).count()})
+
+
+class IsAdminOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 'ADMIN'
+
+
+class AgentListView(generics.ListCreateAPIView):
+    """Codes agents / parrainage — liste + création (admin)."""
+    serializer_class = AgentSerializer
+    permission_classes = [IsAdminOnly]
+    queryset = Agent.objects.all()
+
+    def perform_create(self, serializer):
+        # Code auto : AGT-<ville prefixe>-<n° séquentiel>
+        n = Agent.objects.count() + 1
+        serializer.save(code=f'AGT-DBL-{n:03d}')
+
+
+class AgentDetailView(generics.RetrieveUpdateAPIView):
+    """Activer/désactiver un agent, ajuster le taux (admin)."""
+    serializer_class = AgentSerializer
+    permission_classes = [IsAdminOnly]
+    queryset = Agent.objects.all()

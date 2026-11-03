@@ -3,7 +3,8 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.viewsets import ModelViewSet
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Vehicle, VehicleAvailability
+from django.db.models import Q
+from .models import Vehicle, VehicleAvailability, VehiclePhoto
 from .serializers import VehicleSerializer, VehicleAvailabilitySerializer
 
 
@@ -30,13 +31,24 @@ class VehicleViewSet(ModelViewSet):
         return [IsOwnerOrAdmin()]
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user, status='pending')
+        vehicle = serializer.save(owner=self.request.user, status='pending')
+        # Photos multipart (étape 3) — chaque fichier reçoit son slot en caption
+        # ('front34' = extérieur/cover, 'interior'/'rear' = habitacle)
+        slots = self.request.data.getlist('photo_slots')
+        for i, f in enumerate(self.request.FILES.getlist('photos')):
+            caption = slots[i] if i < len(slots) else ''
+            VehiclePhoto.objects.create(vehicle=vehicle, image=f, caption=caption)
 
     def get_queryset(self):
         qs = Vehicle.objects.all()
         if self.request.user.is_authenticated:
             if self.request.user.role in ['ADMIN', 'CONTROLLER']:
                 return qs
+            # Actions détail (retrieve/update/destroy) : le propriétaire accède
+            # à ses propres véhicules quel que soit le statut (ex. pending après
+            # création) + au catalogue approuvé en lecture.
+            if self.request.user.role == 'OWNER' and self.action != 'list':
+                return qs.filter(Q(owner=self.request.user) | Q(status='approved'))
             # Le propriétaire gère ses véhicules via ?mine=1 ; sinon il peut
             # aussi parcourir le catalogue public et louer comme un client.
             if self.request.user.role == 'OWNER' and self.request.query_params.get('mine'):

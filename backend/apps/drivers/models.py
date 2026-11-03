@@ -9,12 +9,38 @@ class DriverApplication(models.Model):
         APPROVED = 'approved', 'Approuvé'
         REJECTED = 'rejected', 'Refusé'
 
-    applicant = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='driver_application')
+    applicant = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='driver_application', null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+
+    # Identité publique (candidature depuis la landing, sans compte)
+    full_name = models.CharField(max_length=120, blank=True)
+    email = models.EmailField(blank=True)
+    phone = models.CharField(max_length=30, blank=True)
+    city = models.CharField(max_length=80, blank=True)
+
+    # Permis & expérience
     experience_years = models.IntegerField(default=0)
-    has_valid_license = models.BooleanField(default=False)
+    license_type = models.CharField(max_length=10, blank=True)
     license_number = models.CharField(max_length=50, blank=True)
+    license_obtained_at = models.DateField(null=True, blank=True)
     license_expiry = models.DateField(null=True, blank=True)
+    has_valid_license = models.BooleanField(default=False)
+
+    # Disponibilité, garantie, références
+    class Availability(models.TextChoices):
+        FULL = 'full', 'Temps plein'
+        PART = 'part', 'Temps partiel'
+        WEEKEND = 'weekend', 'Week-ends uniquement'
+    availability = models.CharField(max_length=20, choices=Availability.choices, default=Availability.FULL)
+    guarantee_type = models.CharField(max_length=60, blank=True)
+    references = models.TextField(blank=True)
+
+    # Véhicule & conformité
+    has_vehicle = models.BooleanField(default=False)
+    vehicle_description = models.CharField(max_length=120, blank=True)
+    has_insurance = models.BooleanField(default=False)
+    professional_status = models.CharField(max_length=60, blank=True)
+    message = models.TextField(blank=True)
     license_document = models.ImageField(upload_to='drivers/licenses/', null=True, blank=True)
     has_clean_criminal_record = models.BooleanField(default=False)
     criminal_record_document = models.ImageField(upload_to='drivers/criminal/', null=True, blank=True)
@@ -33,7 +59,8 @@ class DriverApplication(models.Model):
         verbose_name_plural = "Candidatures chauffeurs"
 
     def __str__(self):
-        return f'{self.applicant.get_full_name()} — {self.status}'
+        name = self.applicant.get_full_name() if self.applicant else self.full_name
+        return f'{name} — {self.status}'
 
     @property
     def compliance_score(self):

@@ -5,7 +5,7 @@ import AutoLinkLogo from '../AutoLinkLogo';
 import {
   LayoutDashboard, CalendarCheck, Car, Building2, Users, UserCheck,
   Landmark, AlertTriangle, Wrench, Settings, UserIcon,
-  LogOut, Search, Bell, Menu, X, Siren, LifeBuoy, ArrowRight,
+  LogOut, Search, Bell, Menu, X, Siren,
   ChevronDown, ArrowRightLeft,
 } from 'lucide-react';
 

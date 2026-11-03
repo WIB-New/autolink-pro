@@ -9,12 +9,12 @@ const INSURANCE_TYPES = [
 ];
 
 const DOCS = [
-  { icon: FileText,       t: 'Carte Grise Cameroun (CEMAC)',                s: 'Recto-verso lisible, titulaire correspondant' },
-  { icon: ShieldCheck,    t: "Attestation d'Assurance Tous Risques",        s: 'Police active — vignette + attestation vertes' },
-  { icon: ClipboardCheck, t: 'Certificat de Visite Technique Automobile',   s: 'Centre agréé — validité ≥ 3 mois' },
+  { key: 'doc_registration', icon: FileText,       t: 'Carte Grise Cameroun (CEMAC)',              s: 'Recto-verso lisible, titulaire correspondant' },
+  { key: 'doc_insurance',    icon: ShieldCheck,    t: "Attestation d'Assurance Tous Risques",      s: 'Police active — vignette + attestation vertes' },
+  { key: 'doc_technical',    icon: ClipboardCheck, t: 'Certificat de Visite Technique Automobile', s: 'Centre agréé — validité ≥ 3 mois' },
 ];
 
-/* Étape 4 — Documents légaux & conformité. */
+/* Étape 4 — Documents légaux & conformité (upload réel, envoyé en multipart). */
 export default function StepDocuments({ form, set }) {
   return (
     <div className="space-y-5">
@@ -27,14 +27,26 @@ export default function StepDocuments({ form, set }) {
           </div>
         </div>
         <div className="grid sm:grid-cols-3 gap-3 mb-5">
-          {DOCS.map(d => (
-            <div key={d.t} className="border-2 border-dashed border-slate-200 hover:border-teal-400 rounded-2xl p-5 text-center cursor-pointer transition-colors group">
-              <d.icon size={20} className="text-slate-300 group-hover:text-teal-500 mx-auto mb-2" />
-              <div className="text-[11px] font-black text-slate-800 leading-tight">{d.t}</div>
-              <div className="text-[9px] text-slate-400 mt-1">{d.s}</div>
-              <span className="inline-flex items-center gap-1 text-[9px] font-black text-teal-600 mt-2.5"><Upload size={9} /> Téléverser</span>
-            </div>
-          ))}
+          {DOCS.map(d => {
+            const file = form[d.key];
+            return (
+              <label key={d.key}
+                className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-colors group ${file ? 'border-teal-400 bg-teal-50/50' : 'border-slate-200 hover:border-teal-400'}`}>
+                <input type="file" accept="image/*,.pdf" className="hidden"
+                  onChange={e => set(d.key, e.target.files?.[0] || null)} />
+                <d.icon size={20} className={`mx-auto mb-2 ${file ? 'text-teal-500' : 'text-slate-300 group-hover:text-teal-500'}`} />
+                <div className="text-[11px] font-black text-slate-800 leading-tight">{d.t}</div>
+                <div className="text-[9px] text-slate-400 mt-1">{d.s}</div>
+                {file ? (
+                  <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-600 mt-2.5">
+                    <FileCheck size={9} /> {file.name.length > 24 ? file.name.slice(0, 21) + '…' : file.name}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[9px] font-black text-teal-600 mt-2.5"><Upload size={9} /> Téléverser</span>
+                )}
+              </label>
+            );
+          })}
         </div>
         <div className="grid sm:grid-cols-3 gap-4">
           <div>

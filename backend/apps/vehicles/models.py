@@ -138,6 +138,14 @@ class Vehicle(models.Model):
     technical_control_date = models.DateField(null=True, blank=True)
     condition_score = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(100)])
 
+    # Pièces justificatives téléversées par le propriétaire (étape 4 du wizard)
+    registration_doc = models.FileField(upload_to='vehicles/docs/', null=True, blank=True,
+                                        help_text='Carte grise — recto-verso.')
+    insurance_doc = models.FileField(upload_to='vehicles/docs/', null=True, blank=True,
+                                     help_text="Attestation d'assurance.")
+    technical_control_doc = models.FileField(upload_to='vehicles/docs/', null=True, blank=True,
+                                             help_text='Certificat de visite technique.')
+
     mileage = models.IntegerField(default=0)
     fuel_level = models.IntegerField(default=100, validators=[MinValueValidator(0), MaxValueValidator(100)])
 

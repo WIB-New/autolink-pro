@@ -1,16 +1,9 @@
-import React, { useState } from 'react';
-import { Tag, Plus, CheckCircle, XCircle, TrendingUp, DollarSign, Users, Copy, ToggleLeft, ToggleRight, Search } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Tag, Plus, CheckCircle, XCircle, TrendingUp, DollarSign, Users, Copy, ToggleLeft, ToggleRight, Search, Loader } from 'lucide-react';
 import AdminLayout from '../../components/admindash/AdminLayout';
 import StatCard from '../../components/StatCard';
 import FilterField from '../../components/FilterField';
-
-const MOCK_AGENTS = [
-  { id: 1, code: 'AGT-DBL-001', name: 'Moise Kamga',    type: 'Influenceur',  phone: '+237 6 77 11 22 33', conversions: 28, totalAmount: 4340000, commission: 217000, rate: 5, active: true,  joined: '2025-01-15' },
-  { id: 2, code: 'AGT-YDE-002', name: 'Rachel Biyong',  type: 'Commercial',   phone: '+237 6 88 44 55 66', conversions: 14, totalAmount: 1890000, commission: 94500,  rate: 5, active: true,  joined: '2025-02-03' },
-  { id: 3, code: 'AGT-DBL-003', name: 'Serge Ndoumbe',  type: 'Hôtel partenaire', phone: '+237 2 33 10 20 30', conversions: 42, totalAmount: 7980000, commission: 399000, rate: 5, active: true,  joined: '2025-01-08' },
-  { id: 4, code: 'AGT-YDE-004', name: 'Grace Ottou',    type: 'Influenceur',  phone: '+237 6 99 00 11 22', conversions: 6,  totalAmount: 540000,  commission: 27000,  rate: 5, active: false, joined: '2025-03-20' },
-  { id: 5, code: 'AGT-DBL-005', name: 'Junior Manga',   type: 'Chauffeur partenaire', phone: '+237 6 55 66 77 88', conversions: 19, totalAmount: 2660000, commission: 133000, rate: 5, active: true,  joined: '2025-02-28' },
-];
+import { agentsAPI } from '../../services/api';
 
 const TYPE_COLORS = {
   'Influenceur': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
@@ -20,13 +13,49 @@ const TYPE_COLORS = {
 };
 
 export default function AgentsManager() {
-  const [agents, setAgents] = useState(MOCK_AGENTS);
+  const [agents, setAgents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [newAgent, setNewAgent] = useState({ name: '', type: 'Influenceur', phone: '', rate: 5 });
   const [copied, setCopied] = useState(null);
+  const [busy, setBusy] = useState(false);
 
-  const toggleAgent = (id) => setAgents(prev => prev.map(a => a.id === id ? { ...a, active: !a.active } : a));
+  // Charge les vrais agents depuis la DB (admin)
+  const load = () => {
+    setLoading(true);
+    agentsAPI.list()
+      .then(res => {
+        const list = res.data.results || res.data;
+        setAgents(list.map(a => ({
+          ...a,
+          totalAmount: Number(a.total_amount) || 0,
+          commission: Number(a.commission) || 0,
+          joined: a.created_at?.slice(0, 10) || '',
+        })));
+      })
+      .catch(() => setAgents([]))
+      .finally(() => setLoading(false));
+  };
+  useEffect(load, []);
+
+  const toggleAgent = async (a) => {
+    try {
+      await agentsAPI.update(a.id, { active: !a.active });
+      setAgents(prev => prev.map(x => x.id === a.id ? { ...x, active: !x.active } : x));
+    } catch (_) { /* réessaie au prochain clic */ }
+  };
+
+  const createAgent = async () => {
+    if (!newAgent.name || !newAgent.phone) return;
+    setBusy(true);
+    try {
+      await agentsAPI.create({ name: newAgent.name, type: newAgent.type, phone: newAgent.phone, rate: Number(newAgent.rate) });
+      load();
+      setShowCreate(false); setNewAgent({ name: '', type: 'Influenceur', phone: '', rate: 5 });
+    } catch (_) {}
+    setBusy(false);
+  };
 
   const copyCode = (code) => {
     navigator.clipboard.writeText(code);
@@ -70,6 +99,7 @@ export default function AgentsManager() {
         {/* Agents table */}
         <div className="card p-0 overflow-hidden">
           <div className="overflow-x-auto">
+            {loading && <div className="text-center py-10 text-xs text-slate-400"><Loader size={16} className="animate-spin mx-auto mb-2" />Chargement des agents…</div>}
             <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
                 <tr>
@@ -113,7 +143,7 @@ export default function AgentsManager() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => toggleAgent(a.id)} title={a.active ? 'Désactiver' : 'Activer'}
+                        <button onClick={() => toggleAgent(a)} title={a.active ? 'Désactiver' : 'Activer'}
                           className="text-slate-400 hover:text-primary-600 transition-colors">
                           {a.active ? <ToggleRight size={20} className="text-emerald-500" /> : <ToggleLeft size={20} />}
                         </button>
@@ -166,18 +196,9 @@ export default function AgentsManager() {
               </div>
               <div className="p-5 border-t border-slate-100 dark:border-slate-700 flex gap-3">
                 <button onClick={() => setShowCreate(false)} className="btn-outline flex-1 py-3">Annuler</button>
-                <button onClick={() => {
-                  if (newAgent.name && newAgent.phone) {
-                    const prefix = newAgent.type === 'Influenceur' ? 'INF' : 'AGT';
-                    setAgents(prev => [...prev, {
-                      id: Date.now(), code: `AGT-DBL-00${prev.length+1}`,
-                      ...newAgent, conversions: 0, totalAmount: 0, commission: 0, active: true,
-                      joined: new Date().toISOString().split('T')[0]
-                    }]);
-                    setShowCreate(false); setNewAgent({ name: '', type: 'Influenceur', phone: '', rate: 5 });
-                  }
-                }} className="btn-primary flex-1 py-3 flex items-center justify-center gap-2">
-                  <Plus size={16} /> Créer le code
+                <button onClick={createAgent} disabled={busy || !newAgent.name || !newAgent.phone}
+                  className="btn-primary flex-1 py-3 flex items-center justify-center gap-2 disabled:opacity-50">
+                  {busy ? <Loader size={16} className="animate-spin" /> : <Plus size={16} />} Créer le code
                 </button>
               </div>
             </div>

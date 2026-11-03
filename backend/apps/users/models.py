@@ -62,3 +62,29 @@ class LoginCode(models.Model):
 
     def __str__(self):
         return f'OTP {self.email} ({self.code})'
+
+
+class Agent(models.Model):
+    """Agent de parrainage — code promo + commission sur les locations générées."""
+    class AgentType(models.TextChoices):
+        INFLUENCER = 'Influenceur', 'Influenceur'
+        COMMERCIAL = 'Commercial', 'Commercial'
+        HOTEL = 'Hôtel partenaire', 'Hôtel partenaire'
+        DRIVER = 'Chauffeur partenaire', 'Chauffeur partenaire'
+
+    code = models.CharField(max_length=20, unique=True)
+    name = models.CharField(max_length=120)
+    type = models.CharField(max_length=30, choices=AgentType.choices, default=AgentType.INFLUENCER)
+    phone = models.CharField(max_length=20)
+    rate = models.PositiveSmallIntegerField(default=5, help_text='Commission en %')
+    active = models.BooleanField(default=True)
+    conversions = models.PositiveIntegerField(default=0)
+    total_amount = models.DecimalField(max_digits=14, decimal_places=0, default=0)
+    commission = models.DecimalField(max_digits=12, decimal_places=0, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.code} — {self.name}'

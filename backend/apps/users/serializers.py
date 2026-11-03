@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User, Notification
+from .models import User, Notification, Agent
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -111,3 +111,10 @@ class GoogleAuthSerializer(serializers.Serializer):
             'refresh': str(refresh),
             'user': UserSerializer(user).data,
         }
+
+
+class AgentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Agent
+        fields = '__all__'
+        read_only_fields = ['code', 'conversions', 'total_amount', 'commission', 'created_at']

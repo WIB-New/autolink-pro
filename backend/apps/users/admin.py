@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User
+from .models import User, Agent
 
 
 @admin.register(User)
@@ -11,3 +11,11 @@ class UserAdmin(BaseUserAdmin):
     fieldsets = BaseUserAdmin.fieldsets + (
         ('AutoLink Info', {'fields': ('role', 'phone', 'avatar', 'is_verified', 'id_document', 'id_document_verified', 'date_of_birth', 'address')}),
     )
+
+
+@admin.register(Agent)
+class AgentAdmin(admin.ModelAdmin):
+    list_display = ('code', 'name', 'type', 'phone', 'rate', 'active', 'conversions', 'commission')
+    list_filter = ('type', 'active')
+    search_fields = ('code', 'name', 'phone')
+    readonly_fields = ('code', 'conversions', 'total_amount', 'commission')

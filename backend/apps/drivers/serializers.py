@@ -9,10 +9,22 @@ class DriverApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = DriverApplication
         fields = '__all__'
-        read_only_fields = ['applicant', 'reviewer', 'applied_at', 'reviewed_at']
+        read_only_fields = ['applicant', 'reviewer', 'applied_at', 'reviewed_at', 'status',
+                            'driving_test_passed', 'driving_test_score', 'training_completed']
 
     def get_applicant_name(self, obj):
-        return obj.applicant.get_full_name()
+        return obj.applicant.get_full_name() if obj.applicant else obj.full_name
+
+    def validate(self, attrs):
+        user = self.context['request'].user
+        # Candidat sans compte (landing) : identité complète obligatoire
+        if not (user and user.is_authenticated):
+            missing = [f for f in ('full_name', 'email', 'phone', 'city') if not attrs.get(f)]
+            if missing:
+                raise serializers.ValidationError({f: 'Champ obligatoire.' for f in missing})
+        if attrs.get('experience_years', 0) < 0:
+            raise serializers.ValidationError({'experience_years': 'Valeur invalide.'})
+        return attrs
 
 
 class DriverProfileSerializer(serializers.ModelSerializer):
