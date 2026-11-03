@@ -98,6 +98,11 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
     // 2d) Sélection du moyen de paiement : coche à GAUCHE (radio), anneau sur la carte choisie
     const radios = root.querySelectorAll('input[type="radio"][name*="payment_method"],input[type="radio"][name*="recharge_method"],input[type="radio"][name*="escrow_source"]');
     const syncRadios = () => {
+      const showCard = [...radios].some((r) => r.checked && /visa|card/i.test(r.value));
+      const cf = root.querySelector('#card-number-field');
+      if (cf) cf.classList.toggle('hidden', !showCard);
+      const pf = root.querySelector('#phone-number-field');
+      if (pf) pf.classList.toggle('hidden', showCard);
       radios.forEach((r) => {
         const card = r.closest('label');
         if (!card) return;

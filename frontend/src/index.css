@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('@fontsource/material-symbols-outlined/files/material-symbols-outlined-latin-400-normal.woff2') format('woff2');
+}
+
+/* Compense le zoom JS (--vz) : les hauteurs en unités viewport sont
+   réduites par le zoom, on les agrandit pour que l'app remplisse l'écran. */
+:root { --vz: 1; }
+body, #root { min-height: calc(100vh / var(--vz)); }
+.h-screen { height: calc(100vh / var(--vz)) !important; }
+.min-h-screen { min-height: calc(100vh / var(--vz)) !important; }
+.max-h-screen { max-height: calc(100vh / var(--vz)) !important; }
+
+/* Scroll : molette/tactile fonctionnelle mais barres invisibles */
+html, .app-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+html::-webkit-scrollbar, .app-scroll::-webkit-scrollbar { display: none; }
+
 @layer base {
   * { box-sizing: border-box; }
   body {
@@ -15,6 +35,24 @@
 }
 
 @layer components {
+  .material-symbols-outlined,
+  .material-icons {
+    font-family: 'Material Symbols Outlined';
+    font-weight: 400;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    flex-shrink: 0;
+    font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+  }
+
   .btn-primary {
     @apply bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer;
   }

@@ -1,28 +1,13 @@
 import React from 'react';
 import DesignPage from './DesignPage';
 
-const HTML = `<div class="flex flex-col w-full h-[calc(100vh-6rem)]">
-<div class="flex items-center justify-between pb-space-sm mb-space-sm">
-<div class="flex items-center gap-space-sm">
+const HTML = `<div class="flex flex-col w-full lg:h-[calc(100vh/var(--vz,1)-8rem)]">
+<div class="flex items-center gap-space-sm pb-space-sm mb-space-sm">
 <span class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Messagerie & Échanges</span>
-<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm font-semibold">
-<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-        Canal chiffré TLS
-      </span>
 </div>
-<div class="flex items-center gap-space-sm">
-<button class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-container-high hover:bg-surface-container text-on-surface font-label-md text-label-md transition-colors shadow-sm">
-<span class="material-symbols-outlined text-[18px] text-primary">verified_user</span>
-<span>Contrat certifié #ALP-2025</span>
-</button>
-<button class="w-8 h-8 rounded-full bg-surface-container-high hover:bg-surface-container text-on-surface-variant flex items-center justify-center transition-colors">
-<span class="material-symbols-outlined text-[18px]">more_vert</span>
-</button>
-</div>
-</div>
-<div class="flex-1 flex gap-space-md min-h-0 bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
-<!-- Left Column: Conversation List (380px) -->
-<div class="w-[380px] shrink-0 flex flex-col bg-surface-container-lowest">
+<div class="flex-1 flex flex-col lg:flex-row gap-space-md min-h-0 bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
+<!-- Left Column: Conversation List -->
+<div class="w-full lg:w-[380px] shrink-0 flex flex-col bg-surface-container-lowest border-b lg:border-b-0 border-outline-variant/30">
 <!-- Search & Filters -->
 <div class="p-space-md flex flex-col gap-space-sm bg-surface-container-lowest">
 <div class="flex items-center justify-between">
@@ -54,7 +39,7 @@ const HTML = `<div class="flex flex-col w-full h-[calc(100vh-6rem)]">
 </div>
 </div>
 <!-- Conversations Scrollable Area -->
-<div class="flex-1 overflow-y-auto px-2 space-y-1">
+<div class="flex-1 overflow-y-auto px-2 space-y-1 max-h-72 lg:max-h-none">
 <!-- Item 1: Active -->
 <div class="p-3 rounded-xl bg-surface-container-high cursor-pointer transition-all">
 <div class="flex items-start gap-3">
@@ -159,14 +144,9 @@ const HTML = `<div class="flex flex-col w-full h-[calc(100vh-6rem)]">
 </div>
 </div>
 </div>
-<!-- Trust Bottom Footer pill -->
-<div class="p-3 bg-surface-container-low/70 m-2 rounded-xl flex items-center gap-2">
-<span class="material-symbols-outlined text-[18px] text-primary">lock</span>
-<span class="font-body-sm text-[11px] text-on-surface-variant">Communications tracées pour la conformité assurance CIMA</span>
-</div>
 </div>
 <!-- Right Column: Active Conversation (Flex-1) -->
-<div class="flex-1 flex flex-col min-w-0 bg-surface-container-lowest relative">
+<div class="flex-1 flex flex-col min-w-0 min-h-[60vh] lg:min-h-0 bg-surface-container-lowest relative">
 <!-- Sticky Context Header -->
 <div class="p-space-md bg-surface-container-low/60 backdrop-blur-md flex flex-col gap-space-sm z-10">
 <div class="flex items-center justify-between">

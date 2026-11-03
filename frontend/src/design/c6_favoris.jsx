@@ -443,17 +443,7 @@ const HTML = `<div class="flex flex-col w-full">
 </div>
 <div class="absolute -right-12 -bottom-12 w-64 h-64 rounded-full bg-primary/5 pointer-events-none"></div>
 </section>
-<div class="p-4 rounded-xl bg-surface-container-low flex flex-wrap items-center justify-between gap-4 text-outline font-label-sm text-label-sm">
-<div class="flex items-center gap-3">
-<span class="material-symbols-outlined text-[20px] text-primary">verified_user</span>
-<span>Garantie AutoLink : Caution pré-autorisée et restituée sous 2h via MTN MoMo / Orange Money / Carte Visa.</span>
-</div>
-<div class="flex items-center gap-4 text-on-surface-variant">
-<span>Assurance tous risques incluse</span>
-<span>·</span>
-<span>Contrat dématérialisé conforme OHADA</span>
-</div>
-</div>
+<div class="p-4"></div>
 </div>
 <script>
     (function() {

@@ -45,16 +45,20 @@ def _ensure_settings_columns(apps, schema_editor):
                 END $$;""")
 
 
-def _ensure_user_columns(apps, schema_editor):
-    conn = schema_editor.connection
-    from apps.users.models import User
-    with conn.cursor() as cur:
-        existing = {c.name for c in conn.introspection.get_table_description(cur, 'users_user')}
-    for field in User._meta.local_fields:
-        if field.name in ('city', 'driving_license', 'driving_license_expires_at',
-                          'kyc_note', 'kyc_status', 'kyc_submitted_at'):
-            if field.column not in existing:
-                schema_editor.add_field(User, field)
+class AddFieldIfMissing(migrations.AddField):
+    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+        model = to_state.apps.get_model(app_label, self.model_name)
+        if not self.allow_migrate_model(schema_editor.connection.alias, model):
+            return
+        field = model._meta.get_field(self.name)
+        with schema_editor.connection.cursor() as cursor:
+            existing = {
+                column.name for column in schema_editor.connection.introspection.get_table_description(
+                    cursor, model._meta.db_table
+                )
+            }
+        if field.column not in existing:
+            super().database_forwards(app_label, schema_editor, from_state, to_state)
 
 
 class Migration(migrations.Migration):
@@ -68,7 +72,6 @@ class Migration(migrations.Migration):
             database_operations=[
                 migrations.RunPython(_create_settings_table, reverse_code=migrations.RunPython.noop),
                 migrations.RunPython(_ensure_settings_columns, reverse_code=migrations.RunPython.noop),
-                migrations.RunPython(_ensure_user_columns, reverse_code=migrations.RunPython.noop),
             ],
             state_operations=[
                 migrations.CreateModel(
@@ -90,41 +93,41 @@ class Migration(migrations.Migration):
                         'verbose_name_plural': 'Paramètres plateforme',
                     },
                 ),
-                migrations.AddField(
-                    model_name='user',
-                    name='city',
-                    field=models.CharField(blank=True, max_length=80),
-                ),
-                migrations.AddField(
-                    model_name='user',
-                    name='driving_license',
-                    field=models.FileField(blank=True, null=True, upload_to='kyc/'),
-                ),
-                migrations.AddField(
-                    model_name='user',
-                    name='driving_license_expires_at',
-                    field=models.DateField(blank=True, null=True),
-                ),
-                migrations.AddField(
-                    model_name='user',
-                    name='kyc_note',
-                    field=models.CharField(blank=True, max_length=255),
-                ),
-                migrations.AddField(
-                    model_name='user',
-                    name='kyc_status',
-                    field=models.CharField(choices=[('none', 'Aucun document'), ('pending', 'En vérification'), ('approved', 'Validé'), ('rejected', 'Refusé')], default='none', max_length=20),
-                ),
-                migrations.AddField(
-                    model_name='user',
-                    name='kyc_submitted_at',
-                    field=models.DateTimeField(blank=True, null=True),
-                ),
-                migrations.AlterField(
-                    model_name='user',
-                    name='id_document',
-                    field=models.FileField(blank=True, null=True, upload_to='kyc/'),
-                ),
             ],
+        ),
+        AddFieldIfMissing(
+            model_name='user',
+            name='city',
+            field=models.CharField(blank=True, max_length=80),
+        ),
+        AddFieldIfMissing(
+            model_name='user',
+            name='driving_license',
+            field=models.FileField(blank=True, null=True, upload_to='kyc/'),
+        ),
+        AddFieldIfMissing(
+            model_name='user',
+            name='driving_license_expires_at',
+            field=models.DateField(blank=True, null=True),
+        ),
+        AddFieldIfMissing(
+            model_name='user',
+            name='kyc_note',
+            field=models.CharField(blank=True, max_length=255),
+        ),
+        AddFieldIfMissing(
+            model_name='user',
+            name='kyc_status',
+            field=models.CharField(choices=[('none', 'Aucun document'), ('pending', 'En vérification'), ('approved', 'Validé'), ('rejected', 'Refusé')], default='none', max_length=20),
+        ),
+        AddFieldIfMissing(
+            model_name='user',
+            name='kyc_submitted_at',
+            field=models.DateTimeField(blank=True, null=True),
+        ),
+        migrations.AlterField(
+            model_name='user',
+            name='id_document',
+            field=models.FileField(blank=True, null=True, upload_to='kyc/'),
         ),
     ]

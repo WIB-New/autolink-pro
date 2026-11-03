@@ -80,6 +80,7 @@ import D5 from './design/c5_portefeuille_et_caution';
 import D6 from './design/c6_favoris';
 import D7 from './design/c7_messagerie';
 import D9 from './design/c9_profil_et_param_tres';
+import D10 from './design/c10_aide';
 import Referrals from './design/Referrals';
 import DesignIndex from './design/DesignIndex';
 
@@ -127,6 +128,7 @@ function AppRoutes() {
       <Route path="/client/bookings/:id" element={<Guard roles={['CLIENT']}><D4 /></Guard>} />
       <Route path="/client/bookings/:id/modifier" element={<Guard roles={['CLIENT']}><D4mod /></Guard>} />
       <Route path="/client/favorites" element={<Guard roles={['CLIENT']}><D6 /></Guard>} />
+      <Route path="/client/help" element={<Guard roles={['CLIENT']}><D10 /></Guard>} />
       <Route path="/client/wallet" element={<Guard roles={['CLIENT']}><D5 /></Guard>} />
 
       <Route path="/owner/dashboard" element={<Guard roles={['OWNER']}><OwnerDashboard /></Guard>} />

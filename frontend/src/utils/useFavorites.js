@@ -1,33 +1,36 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { vehiclesAPI } from '../services/api';
 
-/** Favoris de l'utilisateur connecté ; redirige vers la connexion sinon. */
+const STORAGE_KEY = 'autolink_favorites';
+const read = () => {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
+};
+
+/** Favoris stockés localement (données d'exemple — pas d'appel backend). */
 export default function useFavorites() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [ids, setIds] = useState([]);
-  const enabled = isAuthenticated && user?.role === 'CLIENT';
+  const [ids, setIds] = useState(read);
 
   useEffect(() => {
-    if (enabled) vehiclesAPI.favorites().then(({ data }) => setIds(data.map((item) => item.id))).catch(() => {});
-  }, [enabled]);
+    const sync = (e) => { if (e.key === STORAGE_KEY) setIds(read()); };
+    window.addEventListener('storage', sync);
+    return () => window.removeEventListener('storage', sync);
+  }, []);
 
-  const toggle = useCallback(async (id) => {
+  const toggle = useCallback((id) => {
     if (!isAuthenticated) {
       navigate(`/login?next=${encodeURIComponent(location.pathname + location.search)}`);
       return;
     }
-    if (ids.includes(id)) {
-      await vehiclesAPI.removeFavorite(id);
-      setIds((list) => list.filter((item) => item !== id));
-    } else {
-      await vehiclesAPI.addFavorite(id);
-      setIds((list) => [...list, id]);
-    }
-  }, [ids, isAuthenticated, navigate, location]);
+    setIds((list) => {
+      const next = list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, [isAuthenticated, navigate, location]);
 
-  return { ids, toggle, enabled: enabled || !isAuthenticated };
+  return { ids, toggle, enabled: true };
 }

@@ -9,6 +9,9 @@
 - Backend : `cd backend && python manage.py runserver`
 - Frontend : `cd frontend && npm start` / `npm run build`
 - Health : `GET /api/health/`
+- Icônes client : Material Symbols est servi localement via `@fontsource/material-symbols-outlined` ; déclaration CSS dans `frontend/src/index.css` et préchargement WOFF2 dans `frontend/src/index.jsx` (aucun accès Google Fonts nécessaire pour les icônes).
+- Tests utilisateurs sous Windows : depuis `backend/`, `venv\Scripts\python.exe manage.py test apps.users --noinput` (crée une base de test et vérifie aussi les migrations à neuf).
+- Génération des docs : nécessite `python-docx` et `matplotlib` dans l'environnement Python utilisé ; depuis la racine, `backend\venv\Scripts\python.exe scripts/docs_gen/build.py` permet d'utiliser le venv backend.
 
 ## Documentation (`documentation/`, 24 fichiers .docx)
 **Règle : après TOUTE modification fonctionnelle** (route API, modèle,
