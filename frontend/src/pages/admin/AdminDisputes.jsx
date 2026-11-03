@@ -3,9 +3,10 @@ import AdminLayout from '../../components/admindash/AdminLayout';
 import { bookingsAPI, vehiclesAPI } from '../../services/api';
 import { getVehicleImage } from '../../utils/carImages';
 import {
-  Scale, Clock, Lock, CheckCircle2, AlertTriangle, FileSpreadsheet,
+  Scale, Clock, Lock, CheckCircle2, FileSpreadsheet,
   History, User, Building2, Camera, Send, Loader, ShieldCheck,
 } from 'lucide-react';
+import StatCard from '../../components/StatCard';
 
 const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
 const shortDate = iso => iso ? new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -65,7 +66,7 @@ export default function AdminDisputes() {
   return (
     <AdminLayout
       title="Gestion des Litiges & Arbitrage"
-      subtitle="Supervision des dossiers en séquestre, preuves contradictoires et décisions arbitrales COBAC."
+      subtitle="Arbitrage des cautions en séquestre"
       badges={{ disputes: disputes.length }}
     >
       {/* Actions en-tête */}
@@ -80,25 +81,15 @@ export default function AdminDisputes() {
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
-        {[
-          { l: 'Litiges en attente active', v: disputes.length, s: 'dossiers', icon: Scale, cls: 'text-red-600' },
-          { l: 'Délai moyen de traitement', v: '18', s: 'heures (SLA 48h)', icon: Clock, cls: 'text-teal-600' },
-          { l: 'Montant gelé en séquestre', v: fmt(frozen || 75000), s: 'FCFA — sous supervision', icon: Lock, cls: 'text-amber-600' },
-          { l: 'Dossiers résolus ce mois', v: resolvedCount || 28, s: 'dont 94 % amiables', icon: CheckCircle2, cls: 'text-emerald-600' },
-        ].map(k => (
-          <div key={k.l} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{k.l}</span>
-              <k.icon size={13} className={k.cls} />
-            </div>
-            <div className="text-2xl font-black text-slate-900 leading-none">{k.v} <span className="text-[10px] font-bold text-slate-400">{k.s}</span></div>
-          </div>
-        ))}
+        <StatCard icon={Scale} iconCls="bg-red-50 text-red-600" value={disputes.length} unit="dossiers" label="Litiges actifs" />
+        <StatCard icon={Clock} iconCls="bg-blue-50 text-blue-600" value="18" unit="h (SLA 48)" label="Délai moyen" />
+        <StatCard icon={Lock} iconCls="bg-amber-50 text-amber-600" value={fmt(frozen)} unit="FCFA" label="Montant en séquestre" />
+        <StatCard icon={CheckCircle2} iconCls="bg-emerald-50 text-emerald-600" value={resolvedCount} unit="ce mois" label="Dossiers résolus" />
       </div>
 
       <div className="grid xl:grid-cols-[300px_1fr] gap-5 items-start">
         {/* Dossiers en attente */}
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-4">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
           <h3 className="font-black text-slate-900 text-sm mb-3">Dossiers en attente <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full ml-1">{disputes.length}</span></h3>
           <div className="space-y-2.5">
             {loading && <div className="text-center py-10 text-slate-400 text-xs"><Loader size={16} className="animate-spin mx-auto mb-2" />Chargement…</div>}
@@ -130,7 +121,7 @@ export default function AdminDisputes() {
         {b ? (
           <div className="space-y-5">
             {/* En-tête dossier */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <img src={img} alt="" className="w-20 h-14 rounded-xl object-cover bg-slate-100" />
@@ -158,7 +149,7 @@ export default function AdminDisputes() {
             </div>
 
             {/* Déclarations contradictoires */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
               <h3 className="font-black text-slate-900 text-sm mb-4">Comparaison Contradictoire des Déclarations</h3>
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="border border-blue-100 bg-blue-50/50 rounded-2xl p-4">
@@ -189,7 +180,7 @@ export default function AdminDisputes() {
             </div>
 
             {/* Inspection avant/après */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
               <h3 className="font-black text-slate-900 text-sm mb-4 flex items-center gap-2">
                 <Camera size={15} className="text-teal-600" /> Inspection Contradictoire Numérique (Avant / Après)
               </h3>
@@ -213,7 +204,7 @@ export default function AdminDisputes() {
             </div>
 
             {/* Décision arbitrale */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
               <h3 className="font-black text-slate-900 text-sm mb-4">Décision Arbitrale Admin <span className="text-[9px] font-bold text-slate-400 ml-1">Choix exclusif COBAC</span></h3>
               <div className="space-y-2.5">
                 {OPTIONS.map(o => (
@@ -251,7 +242,7 @@ export default function AdminDisputes() {
             </div>
 
             {/* Journal des événements */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
               <h3 className="font-black text-slate-900 text-sm mb-4">Journal d'Audit et Historique des Événements</h3>
               <div className="space-y-0">
                 {[
@@ -276,7 +267,7 @@ export default function AdminDisputes() {
           </div>
         ) : (
           !loading && (
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-16 text-center">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-16 text-center">
               <ShieldCheck size={32} className="mx-auto mb-3 text-emerald-400" />
               <h3 className="font-black text-slate-900 mb-1">Aucun litige en cours</h3>
               <p className="text-xs text-slate-400">Tous les dossiers sont arbitrés — le séquestre fonctionne nominalement.</p>

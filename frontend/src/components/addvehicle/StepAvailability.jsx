@@ -17,7 +17,7 @@ const Toggle = ({ on, onChange }) => (
 );
 
 const Block = ({ icon: Icon, title, sub, children }) => (
-  <section className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+  <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
     <div className="flex items-center gap-3 mb-4">
       <span className="w-9 h-9 bg-teal-50 border border-teal-100 rounded-xl flex items-center justify-center"><Icon size={16} className="text-teal-600" /></span>
       <div>
@@ -208,7 +208,7 @@ export default function StepAvailability({ form, set, v }) {
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Calculator size={14} className="text-teal-600" />

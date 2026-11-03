@@ -108,7 +108,7 @@ export default function AddVehicle() {
 
   return (
     <OwnerLayout>
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-8">
         <WizardSteps step={step} subtitle={subtitles[step]} />
 
         {step === 1 && <StepInfos form={form} set={set} />}

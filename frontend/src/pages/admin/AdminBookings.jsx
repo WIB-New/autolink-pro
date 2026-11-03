@@ -4,10 +4,12 @@ import AdminLayout from '../../components/admindash/AdminLayout';
 import { bookingsAPI, vehiclesAPI } from '../../services/api';
 import { getVehicleImage } from '../../utils/carImages';
 import {
-  Search, ChevronDown, ChevronLeft, ChevronRight, ShieldCheck, Filter,
+  Search, ChevronLeft, ChevronRight, Filter,
   CheckCircle2, XCircle, CalendarRange, Car, Wifi, WifiOff, RefreshCw,
-  FileSpreadsheet, Plus, Siren,
+  FileSpreadsheet, Siren, Wallet, Lock, MapPin, ArrowUpDown,
 } from 'lucide-react';
+import StatCard from '../../components/StatCard';
+import FilterField from '../../components/FilterField';
 
 const POLL_INTERVAL = 15000;
 const PAGE_SIZE = 10;
@@ -108,108 +110,70 @@ export default function AdminBookings() {
   const urgent = counts.pending || 0;
   const monthCount = bookings.filter(b => { const d = new Date(b.created_at); const n = new Date(); return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear(); }).length;
 
-  const selectCls = 'pl-3 pr-7 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 appearance-none focus:outline-none focus:ring-2 focus:ring-teal-500';
-  const chev = <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />;
 
   return (
     <AdminLayout
-      title="Gestion des Réservations"
-      subtitle="Supervision centrale des réservations, transmissions bailleurs et statuts de mission."
-      badges={{ reservations: urgent }}
-    >
-      {/* Actions d'en-tête */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-5 -mt-2">
-        <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-teal-400 text-slate-600 text-[11px] font-bold px-3.5 py-2 rounded-xl transition-colors">
-            <Filter size={13} /> Filtres avancés
-          </button>
+      title={
+        <span className="flex items-center justify-between gap-3 flex-wrap">
+          <span>Gestion des Réservations</span>
           <button className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-teal-400 text-slate-600 text-[11px] font-bold px-3.5 py-2 rounded-xl transition-colors">
             <FileSpreadsheet size={13} className="text-teal-600" /> Export Excel / CSV
           </button>
-        </div>
-        <button className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold px-4 py-2.5 rounded-xl transition-colors shadow-sm">
-          <Plus size={14} /> Créer une réservation admin
-        </button>
-      </div>
+        </span>
+      }
+      subtitle=""
+      badges={{ reservations: urgent }}
+    >
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
-        {[
-          { l: 'Ce mois-ci', v: `${monthCount}`, u: 'réservations', tag: '+18.4%', tagCls: 'text-teal-600 bg-teal-50' },
-          { l: 'Action requise', v: `${urgent}`, u: "à traiter d'urgence", tag: 'SLA', tagCls: 'text-red-600 bg-red-50' },
-          { l: 'Volume brut (XAF)', v: `${fmt(gross)}`, u: 'FCFA', tag: 'Mois', tagCls: 'text-slate-500 bg-slate-100' },
-          { l: 'Cautions séquestrées', v: `${fmt(escrowed)}`, u: 'FCFA', tag: 'OK', tagCls: 'text-teal-600 bg-teal-50' },
-        ].map(k => (
-          <div key={k.l} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{k.l}</span>
-              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${k.tagCls}`}>{k.tag}</span>
-            </div>
-            <div className="text-2xl font-black text-slate-900 leading-none">{k.v} <span className="text-[10px] font-bold text-slate-400">{k.u}</span></div>
-          </div>
-        ))}
+        <StatCard icon={CalendarRange} iconCls="bg-blue-50 text-blue-600" value={monthCount} unit="réservations" label="Ce mois-ci" />
+        <StatCard icon={Siren} iconCls="bg-red-50 text-red-600" value={urgent} unit="à traiter" label="Action requise" />
+        <StatCard icon={Wallet} iconCls="bg-emerald-50 text-emerald-600" value={fmt(gross)} unit="FCFA" label="Volume brut" />
+        <StatCard icon={Lock} iconCls="bg-amber-50 text-amber-600" value={fmt(escrowed)} unit="FCFA" label="Cautions séquestrées" />
       </div>
 
-      {/* Onglets statuts */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`text-[11px] font-bold px-3.5 py-2 rounded-xl transition-colors flex items-center gap-1.5 ${
-              tab === t.id ? 'bg-teal-600 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:border-teal-400'}`}>
-            {t.label}
-            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${tab === t.id ? 'bg-white/20 text-white' : t.id === 'disputed' ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
-              {counts[t.id] || 0}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {/* Barre recherche + filtres */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-4">
-        <div className="grid md:grid-cols-[1fr_auto_auto_auto] gap-3 mb-3">
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input value={query} onChange={e => setQuery(e.target.value)}
-              placeholder="Rechercher par n° de dossier (#ALP-…), client ou véhicule…"
-              className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500" />
-          </div>
-          <div className="relative">
-            <select value={hub} onChange={e => setHub(e.target.value)} className={selectCls}>
-              <option value="all">Hub : Tous</option>
-              <option value="Douala">Douala</option>
-              <option value="Yaoundé">Yaoundé</option>
-            </select>{chev}
-          </div>
-          <div className="relative">
-            <select value={tier} onChange={e => setTier(e.target.value)} className={selectCls}>
-              <option value="all">Gamme : Toutes</option>
-              <option value="basic">Économique</option>
-              <option value="standard">Standard</option>
-              <option value="premium">Premium</option>
-              <option value="gold">Gold</option>
-              <option value="collection">Collection</option>
-            </select>{chev}
-          </div>
-          <div className="relative">
-            <select value={mode} onChange={e => setMode(e.target.value)} className={selectCls}>
-              <option value="all">Mode : Tous</option>
-              <option value="internal">Chauffeur AutoLink</option>
-              <option value="owner">Chauffeur proprio</option>
-              <option value="none">Sans chauffeur</option>
-            </select>{chev}
-          </div>
+      {/* Onglets + filtres — carte unique style pro */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm mb-4">
+        <div className="flex items-center gap-1 px-2 border-b border-slate-100 overflow-x-auto">
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`relative flex items-center gap-1.5 px-3 py-3.5 text-[11px] font-bold whitespace-nowrap transition-colors ${tab === t.id ? 'text-teal-700' : 'text-slate-400 hover:text-slate-600'}`}>
+              {t.label}
+              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${tab === t.id ? 'bg-teal-600 text-white' : t.id === 'disputed' ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                {counts[t.id] || 0}
+              </span>
+              {tab === t.id && <span className="absolute bottom-0 inset-x-1 h-[2.5px] bg-teal-600 rounded-t-full" />}
+            </button>
+          ))}
         </div>
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
-            <CalendarRange size={12} /> Semaine en cours (28 Oct - 03 Nov)
-          </span>
-          <div className="relative">
-            <select value={sort} onChange={e => setSort(e.target.value)} className={selectCls}>
-              <option value="depart">Trier : Urgence départ</option>
-              <option value="recent">Plus récentes</option>
-              <option value="montant">Montant décroissant</option>
-            </select>{chev}
-          </div>
+        <div className="p-4 grid sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+          <FilterField label="Recherche" icon={Search} value={query} onChange={setQuery}
+            placeholder="N° dossier, client, véhicule…" />
+          <FilterField label="Hub" icon={MapPin} type="select" value={hub} onChange={setHub}
+            options={[{ value: 'all', label: 'Tous' }, 'Douala', 'Yaoundé']} />
+          <FilterField label="Gamme" icon={Car} type="select" value={tier} onChange={setTier}
+            options={[
+              { value: 'all', label: 'Toutes' },
+              { value: 'basic', label: 'Économique' },
+              { value: 'standard', label: 'Standard' },
+              { value: 'premium', label: 'Premium' },
+              { value: 'gold', label: 'Gold' },
+              { value: 'collection', label: 'Collection' },
+            ]} />
+          <FilterField label="Mode" icon={Filter} type="select" value={mode} onChange={setMode}
+            options={[
+              { value: 'all', label: 'Tous' },
+              { value: 'internal', label: 'Chauffeur AutoLink' },
+              { value: 'owner', label: 'Chauffeur proprio' },
+              { value: 'none', label: 'Sans chauffeur' },
+            ]} />
+          <FilterField label="Tri" icon={ArrowUpDown} type="select" value={sort} onChange={setSort}
+            options={[
+              { value: 'depart', label: 'Urgence départ' },
+              { value: 'recent', label: 'Plus récentes' },
+              { value: 'montant', label: 'Montant décroissant' },
+            ]} />
         </div>
       </div>
 
@@ -328,7 +292,7 @@ export default function AdminBookings() {
       </div>
 
       {/* Bande protocole */}
-      <div className="bg-slate-900 rounded-2xl px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      {/* <div className="bg-slate-900 rounded-2xl px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="w-9 h-9 bg-teal-500/20 rounded-xl flex items-center justify-center shrink-0">
             <ShieldCheck size={17} className="text-teal-400" />
@@ -339,7 +303,7 @@ export default function AdminBookings() {
           </div>
         </div>
         <span className="text-[10px] font-black text-teal-400 whitespace-nowrap">Passerelle MoMo / OM : 100 % opérationnelle</span>
-      </div>
+      </div> */}
 
       <div className="mt-4 flex items-center justify-between text-[10px] font-bold text-slate-400">
         <span className="flex items-center gap-1.5">

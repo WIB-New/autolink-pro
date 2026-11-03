@@ -19,7 +19,7 @@ export default function PricingPanel({ vehicle: v, onSave }) {
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <h3 className="font-black text-slate-900 text-sm flex items-center gap-2 mb-1">
         <Tag size={15} className="text-teal-600" /> Gamme &amp; Tarification
       </h3>

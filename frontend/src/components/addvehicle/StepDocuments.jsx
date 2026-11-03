@@ -18,7 +18,7 @@ const DOCS = [
 export default function StepDocuments({ form, set }) {
   return (
     <div className="space-y-5">
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
         <div className="flex items-center gap-3 mb-5">
           <span className="w-9 h-9 bg-teal-50 border border-teal-100 rounded-xl flex items-center justify-center"><FileCheck size={16} className="text-teal-600" /></span>
           <div>

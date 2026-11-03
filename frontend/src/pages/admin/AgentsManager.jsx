@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Tag, Plus, CheckCircle, XCircle, TrendingUp, DollarSign, Users, Copy, ToggleLeft, ToggleRight, Search } from 'lucide-react';
 import AdminLayout from '../../components/admindash/AdminLayout';
+import StatCard from '../../components/StatCard';
+import FilterField from '../../components/FilterField';
 
 const MOCK_AGENTS = [
   { id: 1, code: 'AGT-DBL-001', name: 'Moise Kamga',    type: 'Influenceur',  phone: '+237 6 77 11 22 33', conversions: 28, totalAmount: 4340000, commission: 217000, rate: 5, active: true,  joined: '2025-01-15' },
@@ -43,33 +45,21 @@ export default function AgentsManager() {
   const totalAmount      = agents.filter(a => a.active).reduce((s, a) => s + a.totalAmount, 0);
 
   return (
-    <AdminLayout title="Agents et Parrainage" subtitle="Réseau d'apporteurs d'affaires, codes promo et suivi des commissions.">
+    <AdminLayout title="Agents et Parrainage" subtitle="Parrainage & commissions">
       <div className="max-w-6xl mx-auto space-y-6">
 
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { icon: Users,     label: 'Agents actifs',         value: agents.filter(a=>a.active).length,   color: 'text-primary-600 bg-primary-50 dark:bg-primary-900/20' },
-            { icon: TrendingUp,label: 'Conversions totales',   value: totalConversions,                     color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' },
-            { icon: DollarSign,label: 'CA généré par agents',  value: `${(totalAmount/1000).toFixed(0)} K`, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' },
-            { icon: Tag,       label: 'Commissions dues',      value: `${totalCommissions.toLocaleString()} F`, color: 'text-orange-600 bg-orange-50 dark:bg-orange-900/20' },
-          ].map(({ icon: Icon, label, value, color }) => (
-            <div key={label} className="card">
-              <div className={`w-10 h-10 ${color} rounded-xl flex items-center justify-center mb-3`}>
-                <Icon size={20} />
-              </div>
-              <div className="text-xl font-bold text-slate-900 dark:text-white">{value}</div>
-              <div className="text-sm text-slate-500 dark:text-slate-400">{label}</div>
-            </div>
-          ))}
+          <StatCard icon={Users} iconCls="bg-blue-50 text-blue-600" value={agents.filter(a=>a.active).length} label="Agents actifs" />
+          <StatCard icon={TrendingUp} iconCls="bg-emerald-50 text-emerald-600" value={totalConversions} label="Conversions" />
+          <StatCard icon={DollarSign} iconCls="bg-violet-50 text-violet-600" value={`${(totalAmount/1000).toFixed(0)} K`} unit="FCFA" label="CA généré" />
+          <StatCard icon={Tag} iconCls="bg-amber-50 text-amber-600" value={totalCommissions.toLocaleString('fr-FR')} unit="F" label="Commissions dues" />
         </div>
 
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="relative flex-1 min-w-52">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input type="text" className="input-field pl-9" placeholder="Rechercher un agent ou un code..."
-              value={search} onChange={e => setSearch(e.target.value)} />
+          <div className="flex-1 min-w-52">
+            <FilterField label="Recherche" icon={Search} value={search} onChange={setSearch} placeholder="Agent ou code…" />
           </div>
           <button onClick={() => setShowCreate(true)}
             className="btn-primary flex items-center gap-2 py-2.5 px-5">

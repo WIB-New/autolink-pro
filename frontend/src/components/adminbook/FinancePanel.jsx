@@ -11,7 +11,7 @@ export default function FinancePanel({ booking: b }) {
   const net = Number(b.owner_amount || 0) || Number(b.subtotal || 0) - commission;
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
           <Wallet size={15} className="text-teal-600" /> Décomposition Financière

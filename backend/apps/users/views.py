@@ -307,7 +307,7 @@ class NewsletterResendView(APIView):
                 continue
 
             language = get_user_language(subscriber)
-            unsubscribe_token = signer.sign(str(subscriber.pk))
+            unsubscribe_token = signing.sign(str(subscriber.pk))
             unsubscribe_url = f"{settings.FRONTEND_URL}/newsletter/unsubscribe?token={unsubscribe_token}"
 
             email = EmailMultiAlternatives(
@@ -417,12 +417,33 @@ class LoginView(APIView):
 
 
 class GoogleAuthView(APIView):
-    """Connexion / inscription via Google — crée le compte si nécessaire."""
+    """Connexion / inscription via Google — vérifie le jeton ID Google, crée le compte si nécessaire."""
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        serializer = GoogleAuthSerializer(
-            data=request.data, context={'request': request})
+        credential = request.data.get('credential') or request.data.get('id_token')
+
+        # Flux réel : jeton ID émis par Google Identity Services (frontend)
+        if credential:
+            try:
+                from google.oauth2 import id_token as google_id_token
+                from google.auth.transport import requests as google_requests
+                info = google_id_token.verify_oauth2_token(
+                    credential, google_requests.Request(),
+                    getattr(settings, 'GOOGLE_CLIENT_ID', '') or None)
+            except Exception:
+                return Response({'detail': 'Jeton Google invalide ou expiré.'}, status=status.HTTP_400_BAD_REQUEST)
+            serializer = GoogleAuthSerializer(data={
+                'email': info.get('email', ''),
+                'first_name': info.get('given_name', ''),
+                'last_name': info.get('family_name', ''),
+                'google_id': info.get('sub', ''),
+            })
+            serializer.is_valid(raise_exception=True)
+            return Response(serializer.validated_data)
+
+        # Compatibilité : ancien flux email (sans vérification)
+        serializer = GoogleAuthSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return Response(serializer.validated_data)
 

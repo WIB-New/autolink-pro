@@ -20,11 +20,11 @@ export default function RevenueTable({ bookings }) {
   const slice = rows.slice((page - 1) * PAGE, page * PAGE);
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between gap-3 px-6 py-5 border-b border-slate-50 flex-wrap">
         <div>
-          <h3 className="font-black text-slate-900">Détail par location &amp; Décomposition des revenus</h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">Transparence totale sur commissions, assurances et montants nets crédités.</p>
+          <h3 className=" text-slate-500">Détail par location &amp; Décomposition des revenus</h3>
+          {/* <p className="text-[11px] text-slate-400 mt-0.5">Transparence totale sur commissions, assurances et montants nets crédités.</p> */}
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">

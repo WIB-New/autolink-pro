@@ -253,7 +253,7 @@ export function AutoLinkShield({ size = 200 }) {
 }
 
 /* ── Sizes (hauteur du logo) ── */
-const H = { xs: 24, sm: 44, md: 84, lg: 84, xl: 128, '2xl': 160 };
+const H = { xxs: 20, xs: 24, sm: 44, md: 84, lg: 84, xl: 128, '2xl': 160 };
 
 export function AutoLinkIcon({ size = 52 }) {
   return <img src={logoPng} alt="AutoLink Pro" style={{ height: size, width: 'auto' }} className="object-contain" />;

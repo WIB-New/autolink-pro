@@ -14,7 +14,7 @@ const CHECKS = [
 /* « Homologation Hub — Inspection CEMAC » + points de contrôle. */
 export default function InspectionPanel({ v }) {
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div>
           <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Homologation Hub</span>

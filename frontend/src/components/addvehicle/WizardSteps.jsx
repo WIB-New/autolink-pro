@@ -10,30 +10,38 @@ export const WIZARD_STEPS = [
   { n: 6, label: 'Récapitulatif' },
 ];
 
-/* Barre d'étapes « ÉTAPE N SUR 6 » — maquette wizard. */
+/* Barre d'étapes — numéro au-dessus de la ligne, description en dessous. */
 export default function WizardSteps({ step, subtitle = "Ajout d'un véhicule à la flotte" }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-7">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          <span className="bg-teal-100 text-teal-700 text-[10px] font-black px-3 py-1.5 rounded-full tracking-wide">ÉTAPE {step} SUR 6</span>
-          <h1 className="text-xl font-black text-slate-900">{subtitle}</h1>
-        </div>
+        <h1 className="text-xl font-black text-slate-900">{subtitle}</h1>
         <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
           <UploadCloud size={12} className="text-teal-500" /> Sauvegarde automatique : Enregistré
         </span>
       </div>
-      <div className="flex gap-1.5">
-        {WIZARD_STEPS.map(s => (
-          <div key={s.n} className="flex-1 min-w-0">
-            <div className={`h-1 rounded-full ${s.n <= step ? 'bg-teal-600' : 'bg-slate-200'}`} />
-            <div className={`flex items-center gap-1.5 mt-2 ${s.n === step ? 'text-teal-700' : s.n < step ? 'text-slate-500' : 'text-slate-300'}`}>
-              {s.n < step
-                ? <CheckCircle2 size={12} className="text-teal-600 shrink-0" />
-                : <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shrink-0 ${s.n === step ? 'bg-teal-600 text-white' : 'bg-slate-200 text-slate-400'}`}>{s.n}</span>}
-              <span className="text-[9px] font-black truncate hidden sm:block">{s.label}</span>
+      <div className="flex items-start px-2">
+        {WIZARD_STEPS.map((s, i) => (
+          <React.Fragment key={s.n}>
+            {/* Numéro traversé par la ligne */}
+            <div className="flex flex-col items-center shrink-0 w-14 sm:w-20">
+              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 transition-colors ${
+                s.n < step ? 'bg-teal-600 text-white'
+                : s.n === step ? 'bg-teal-600 text-white ring-4 ring-teal-100'
+                : 'bg-slate-200 text-slate-400'}`}>
+                {s.n < step ? <CheckCircle2 size={14} /> : s.n}
+              </span>
+              {/* Description sous le numéro */}
+              <span className={`mt-2.5 text-[10px] font-black text-center truncate w-full hidden sm:block ${
+                s.n === step ? 'text-teal-700' : s.n < step ? 'text-slate-500' : 'text-slate-300'}`}>
+                {s.label}
+              </span>
             </div>
-          </div>
+            {/* Segment de ligne entre deux étapes */}
+            {i < WIZARD_STEPS.length - 1 && (
+              <div className={`flex-1 h-[3px] rounded-full mt-[13px] mx-1 ${s.n < step ? 'bg-teal-600' : 'bg-slate-200'}`} />
+            )}
+          </React.Fragment>
         ))}
       </div>
     </div>

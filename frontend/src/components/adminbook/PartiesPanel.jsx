@@ -9,7 +9,7 @@ const initialsOf = name => (name || 'C').split(' ').map(w => w[0]).slice(0, 2).j
 export default function PartiesPanel({ booking: b, vehicle: v }) {
   const img = v ? (v.image_url || getVehicleImage(v.category)) : getVehicleImage('default');
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-black text-slate-900 text-sm">Parties Prenantes au Dossier</h3>
         <span className="text-[9px] font-bold text-slate-400">3 Profils audités &amp; synchronisés</span>

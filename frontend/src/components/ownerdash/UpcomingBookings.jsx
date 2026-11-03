@@ -8,20 +8,14 @@ const carImg = (name = '') => {
 };
 
 const STATUS = {
-  confirmed: { label: 'Prêt pour départ',  cls: 'bg-teal-100 text-teal-700' },
-  active:    { label: 'Course en cours',   cls: 'bg-sky-100 text-sky-700' },
-  pending:   { label: 'À confirmer',       cls: 'bg-amber-100 text-amber-700' },
+  confirmed: { label: 'Départ prêt',   cls: 'bg-teal-100 text-teal-700' },
+  active:    { label: 'En cours',      cls: 'bg-sky-100 text-sky-700' },
+  pending:   { label: 'À confirmer',   cls: 'bg-amber-100 text-amber-700' },
 };
 
-const DRIVER = {
-  none:     'Autonome',
-  owner:    'Chauffeur proprio',
-  internal: 'Chauffeur AutoLink',
-};
+const fmtDate = d => { try { return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }); } catch (_) { return d || '—'; } };
 
-const fmtDate = d => { try { return new Date(d).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' }); } catch (_) { return d || '—'; } };
-
-/* « Prochaines locations confirmées » — planning détaillé de la flotte. */
+/* « Prochaines locations » — table compacte style Recent Orders (maquette). */
 export default function UpcomingBookings({ bookings }) {
   const rows = bookings
     .filter(b => ['confirmed', 'active'].includes(b.status))
@@ -29,55 +23,47 @@ export default function UpcomingBookings({ bookings }) {
     .slice(0, 6);
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-6 py-5 border-b border-slate-50">
-        <div>
-          <h3 className="font-black text-slate-900">Prochaines locations confirmées</h3>
-          <p className="text-xs text-slate-400 mt-0.5">Planning immédiat des départs en cours de vos véhicules</p>
-        </div>
-        <span className="text-xs font-bold text-teal-600 flex items-center gap-1.5"><CalendarRange size={13} /> {rows.length} course(s)</span>
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4">
+        <h3 className=" text-slate-500 text-sm">Prochaines locations</h3>
+        <span className="text-[11px] font-bold text-teal-600 flex items-center gap-1.5"><CalendarRange size={13} /> {rows.length}</span>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-left min-w-[720px]">
+        <table className="w-full text-left min-w-[540px]">
           <thead>
-            <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-50">
-              <th className="px-6 py-3">Véhicule</th>
-              <th className="px-4 py-3">Locataire &amp; contact</th>
-              <th className="px-4 py-3">Période de location</th>
-              <th className="px-4 py-3">Point de remise</th>
-              <th className="px-4 py-3">Mode de conduite</th>
-              <th className="px-4 py-3">Statut opérationnel</th>
-              <th className="px-4 py-3" />
+            <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-y border-slate-50">
+              <th className="px-5 py-2.5">Véhicule</th>
+              <th className="px-4 py-2.5">Locataire</th>
+              <th className="px-4 py-2.5">Période</th>
+              <th className="px-4 py-2.5">Montant</th>
+              <th className="px-4 py-2.5">Statut</th>
+              <th className="px-4 py-2.5" />
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-50">
             {rows.length === 0 && (
-              <tr><td colSpan={7} className="px-6 py-10 text-center text-sm text-slate-400">Aucune location confirmée pour le moment.</td></tr>
+              <tr><td colSpan={6} className="px-5 py-8 text-center text-xs text-slate-400">Aucune location confirmée.</td></tr>
             )}
             {rows.map(b => {
               const st = STATUS[b.status] || STATUS.pending;
               return (
-                <tr key={b.id} className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <img src={carImg(b.vehicle_name)} alt="" className="w-14 h-10 object-cover rounded-lg" />
+                <tr key={b.id} className="hover:bg-slate-50/60 transition-colors">
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <img src={carImg(b.vehicle_name)} alt="" className="w-11 h-8 object-cover rounded-lg" />
                       <div className="min-w-0">
-                        <div className="font-bold text-slate-900 text-xs truncate max-w-[130px]">{b.vehicle_name || 'Véhicule'}</div>
-                        <div className="text-[10px] text-slate-400">#{b.id}</div>
+                        <div className="font-bold text-slate-900 text-[12px] truncate max-w-[130px]">{b.vehicle_name || 'Véhicule'}</div>
+                        <div className="text-[9px] text-slate-400">#{b.id}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-4">
-                    <div className="font-bold text-slate-800 text-xs">{b.client_name || 'Client'}</div>
-                    <div className="text-[10px] text-slate-400">Certifié AutoLink</div>
+                  <td className="px-4 py-3 text-[11px] font-semibold text-slate-700">{b.client_name || 'Client'}</td>
+                  <td className="px-4 py-3 text-[11px] text-slate-500 whitespace-nowrap">{fmtDate(b.start_date)} → {fmtDate(b.end_date)}</td>
+                  <td className="px-4 py-3 text-[12px] font-black text-slate-900 whitespace-nowrap">
+                    {Math.round(Number(b.owner_amount || b.total_price || 0) * 0.85).toLocaleString('fr-FR')} <span className="text-[9px] text-slate-400 font-bold">F</span>
                   </td>
-                  <td className="px-4 py-4 text-xs text-slate-600 font-medium">
-                    {fmtDate(b.start_date)}<br /><span className="text-slate-400">au {fmtDate(b.end_date)}</span>
-                  </td>
-                  <td className="px-4 py-4 text-xs text-slate-600 font-medium">Hub AutoLink<br /><span className="text-slate-400">{b.city || 'Douala'}</span></td>
-                  <td className="px-4 py-4 text-xs text-slate-600 font-medium">{DRIVER[b.driver_type] || 'Autonome'}</td>
-                  <td className="px-4 py-4"><span className={`text-[10px] font-black px-2.5 py-1 rounded-lg ${st.cls}`}>{st.label}</span></td>
-                  <td className="px-4 py-4"><button className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg"><MoreHorizontal size={16} /></button></td>
+                  <td className="px-4 py-3"><span className={`text-[9px] font-black px-2 py-1 rounded-md ${st.cls}`}>{st.label}</span></td>
+                  <td className="px-4 py-3 text-right"><button className="p-1 text-slate-300 hover:text-teal-600 transition-colors"><MoreHorizontal size={15} /></button></td>
                 </tr>
               );
             })}

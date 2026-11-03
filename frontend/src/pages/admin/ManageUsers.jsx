@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Search, Filter, Eye, Ban, CheckCircle, Users, Car, UserCheck, Shield } from 'lucide-react';
 import AdminLayout from '../../components/admindash/AdminLayout';
+import StatCard from '../../components/StatCard';
+import FilterField from '../../components/FilterField';
 
 const USERS = [
   { id: 1, name: 'Marie Konan', email: 'marie@email.com', phone: '+225 07 12 34 56', role: 'CLIENT', status: 'active', verified: true, joined: '2025-01-15', bookings: 8, spent: 430000 },
@@ -30,44 +32,22 @@ export default function ManageUsers() {
   const counts = { CLIENT: USERS.filter(u => u.role === 'CLIENT').length, OWNER: USERS.filter(u => u.role === 'OWNER').length, DRIVER: USERS.filter(u => u.role === 'DRIVER').length };
 
   return (
-    <AdminLayout title="Utilisateurs et Comptes" subtitle="Comptes clients, propriétaires et chauffeurs — vérifications KYC et suspensions.">
+    <AdminLayout title="Utilisateurs et Comptes" subtitle="Comptes & vérifications KYC">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Summary */}
         <div className="grid grid-cols-3 gap-4">
-          {[
-            { label: 'Clients', count: counts.CLIENT, icon: Users, color: 'bg-blue-50 text-blue-600' },
-            { label: 'Propriétaires', count: counts.OWNER, icon: Car, color: 'bg-primary-50 text-primary-600' },
-            { label: 'Chauffeurs', count: counts.DRIVER, icon: UserCheck, color: 'bg-amber-50 text-amber-600' },
-          ].map(({ label, count, icon: Icon, color }) => (
-            <div key={label} className="card flex items-center gap-4">
-              <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center shrink-0`}><Icon size={22} /></div>
-              <div>
-                <div className="text-2xl font-black text-slate-900">{count}</div>
-                <div className="text-sm text-slate-500">{label} actifs</div>
-              </div>
-            </div>
-          ))}
+          <StatCard icon={Users} iconCls="bg-blue-50 text-blue-600" value={counts.CLIENT} label="Clients actifs" />
+          <StatCard icon={Car} iconCls="bg-emerald-50 text-emerald-600" value={counts.OWNER} label="Propriétaires actifs" />
+          <StatCard icon={UserCheck} iconCls="bg-amber-50 text-amber-600" value={counts.DRIVER} label="Chauffeurs actifs" />
         </div>
 
         {/* Filters */}
-        <div className="card flex flex-wrap gap-4">
-          <div className="flex-1 min-w-48 relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input type="text" className="input-field pl-9" placeholder="Rechercher par nom ou email..."
-              value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
-          <select className="input-field w-auto" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
-            <option value="ALL">Tous les rôles</option>
-            <option value="CLIENT">Clients</option>
-            <option value="OWNER">Propriétaires</option>
-            <option value="DRIVER">Chauffeurs</option>
-          </select>
-          <select className="input-field w-auto" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-            <option value="ALL">Tous les statuts</option>
-            <option value="active">Actifs</option>
-            <option value="suspended">Suspendus</option>
-            <option value="pending">En attente</option>
-          </select>
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          <FilterField label="Recherche" icon={Search} value={search} onChange={setSearch} placeholder="Nom ou email…" />
+          <FilterField label="Rôle" icon={Users} type="select" value={roleFilter} onChange={setRoleFilter}
+            options={[{ value: 'ALL', label: 'Tous les rôles' }, { value: 'CLIENT', label: 'Clients' }, { value: 'OWNER', label: 'Propriétaires' }, { value: 'DRIVER', label: 'Chauffeurs' }]} />
+          <FilterField label="Statut" icon={UserCheck} type="select" value={statusFilter} onChange={setStatusFilter}
+            options={[{ value: 'ALL', label: 'Tous les statuts' }, { value: 'active', label: 'Actifs' }, { value: 'suspended', label: 'Suspendus' }, { value: 'pending', label: 'En attente' }]} />
         </div>
 
         {/* Table */}

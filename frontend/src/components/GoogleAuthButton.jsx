@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { X, Mail, Loader } from 'lucide-react';
+import { Loader } from 'lucide-react';
+
+const CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
+const GSI_SRC = 'https://accounts.google.com/gsi/client';
 
 // Logo Google officiel (SVG multicolore)
 const GoogleIcon = () => (
@@ -13,74 +16,74 @@ const GoogleIcon = () => (
   </svg>
 );
 
+let gsiPromise = null;
+const loadGsi = () => {
+  if (!gsiPromise) {
+    gsiPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = GSI_SRC; s.async = true; s.defer = true;
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  return gsiPromise;
+};
+
+/* Bouton officiel « Continuer avec Google » — Google Identity Services.
+   Le jeton ID retourné par Google est envoyé au backend (/users/google/)
+   qui le vérifie puis émet le JWT de session. */
 export default function GoogleAuthButton({ label = 'Continuer avec Google' }) {
   const { googleLogin, getDashboardPath } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  // ?next=/chemin : revenir à l'action en cours après connexion Google
   const next = params.get('next');
-  const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-  const [loading, setLoading] = useState(false);
+  const btnRef = useRef(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const submit = async () => {
-    if (!email.includes('@')) { setError('Entrez une adresse Gmail valide.'); return; }
-    setLoading(true); setError('');
-    const parts = name.trim().split(/\s+/);
-    const res = await googleLogin({
-      email,
-      first_name: parts[0] || '',
-      last_name: parts.slice(1).join(' ') || '',
-      google_id: '',
-    });
-    setLoading(false);
-    if (res.success) { setOpen(false); navigate(next || getDashboardPath(res.user.role)); }
-    else setError(res.error);
-  };
+  useEffect(() => {
+    if (!CLIENT_ID || !btnRef.current) return;
+    let cancelled = false;
+    loadGsi().then(() => {
+      if (cancelled || !window.google) return;
+      window.google.accounts.id.initialize({
+        client_id: CLIENT_ID,
+        callback: async (resp) => {
+          setBusy(true); setError('');
+          const res = await googleLogin({ credential: resp.credential });
+          setBusy(false);
+          if (res.success) navigate(next || getDashboardPath(res.user.role));
+          else setError(res.error || 'Connexion Google impossible.');
+        },
+      });
+      window.google.accounts.id.renderButton(btnRef.current, {
+        theme: 'outline', size: 'large', shape: 'rectangular',
+        text: 'continue_with', locale: 'fr', width: 320,
+      });
+    }).catch(() => setError('Impossible de charger Google Sign-In.'));
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  return (
-    <>
-      <button type="button" onClick={() => setOpen(true)}
-        className="w-full flex items-center justify-center gap-3 border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-xl py-3 font-semibold text-slate-700 transition-all">
+  if (!CLIENT_ID) {
+    return (
+      <button type="button" disabled title="Configurer REACT_APP_GOOGLE_CLIENT_ID"
+        className="w-full flex items-center justify-center gap-3 border-2 border-slate-200 rounded-xl py-3 font-semibold text-slate-400 cursor-not-allowed">
         <GoogleIcon /> {label}
       </button>
+    );
+  }
 
-      {open && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2 font-bold text-slate-900"><GoogleIcon /> Compte Google</div>
-              <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100"><X size={18} /></button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="label">Adresse Gmail</label>
-                <div className="relative">
-                  <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input type="email" className="input-field pl-10" placeholder="prenom.nom@gmail.com"
-                    value={email} onChange={e => setEmail(e.target.value)} autoFocus />
-                </div>
-              </div>
-              <div>
-                <label className="label">Nom complet <span className="text-slate-400">(première connexion)</span></label>
-                <input type="text" className="input-field" placeholder="Prénom Nom"
-                  value={name} onChange={e => setName(e.target.value)} />
-              </div>
-              {error && <p className="text-sm text-red-600">{error}</p>}
-              <button onClick={submit} disabled={loading}
-                className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-50">
-                {loading && <Loader size={16} className="animate-spin" />}
-                {loading ? 'Connexion...' : 'Continuer'}
-              </button>
-              <p className="text-xs text-slate-400 text-center">
-                Si le compte n'existe pas, il sera créé automatiquement avec le rôle Client.
-              </p>
-            </div>
-          </div>
+  return (
+    <div className="w-full">
+      {busy ? (
+        <div className="w-full flex items-center justify-center gap-2 border-2 border-slate-200 rounded-xl py-3 text-sm font-semibold text-slate-500">
+          <Loader size={16} className="animate-spin text-teal-600" /> Connexion Google…
         </div>
+      ) : (
+        <div ref={btnRef} className="w-full flex justify-center [&>div]:!w-full" />
       )}
-    </>
+      {error && <p className="text-xs text-red-600 text-center mt-2">{error}</p>}
+    </div>
   );
 }

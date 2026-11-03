@@ -27,7 +27,7 @@ export default function StepSpecs({ form, set }) {
 
   return (
     <div className="space-y-5">
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-5">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5">
         <div className="flex items-center gap-3">
           <span className="w-9 h-9 bg-teal-50 border border-teal-100 rounded-xl flex items-center justify-center"><Settings2 size={16} className="text-teal-600" /></span>
           <div>
@@ -56,7 +56,7 @@ export default function StepSpecs({ form, set }) {
       </div>
 
       {/* Mode de gestion */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
         <h3 className="font-black text-slate-900 text-sm mb-4">Mode de gestion du véhicule</h3>
         <div className="grid sm:grid-cols-2 gap-3 mb-3">
           {[
@@ -80,7 +80,7 @@ export default function StepSpecs({ form, set }) {
       </div>
 
       {/* État */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
         <h3 className="font-black text-slate-900 text-sm mb-4">État du véhicule (cochez tout ce qui s'applique)</h3>
         <div className="grid sm:grid-cols-2 gap-2">
           {CONDITION_ITEMS.map(item => (

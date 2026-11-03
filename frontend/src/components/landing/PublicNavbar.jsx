@@ -147,11 +147,11 @@ import { NAV_LINKS } from './data';
 
 /* « Devenir propriétaire » n'est plus un lien : c'est un bouton (voir plus bas) */
 const PUBLIC_LINKS = [
-  { label: 'Accueil',             href: '/' },
-  { label: 'Catalogue',           href: '/catalogue' },
-  { label: 'Comment ça marche',   href: '/comment-ca-marche' },
-  { label: 'Tarifs',              href: '/tarifs' },
-  { label: 'Aide',                href: '/aide' },
+  { label: 'Accueil', href: '/' },
+  { label: 'Catalogue', href: '/catalogue' },
+  { label: 'Comment ça marche', href: '/comment-ca-marche' },
+  { label: 'Tarifs', href: '/tarifs' },
+  { label: 'Aide', href: '/aide' },
 ];
 
 /* Navbar publique partagée — landing (ancres) & pages publiques (liens router) */
@@ -172,11 +172,11 @@ export default function PublicNavbar() {
   const links = onHome ? NAV_LINKS : PUBLIC_LINKS;
   const renderLink = (l) => l.href.startsWith('#')
     ? <a key={l.href} href={l.href}
-        className="text-sm font-medium text-teal-600 hover:text-teal-600 transition-colors">{l.label}</a>
+      className="text-sm font-medium text-teal-600 hover:text-teal-600 transition-colors">{l.label}</a>
     : <Link key={l.href} to={l.href}
-        className={`text-sm font-medium transition-colors ${pathname === l.href ? 'text-teal-600 font-bold' : 'text-slate-600 hover:text-teal-600'}`}>
-        {l.label}
-      </Link>;
+      className={`text-sm font-medium transition-colors ${pathname === l.href ? 'text-teal-600 font-bold' : 'text-slate-600 hover:text-teal-600'}`}>
+      {l.label}
+    </Link>;
 
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 bg-white transition-shadow duration-300 ${scrolled ? 'shadow-md' : 'border-b border-slate-100'}`}>
@@ -231,14 +231,18 @@ export default function PublicNavbar() {
                   className="text-sm font-bold bg-teal-600 hover:bg-teal-500 text-white px-5 py-2.5 rounded-lg transition-colors shadow-sm">
                   S'inscrire
                 </button> */}
+                <button onClick={() => navigate('/login')}
+                  className="text-sm font-bold bg-teal-600 hover:bg-teal-600 text-white px-5 py-2.5 rounded-lg transition-colors shadow-sm whitespace-nowrap">
+                  S'authentifié
+                </button>
               </>
             )}
 
             {/* Devenir propriétaire — bouton (couleur primaire) */}
-            <button onClick={() => navigate('/login')}
+            {/* <button onClick={() => navigate('/login')}
               className="text-sm font-bold bg-teal-600 hover:bg-teal-600 text-white px-5 py-2.5 rounded-lg transition-colors shadow-sm whitespace-nowrap">
               S'authentifié
-            </button>
+            </button> */}
           </div>
 
           {/* Mobile burger */}

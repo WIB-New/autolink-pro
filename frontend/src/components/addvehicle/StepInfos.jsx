@@ -15,7 +15,7 @@ const input = 'w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 t
 /* Étape 1 — Infos générales du véhicule. */
 export default function StepInfos({ form, set }) {
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-5">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5">
       <div className="flex items-center gap-3">
         <span className="w-9 h-9 bg-teal-50 border border-teal-100 rounded-xl flex items-center justify-center"><Car size={16} className="text-teal-600" /></span>
         <div>

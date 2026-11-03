@@ -19,7 +19,7 @@ const ADVICE = [
 /* « Conseils d'optimisation » — recommandations automatiques. */
 export default function AdvicePanel() {
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
       <h3 className="font-black text-slate-900 mb-5">Conseils d'optimisation</h3>
       <div className="space-y-4">
         {ADVICE.map(a => (

@@ -4,7 +4,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import AutoLinkLogo from '../AutoLinkLogo';
 import {
   LayoutDashboard, Car, FileText, Wallet, MessageSquare, Bell,
-  Settings, LogOut, MapPin, BadgeCheck, Menu, X, ArrowRightLeft, Banknote, PlusSquare,
+  Settings, LogOut, Menu, X, ArrowRightLeft, PlusSquare,
+  ChevronDown, User,
 } from 'lucide-react';
 
 const NAV = [
@@ -18,52 +19,54 @@ const NAV = [
   { icon: Settings,        label: 'Profil & Paramètres',  path: '/settings' },
 ];
 
-/* Layout de l'espace propriétaire — sidebar claire + topbar avec solde (maquette). */
+/* Layout de l'espace propriétaire — sidebar claire auto-repliable (survol) + topbar. */
 export default function OwnerLayout({ children, badges = {}, balance = null }) {
   const { user, logout } = useAuth();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const handleLogout = () => { logout(); navigate('/'); };
 
-  const Sidebar = () => (
-    <div className="flex flex-col h-full bg-white border-r border-slate-100 w-60">
-      <div className="px-4 pt-2 pb-3 flex items-center border-b border-slate-50">
+  const Sidebar = ({ mini }) => (
+    <div className={`flex flex-col h-full bg-white border-r border-slate-100 ${mini ? 'w-20' : 'w-60'} transition-all duration-300`}>
+      <div className={`pt-3 pb-3 flex items-center border-b border-slate-100 ${mini ? 'justify-center px-2' : 'px-4'}`}>
         <Link to="/" className="flex items-center">
-          <AutoLinkLogo size="sm" />
+          <AutoLinkLogo size={mini ? 'xs' : 'xxs'} />
         </Link>
       </div>
 
-      <div className="px-5 pt-4 pb-2">
-        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Espace Propriétaire</span>
-      </div>
+      {!mini && (
+        <div className="px-5 pt-4 pb-2">
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Espace Propriétaire</span>
+        </div>
+      )}
+      {mini && <div className="pt-3" />}
 
-      <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
+      <nav className={`flex-1 space-y-3 overflow-y-auto ${mini ? 'px-2' : 'px-3'}`}>
         {NAV.map(({ icon: Icon, label, path, badge, passive }) => {
           const count = badge ? badges[badge] || 0 : 0;
           const active = !passive && (pathname === path || (path !== '/owner/dashboard' && pathname.startsWith(path + '/')));
           return (
-            <Link key={label} to={path} onClick={() => setOpen(false)}
-              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${active ? 'bg-teal-600 text-white shadow-md' : 'text-slate-600 hover:bg-teal-50 hover:text-teal-700'}`}>
+            <Link key={label} to={path} onClick={() => { setOpen(false); setCollapsed(true); }} title={mini ? label : undefined}
+              className={`relative flex items-center rounded-xl text-sm font-semibold transition-all ${mini ? 'justify-center px-0 py-3' : 'gap-3 px-3.5 py-2.5'} ${active ? 'bg-teal-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
               <Icon size={17} />
-              <span className="flex-1">{label}</span>
-              {count > 0 && (
+              {!mini && <span className="flex-1">{label}</span>}
+              {!mini && count > 0 && (
                 <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center">{count}</span>
               )}
+              {mini && count > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-3 border-t border-slate-100 space-y-1">
-        <button onClick={() => navigate('/catalogue')}
-          className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-teal-50 hover:text-teal-700 w-full transition-colors">
-          <ArrowRightLeft size={17} /> Basculer en Mode Client
-        </button>
-        <button onClick={handleLogout}
-          className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-red-50 hover:text-red-600 w-full transition-colors">
-          <LogOut size={17} /> Déconnexion
+      <div className={`border-t border-slate-100 space-y-1 ${mini ? 'p-2' : 'p-3'}`}>
+        <button onClick={handleLogout} title={mini ? 'Déconnexion' : undefined}
+          className={`flex items-center rounded-xl text-[13px] font-semibold text-slate-500 hover:text-red-500 hover:bg-red-50 w-full transition-colors ${mini ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'}`}>
+          <LogOut size={16} /> {!mini && 'Déconnexion'}
         </button>
       </div>
     </div>
@@ -71,7 +74,12 @@ export default function OwnerLayout({ children, badges = {}, balance = null }) {
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
-      <div className="hidden lg:block shrink-0"><Sidebar /></div>
+      {/* Sidebar desktop — s'ouvre au survol, se referme à la sortie */}
+      <div className="hidden lg:block shrink-0"
+        onMouseEnter={() => setCollapsed(false)}
+        onMouseLeave={() => setCollapsed(true)}>
+        <Sidebar mini={collapsed} />
+      </div>
 
       {open && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
@@ -80,7 +88,7 @@ export default function OwnerLayout({ children, badges = {}, balance = null }) {
               <span className="font-bold text-slate-900 text-sm">Menu Propriétaire</span>
               <button onClick={() => setOpen(false)} className="p-1.5 text-slate-400"><X size={20} /></button>
             </div>
-            <Sidebar />
+            <Sidebar mini={false} />
           </div>
           <div className="flex-1 bg-black/50" onClick={() => setOpen(false)} />
         </div>
@@ -91,35 +99,47 @@ export default function OwnerLayout({ children, badges = {}, balance = null }) {
         <header className="bg-white border-b border-slate-100 px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
             <button onClick={() => setOpen(true)} className="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100"><Menu size={20} /></button>
-            {/* <button className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl hover:border-teal-300 transition-colors">
-              <MapPin size={13} className="text-teal-600" /> Douala &amp; Yaoundé
-            </button> */}
-            <span className="hidden md:flex items-center gap-1.5 text-xs font-bold text-teal-700 bg-teal-50 px-3 py-2 rounded-xl">
-              <BadgeCheck size={13} /> Partenaire certifié
-            </span>
           </div>
-          <div className="flex items-center gap-3">
-            {balance !== null && (
-              <span className="hidden md:flex items-center gap-1.5 bg-slate-900 text-white text-xs font-black px-3.5 py-2 rounded-xl">
-                {Math.round(balance).toLocaleString('fr-FR')} <span className="text-teal-400">FCFA</span>
-              </span>
-            )}
-            {/* <button className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-colors">
-              <Banknote size={13} /> Retirer
-            </button> */}
+          <div className="flex items-center gap-3 mr-1 sm:mr-3">
             <button className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors">
               <Bell size={18} />
               {badges.demandes > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />}
             </button>
-            <button onClick={() => navigate('/settings')} className="flex items-center gap-2.5">
-              <span className="hidden sm:block text-right leading-tight">
-                <span className="block text-xs font-bold text-slate-800">{user?.firstName} {user?.lastName?.charAt(0)}.</span>
-                <span className="block text-[10px] text-slate-400">Partenaire depuis 2024</span>
-              </span>
-              <span className="w-9 h-9 bg-teal-600 rounded-full flex items-center justify-center text-white text-xs font-black">
-                {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
-              </span>
-            </button>
+
+            {/* Avatar + dropdown profil */}
+            <div className="relative">
+              <button onClick={() => setMenuOpen(o => !o)}
+                className="flex items-center gap-2.5 p-1 rounded-full hover:bg-slate-50 transition-colors">
+                <span className="hidden sm:block text-right leading-tight">
+                  <span className="block text-xs font-bold text-slate-800">{user?.firstName} {user?.lastName?.charAt(0)}.</span>
+                  <span className="block text-[10px] text-slate-400">Partenaire</span>
+                </span>
+                <span className="w-9 h-9 bg-teal-600 rounded-full flex items-center justify-center text-white text-xs font-black">
+                  {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                </span>
+                <ChevronDown size={13} className={`text-slate-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {menuOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-100 rounded-2xl shadow-lg py-2 z-20">
+                    <button onClick={() => { navigate('/catalogue'); setMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                      <ArrowRightLeft size={14} className="text-teal-600" /> Mode Client
+                    </button>
+                    <button onClick={() => { navigate('/settings'); setMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                      <User size={14} className="text-teal-600" /> Profil
+                    </button>
+                    <div className="border-t border-slate-100 my-1" />
+                    <button onClick={() => { setMenuOpen(false); handleLogout(); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-semibold text-red-500 hover:bg-red-50 transition-colors">
+                      <LogOut size={14} /> Déconnexion
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </header>
 

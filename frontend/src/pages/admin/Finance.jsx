@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import AdminLayout from '../../components/admindash/AdminLayout';
 import { bookingsAPI } from '../../services/api';
 import {
-  ShieldCheck, Landmark, Smartphone, Wallet, Download, FileText,
+  Landmark, Wallet, Download, FileText, Eye, X,
   ChevronLeft, ChevronRight, Lock, CheckCircle2, AlertTriangle, Loader, Wifi, WifiOff,
 } from 'lucide-react';
+import StatCard from '../../components/StatCard';
 
 const PAGE_SIZE = 8;
 const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
@@ -32,13 +33,14 @@ const ROW_STATUS = {
   gele:      { l: 'Gelé / Arbitrage', cls: 'bg-red-500 text-white' },
 };
 
-/* Page « Supervision Financière & Trésorerie CEMAC » — maquette admin finance. */
+/* Page « Supervision Financière & Trésorerie » — console finance admin. */
 export default function Finance() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(true);
   const [tab, setTab] = useState('all');
   const [page, setPage] = useState(1);
+  const [detail, setDetail] = useState(null);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -105,188 +107,113 @@ export default function Finance() {
 
   return (
     <AdminLayout
-      title={
-        <span className="flex items-center gap-2 flex-wrap">
-          <span className="bg-teal-700 text-white text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-wider">Zone CEMAC · Conformité COBAC</span>
-          Supervision Financière &amp; Trésorerie CEMAC
-        </span>
-      }
-      subtitle="Flux monétaires, agrégateurs Mobile Money (MTN / Orange), séquestres BEAC et reversements multi-hubs."
+      title="Supervision Financière & Trésorerie"
+      subtitle="Flux MoMo, séquestres & reversements"
       badges={{ finances: escrowCount }}
     >
-      {/* Bande garantie réglementaire */}
-      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-3.5 mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <ShieldCheck size={18} className="text-emerald-600" />
-          <div className="text-[10px] text-emerald-700 leading-relaxed">
-            <strong className="font-black">Garantie Réglementaire CEMAC / UMA</strong> — Tous les flux de caissonnement sont isolés sous séquestre technique fiduciaire UBA Cameroun / Escrow Pool 100 % garanti. Rapprochement automatique T+0.
-          </div>
-        </div>
-        <span className="text-[10px] font-black text-emerald-700 whitespace-nowrap">Audit Sync Actif (H-24)</span>
-      </div>
-
-      {/* Actions export */}
-      <div className="flex flex-wrap items-center justify-end gap-2 mb-5 -mt-2">
-        <button className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-teal-400 text-slate-600 text-[11px] font-bold px-3.5 py-2 rounded-xl transition-colors">
-          <Download size={13} className="text-teal-600" /> Exporter grand livre (CSV)
-        </button>
-        <button className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-black px-4 py-2 rounded-xl transition-colors">
-          <FileText size={13} /> Rapport comptable mensuel (PDF)
-        </button>
-      </div>
-
       {/* KPIs */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        {[
-          { l: "Volume d'affaires brut (GMV)", v: fmt(gross), s: `+14.2 % vs Septembre · ${bookings.length} transactions`, icon: Wallet },
-          { l: 'Commissions nettes AutoLink (15 %)', v: fmt(commission), s: 'Encaissées sur compte séquestre UBA', icon: Landmark },
-          { l: 'Reversements bailleurs dus / payés', v: fmt(payouts), s: `Payés : ${fmt(payouts * 0.8)} · Attente : ${fmt(payouts * 0.2)}`, icon: CheckCircle2 },
-          { l: 'Cautions séquestrées actives', v: fmt(escrowActive), s: `100 % sécurisées MoMo/Orange · ${escrowCount} dossiers`, icon: Lock },
-        ].map(k => (
-          <div key={k.l} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{k.l}</span>
-              <k.icon size={13} className="text-slate-300" />
-            </div>
-            <div className="text-2xl font-black text-slate-900 leading-none">{k.v} <span className="text-[10px] font-bold text-slate-400">FCFA</span></div>
-            <div className="text-[9px] text-teal-600 font-bold mt-1.5">{k.s}</div>
-          </div>
-        ))}
+        <StatCard icon={Wallet} iconCls="bg-blue-50 text-blue-600" value={fmt(gross)} unit="FCFA" label="Volume brut (GMV)" />
+        <StatCard icon={Landmark} iconCls="bg-emerald-50 text-emerald-600" value={fmt(commission)} unit="FCFA" label="Commissions nettes (15 %)" />
+        <StatCard icon={CheckCircle2} iconCls="bg-amber-50 text-amber-600" value={fmt(payouts)} unit="FCFA" label="Reversements bailleurs" />
+        <StatCard icon={Lock} iconCls="bg-red-50 text-red-600" value={fmt(escrowActive)} unit={`FCFA · ${escrowCount}`} label="Cautions séquestrées" />
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_300px] gap-5 mb-6 items-start">
-        {/* Passerelles */}
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
-              <Smartphone size={15} className="text-teal-600" /> Passerelles Télécom &amp; Collecte
-            </h3>
-            <span className="text-[9px] font-bold text-slate-400">Réseaux CEMAC Directs</span>
-          </div>
-          <div className="grid sm:grid-cols-3 gap-3 mb-5">
-            {[
-              { name: 'MTN MoMo API', vol: fmt(gross * 0.58), taux: '99.4 %', sla: '1.2s', dot: 'bg-yellow-400' },
-              { name: 'Orange Money', vol: fmt(gross * 0.344), taux: '98.9 %', sla: '1.8s', dot: 'bg-orange-500' },
-              { name: 'GIMAC / 3D-S', vol: fmt(gross * 0.076), taux: '97.5 %', sla: 'V2', dot: 'bg-slate-700' },
-            ].map(g => (
-              <div key={g.name} className="border border-slate-100 rounded-2xl p-4">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className={`w-2.5 h-2.5 rounded-full ${g.dot}`} />
-                  <span className="text-[11px] font-black text-slate-800">{g.name}</span>
-                  <span className="ml-auto flex items-center gap-1 text-[8px] font-black text-emerald-600"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />Opérationnel</span>
-                </div>
-                <div className="text-[9px] text-slate-400 uppercase font-bold">Volume Traité</div>
-                <div className="text-lg font-black text-slate-900">{g.vol} <span className="text-[9px] font-bold text-slate-400">FCFA</span></div>
-                <div className="mt-2 pt-2 border-t border-slate-50 text-[9px] text-slate-500 flex justify-between">
-                  <span>Taux de succès : <strong className="text-teal-700">{g.taux}</strong></span>
-                  <span>SLA : {g.sla}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Répartition des encaissements mensuels</div>
-          <div className="flex h-2.5 rounded-full overflow-hidden mb-1.5">
-            <div className="bg-teal-600" style={{ width: '58%' }} />
-            <div className="bg-amber-400" style={{ width: '34.4%' }} />
-            <div className="bg-slate-800" style={{ width: '7.6%' }} />
-          </div>
-          <div className="flex gap-4 text-[9px] font-bold text-slate-500">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 bg-teal-600 rounded-sm" />MTN (58 %)</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 bg-amber-400 rounded-sm" />Orange (34.4 %)</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 bg-slate-800 rounded-sm" />Bancaire (7.6 %)</span>
-          </div>
+      {/* Cautions & séquestres — résumé compact */}
+      <div className="grid sm:grid-cols-3 gap-4 mb-6">
+        <div className="bg-teal-50 border border-teal-100 rounded-2xl p-4">
+          <div className="flex items-center gap-1.5 text-[10px] font-black text-teal-800 mb-1"><Lock size={10} /> En séquestre</div>
+          <div className="text-xl font-black text-slate-900">{fmt(escrowActive)} <span className="text-[10px] text-slate-400">FCFA</span></div>
+          <div className="text-[9px] text-teal-600">{escrowCount} contrats actifs</div>
         </div>
-
-        {/* Cautions & séquestres */}
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-black text-slate-900 text-sm">Cautions &amp; Séquestres</h3>
-            <span className="text-[8px] font-bold text-slate-400">Compte Tiers Dépositaire</span>
-          </div>
-          <div className="space-y-3">
-            <div className="bg-teal-50 border border-teal-100 rounded-2xl p-3.5">
-              <div className="flex items-center gap-1.5 text-[10px] font-black text-teal-800 mb-1"><Lock size={10} /> Cautions en cours de séquestre</div>
-              <div className="text-xl font-black text-slate-900">{fmt(escrowActive)} <span className="text-[10px] text-slate-400">FCFA</span></div>
-              <div className="text-[9px] text-teal-600">{escrowCount} contrats actifs sous surveillance · Sécurisé 100%</div>
-            </div>
-            <div className="border border-slate-100 rounded-2xl p-3.5">
-              <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-700 mb-1"><CheckCircle2 size={10} className="text-teal-600" /> Cautions débloquées &amp; restituées</div>
-              <div className="text-xl font-black text-slate-900">{fmt(escrowReleased)} <span className="text-[10px] text-slate-400">FCFA</span></div>
-              <div className="text-[9px] text-slate-400">Remboursement T+1h · zéro incident</div>
-            </div>
-            <div className="bg-red-50 border border-red-100 rounded-2xl p-3.5">
-              <div className="flex items-center gap-1.5 text-[10px] font-black text-red-700 mb-1"><AlertTriangle size={10} /> Cautions retenues (Litiges / Sinistres)</div>
-              <div className="text-xl font-black text-slate-900">{fmt(escrowLien)} <span className="text-[10px] text-slate-400">FCFA</span></div>
-              <div className="text-[9px] text-red-400">Dossiers gelés en arbitrage · PV d'huissier</div>
-            </div>
-          </div>
+        <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-700 mb-1"><CheckCircle2 size={10} className="text-teal-600" /> Restituées</div>
+          <div className="text-xl font-black text-slate-900">{fmt(escrowReleased)} <span className="text-[10px] text-slate-400">FCFA</span></div>
+          <div className="text-[9px] text-slate-400">Remboursement T+1h</div>
+        </div>
+        <div className="bg-red-50 border border-red-100 rounded-2xl p-4">
+          <div className="flex items-center gap-1.5 text-[10px] font-black text-red-700 mb-1"><AlertTriangle size={10} /> Retenues (litiges)</div>
+          <div className="text-xl font-black text-slate-900">{fmt(escrowLien)} <span className="text-[10px] text-slate-400">FCFA</span></div>
+          <div className="text-[9px] text-red-400">Dossiers gelés en arbitrage</div>
         </div>
       </div>
 
       {/* Journal central */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
-              <Landmark size={15} className="text-teal-600" /> Journal Central des Opérations
-            </h3>
-            <p className="text-[9px] text-slate-400">Rapprochement bancaire et traçabilité temps réel CEMAC.</p>
-          </div>
-          <div className="flex gap-1.5">
-            {TABS.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)}
-                className={`text-[10px] font-bold px-3 py-1.5 rounded-xl transition-colors ${tab === t.id ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-                {t.label}{t.id === 'all' ? ` (${ops.length})` : ''}
-              </button>
-            ))}
+          <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
+            <Landmark size={15} className="text-teal-600" /> Journal des opérations
+          </h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <button className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-teal-400 text-slate-600 text-[10px] font-bold px-3 py-1.5 rounded-xl transition-colors">
+              <Download size={12} className="text-teal-600" /> CSV
+            </button>
+            <button className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-black px-3 py-1.5 rounded-xl transition-colors">
+              <FileText size={12} /> Rapport PDF
+            </button>
+            <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400 ml-1">
+              {online ? <Wifi size={11} className="text-emerald-500" /> : <WifiOff size={11} className="text-red-500" />}
+              {online ? 'Temps réel' : 'Hors ligne'}
+            </span>
           </div>
         </div>
+        {/* Onglets */}
+        <div className="flex items-center gap-1 px-3 border-b border-slate-100 overflow-x-auto">
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`relative px-3 py-3 text-[10px] font-bold whitespace-nowrap transition-colors ${tab === t.id ? 'text-teal-700' : 'text-slate-400 hover:text-slate-600'}`}>
+              {t.label}{t.id === 'all' ? ` (${ops.length})` : ''}
+              {tab === t.id && <span className="absolute bottom-0 inset-x-1 h-[2.5px] bg-teal-600 rounded-t-full" />}
+            </button>
+          ))}
+        </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[960px]">
+          <table className="w-full text-left">
             <thead>
               <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
-                <th className="px-5 py-3">Ref Transaction</th>
-                <th className="px-3 py-3">Date &amp; Heure</th>
-                <th className="px-3 py-3">Type Opération</th>
+                <th className="px-5 py-3">Référence</th>
+                <th className="px-3 py-3">Type</th>
                 <th className="px-3 py-3">Bénéficiaire / Client</th>
-                <th className="px-3 py-3">Méthode</th>
-                <th className="px-3 py-3">Montant brut</th>
-                <th className="px-3 py-3">Com. / Frais</th>
-                <th className="px-3 py-3">Net</th>
-                <th className="px-3 py-3 text-right pr-5">Statut</th>
+                <th className="px-3 py-3">Montant net</th>
+                <th className="px-3 py-3">Statut</th>
+                <th className="px-3 py-3 text-right pr-5">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {loading && (
-                <tr><td colSpan={9} className="px-6 py-14 text-center text-xs text-slate-400"><Loader size={18} className="animate-spin mx-auto mb-2" />Chargement des opérations…</td></tr>
+                <tr><td colSpan={6} className="px-6 py-14 text-center text-xs text-slate-400"><Loader size={18} className="animate-spin mx-auto mb-2" />Chargement des opérations…</td></tr>
               )}
               {!loading && pageItems.map(r => {
                 const ty = TYPE_STYLE[r.type];
                 const st = ROW_STATUS[r.status];
                 return (
-                  <tr key={r.id} className="hover:bg-slate-50/60">
-                    <td className="px-5 py-3.5 text-[10px] font-black text-slate-700 whitespace-nowrap">TX-{r.id}</td>
-                    <td className="px-3 py-3.5 text-[10px] text-slate-500 whitespace-nowrap">{shortDate(r.at)}, {timeOf(r.at)}</td>
+                  <tr key={r.id} className="hover:bg-slate-50/60 cursor-pointer" onClick={() => setDetail(r)}>
+                    <td className="px-5 py-3.5">
+                      <div className="text-[10px] font-black text-slate-700 whitespace-nowrap">TX-{r.id}</div>
+                      <div className="text-[9px] text-slate-400 whitespace-nowrap">{shortDate(r.at)}</div>
+                    </td>
                     <td className="px-3 py-3.5"><span className={`text-[9px] font-black px-2 py-1 rounded-lg whitespace-nowrap ${ty.cls}`}>{ty.l}</span></td>
-                    <td className="px-3 py-3.5 text-[10px] font-bold text-slate-700 max-w-[160px] truncate">{r.who}</td>
-                    <td className="px-3 py-3.5"><span className={`text-[9px] font-black px-2 py-1 rounded-lg whitespace-nowrap ${r.method === 'MTN MoMo' ? 'bg-yellow-100 text-yellow-700' : 'bg-orange-100 text-orange-600'}`}>{r.method}</span></td>
-                    <td className="px-3 py-3.5 text-[11px] font-black text-slate-900 whitespace-nowrap">{fmt(r.gross)} FCFA</td>
-                    <td className="px-3 py-3.5 text-[10px] text-slate-500 whitespace-nowrap">{r.fees}</td>
+                    <td className="px-3 py-3.5 text-[10px] font-bold text-slate-700 max-w-[180px] truncate">{r.who}</td>
                     <td className="px-3 py-3.5 text-[11px] font-black text-teal-700 whitespace-nowrap">{fmt(r.net)} FCFA</td>
-                    <td className="px-3 py-3.5 pr-5 text-right"><span className={`text-[9px] font-black px-2 py-1 rounded-lg whitespace-nowrap ${st.cls}`}>{st.l}</span></td>
+                    <td className="px-3 py-3.5"><span className={`text-[9px] font-black px-2 py-1 rounded-lg whitespace-nowrap ${st.cls}`}>{st.l}</span></td>
+                    <td className="px-3 py-3.5 pr-5 text-right">
+                      <button onClick={e => { e.stopPropagation(); setDetail(r); }}
+                        className="inline-flex items-center gap-1 text-[9px] font-black text-teal-700 bg-teal-50 hover:bg-teal-100 px-2.5 py-1.5 rounded-lg transition-colors">
+                        <Eye size={10} /> Détails
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
               {!loading && pageItems.length === 0 && (
-                <tr><td colSpan={9} className="px-6 py-14 text-center text-xs text-slate-400">Aucune opération dans cette catégorie.</td></tr>
+                <tr><td colSpan={6} className="px-6 py-14 text-center text-xs text-slate-400">Aucune opération dans cette catégorie.</td></tr>
               )}
             </tbody>
           </table>
         </div>
         <div className="px-5 py-3.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
           <span className="text-[10px] text-slate-400 font-semibold">
-            Affichage de {filtered.length ? (page - 1) * PAGE_SIZE + 1 : 0} - {Math.min(page * PAGE_SIZE, filtered.length)} sur {filtered.length} opérations
-            <span className="mx-2">·</span> Audit Réglementaire BEAC / COBAC
+            {filtered.length ? (page - 1) * PAGE_SIZE + 1 : 0}–{Math.min(page * PAGE_SIZE, filtered.length)} sur {filtered.length} opérations
           </span>
           {totalPages > 1 && (
             <div className="flex items-center gap-1.5">
@@ -304,10 +231,52 @@ export default function Finance() {
         </div>
       </div>
 
-      <div className="mt-4 flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
-        {online ? <Wifi size={11} className="text-emerald-500" /> : <WifiOff size={11} className="text-red-500" />}
-        {online ? 'Connecté à l\'API — données temps réel' : 'API injoignable'}
-      </div>
+      {/* Modale détail opération */}
+      {detail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/50" onClick={() => setDetail(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 bg-teal-50 rounded-xl flex items-center justify-center">
+                  <Landmark size={16} className="text-teal-600" />
+                </span>
+                <div>
+                  <div className="font-black text-slate-900 text-sm">TX-{detail.id}</div>
+                  <div className="text-[10px] text-slate-400">{shortDate(detail.at)} · {timeOf(detail.at)}</div>
+                </div>
+              </div>
+              <button onClick={() => setDetail(null)} className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg"><X size={16} /></button>
+            </div>
+            <div className="px-5 py-4 space-y-2.5">
+              {[
+                ['Type', TYPE_STYLE[detail.type].l],
+                ['Bénéficiaire / Client', detail.who],
+                ['Méthode', detail.method],
+                ['Montant brut', `${fmt(detail.gross)} FCFA`],
+                ['Commission / Frais', detail.fees],
+              ].map(([l, v]) => (
+                <div key={l} className="flex justify-between gap-3 text-[11px]">
+                  <span className="text-slate-400 font-semibold">{l}</span>
+                  <span className="font-bold text-slate-800 text-right">{v}</span>
+                </div>
+              ))}
+              <div className="border-t border-slate-100 pt-2.5 flex justify-between items-center">
+                <span className="text-[11px] font-black text-slate-700">Net</span>
+                <span className="font-black text-teal-700">{fmt(detail.net)} FCFA</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] text-slate-400 font-semibold">Statut</span>
+                <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${ROW_STATUS[detail.status].cls}`}>{ROW_STATUS[detail.status].l}</span>
+              </div>
+            </div>
+            <div className="px-5 pb-5">
+              <button onClick={() => setDetail(null)}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black text-[11px] py-3 rounded-xl transition-colors">Fermer</button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }
