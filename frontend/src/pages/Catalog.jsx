@@ -7,7 +7,7 @@ import { PublicNavbar, Footer } from '../components/landing';
 import CatalogCard from '../components/catalog/CatalogCard';
 import FiltersSidebar, { GAMMES, FORMULE_OPTS, matchCategory, PRICE_MAX } from '../components/catalog/FiltersSidebar';
 import SearchWidget from '../components/landing/SearchWidget';
-import { CATALOG_VEHICLES, getVehicleImage } from '../utils/carImages';
+import { getVehicleImage } from '../utils/carImages';
 import { mediaUrl, vehicleCover } from '../utils/media';
 import { normalizeVehicle, vehicleBrand } from '../utils/vehicleMeta';
 import { vehiclesAPI } from '../services/api';
@@ -51,7 +51,10 @@ export default function Catalog() {
   const [sort, setSort] = useState('reco');
   const [filtersOpen, setFiltersOpen] = useState(true);
 
-  const villeParam = params.get('ville') || 'Douala';
+  // Pas de ville par défaut pour le FILTRE — sinon les autres villes sont exclues d'office.
+  // villeLabel sert juste à l'affichage (« à Douala & Yaoundé »).
+  const villeParam = params.get('ville');
+  const villeLabel = villeParam || 'Douala & Yaoundé';
   const categorieParam = params.get('categorie');
   const etatParam = params.get('etat');
 
@@ -74,12 +77,13 @@ export default function Catalog() {
       .then(res => {
         if (!mounted) return;
         const list = (res.data.results || res.data || []).map(mapApiVehicle);
-        setVehicles(list.length ? list : CATALOG_VEHICLES.map(normalizeVehicle));
+        // Uniquement les vrais véhicules approuvés — pas de fallback mock
+        setVehicles(list);
         setLoading(false);
       })
       .catch(() => {
         if (!mounted) return;
-        setVehicles(CATALOG_VEHICLES.map(normalizeVehicle));
+        setVehicles([]);
         setLoading(false);
       });
     return () => { mounted = false; };
@@ -88,7 +92,7 @@ export default function Catalog() {
   const filtered = useMemo(() => {
     const list = vehicles.filter(v =>
       (!filters.onlyAvailable || v.available) &&
-      (v.city?.toLowerCase() === villeParam.toLowerCase()) &&
+      (!villeParam || v.city?.toLowerCase() === villeParam.toLowerCase()) &&
       (filters.gammes.length === 0 || filters.gammes.includes(v.tier)) &&
       v.price <= filters.priceMax &&
       (filters.categories.length === 0 || filters.categories.some(c => matchCategory(v, c))) &&
@@ -126,7 +130,7 @@ export default function Catalog() {
   })();
 
   const activeChips = [
-    { key: 'ville', label: villeParam },
+    { key: 'ville', label: villeLabel },
     ...(categorieParam && categorieParam !== 'Toutes' ? [{ key: 'cat', label: categorieParam }] : []),
     ...(etatParam && etatParam !== 'Toutes' ? [{ key: 'etat', label: etatParam }] : []),
     ...filters.gammes.map(g => ({ key: `gamme-${g}`, label: GAMMES.find(x => x.id === g)?.label, clear: () => setFilters(f => ({ ...f, gammes: f.gammes.filter(x => x !== g) })) })),
@@ -174,7 +178,7 @@ export default function Catalog() {
           <div className="mb-10">
             <SearchWidget 
               initialValues={{
-                ville: villeParam,
+                ville: villeLabel,
                 debut: params.get('debut') || '',
                 fin: params.get('fin') || '',
                 retour: params.get('retour') || 'Douala',
@@ -208,7 +212,7 @@ export default function Catalog() {
                   )}
                   <h1 className="text-xl md:text-2xl text-slate-900">
                     {filtered.length} véhicule{filtered.length > 1 ? 's' : ''} disponible{filtered.length > 1 ? 's' : ''}
-                    <span className="text-slate-900"> à {villeParam}</span>
+                    <span className="text-slate-900"> à {villeLabel}</span>
                   </h1>
                 </div>
                 <div className="flex items-center gap-3">

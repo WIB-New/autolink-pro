@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Search, ChevronDown, MoreHorizontal, ShieldCheck } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { fleetImage } from '../ownerfleet/FleetCard';
+import { COMMISSION_LABEL, ownerNet } from '../../utils/commission';
 
 const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
 const fmtDate = d => { try { return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }); } catch (_) { return '—'; } };
@@ -26,35 +27,28 @@ export default function RevenueTable({ bookings }) {
           <h3 className=" text-slate-500">Détail par location &amp; Décomposition des revenus</h3>
           {/* <p className="text-[11px] text-slate-400 mt-0.5">Transparence totale sur commissions, assurances et montants nets crédités.</p> */}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input value={q} onChange={e => { setQ(e.target.value); setPage(1); }}
-              placeholder="Rechercher un dossier, véhicule, clé…"
-              className="pl-8 pr-3 py-2 rounded-xl border border-slate-200 text-xs w-56 focus:outline-none focus:ring-2 focus:ring-teal-500/30" />
-          </div>
-          <button className="flex items-center gap-1 text-[10px] font-bold text-slate-500 border border-slate-200 px-3 py-2 rounded-xl">
-            Tous les véhicules <ChevronDown size={11} />
-          </button>
+        <div className="relative">
+          <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input value={q} onChange={e => { setQ(e.target.value); setPage(1); }}
+            placeholder="Rechercher un client ou un véhicule…"
+            className="pl-8 pr-3 py-2 rounded-xl border border-slate-200 text-xs w-56 focus:outline-none focus:ring-2 focus:ring-teal-500/30" />
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-left min-w-[760px]">
+        <table className="w-full text-left min-w-[680px]">
           <thead>
             <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-50">
               <th className="px-6 py-3">Date &amp; n° dossier</th>
               <th className="px-4 py-3">Véhicule loué</th>
               <th className="px-4 py-3">Locataire</th>
               <th className="px-4 py-3">Montant brut</th>
-              <th className="px-4 py-3">Commission (50 %)</th>
-              <th className="px-4 py-3">Assurance</th>
-              <th className="px-4 py-3 text-right">Net propriétaire</th>
-              <th className="px-3 py-3" />
+              <th className="px-4 py-3">Commission ({COMMISSION_LABEL})</th>
+              <th className="px-6 py-3 text-right">Net propriétaire</th>
             </tr>
           </thead>
           <tbody>
             {slice.length === 0 && (
-              <tr><td colSpan={8} className="px-6 py-10 text-center text-sm text-slate-400">Aucune location comptabilisée pour le moment.</td></tr>
+              <tr><td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-400">Aucune location comptabilisée pour le moment.</td></tr>
             )}
             {slice.map(b => (
               <tr key={b.id} className="border-b border-slate-50 hover:bg-slate-50/60">
@@ -77,23 +71,17 @@ export default function RevenueTable({ bookings }) {
                 </td>
                 <td className="px-4 py-4 text-[11px] font-bold text-slate-800">{fmt(b.subtotal)} FCFA</td>
                 <td className="px-4 py-4 text-[11px] font-bold text-red-500">− {fmt(b.commission_amount)} FCFA</td>
-                <td className="px-4 py-4">
-                  <span className="inline-flex items-center gap-1 text-[9px] font-black bg-teal-50 text-teal-700 px-2 py-1 rounded-md">
-                    <ShieldCheck size={9} /> Incluse
-                  </span>
-                </td>
-                <td className="px-4 py-4 text-right text-[12px] font-black text-teal-700">{fmt(b.owner_amount)} FCFA</td>
-                <td className="px-3 py-4"><button className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg"><MoreHorizontal size={14} /></button></td>
+                <td className="px-6 py-4 text-right text-[12px] font-black text-teal-700">{fmt(ownerNet(b))} FCFA</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       <div className="flex items-center justify-between px-6 py-4 text-[10px] text-slate-400">
-        <span>Affichage de {slice.length} location(s) sur {rows.length} enregistrées ce trimestre.</span>
+        <span>Affichage de {slice.length} location(s) sur {rows.length}.</span>
         <div className="flex items-center gap-1.5">
           <button onClick={() => setPage(p => Math.max(1, p - 1))} className="px-2.5 py-1.5 rounded-lg border border-slate-200 font-bold disabled:opacity-40" disabled={page === 1}>Précédent</button>
-          {[...Array(Math.min(pages, 3))].map((_, i) => (
+          {[...Array(pages)].map((_, i) => (
             <button key={i} onClick={() => setPage(i + 1)}
               className={`w-7 h-7 rounded-lg text-[10px] font-black ${page === i + 1 ? 'bg-slate-900 text-white' : 'border border-slate-200 text-slate-500'}`}>{i + 1}</button>
           ))}

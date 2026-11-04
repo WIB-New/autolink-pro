@@ -1,5 +1,4 @@
-/* Résout une URL de media backend (/media/…) en URL absolue.
-   Les FileField DRF renvoient des chemins relatifs servis par Django. */
+/* Résout une URL de media backend (/media/…) en URL absolue. */
 export const mediaUrl = (u) => {
   if (!u) return null;
   if (u.startsWith('http')) return u;

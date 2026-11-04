@@ -18,7 +18,7 @@ export default function HowCta() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3.5 shrink-0">
-            <button onClick={() => navigate('/catalogue')}
+            <button onClick={() => navigate('/Nos-vehicules')}
               className="flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold px-6 py-3.5 rounded-xl transition-colors">
               Réserver un véhicule <ArrowRight size={16} />
             </button>

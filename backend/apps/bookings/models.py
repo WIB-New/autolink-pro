@@ -5,7 +5,7 @@ from django.utils import timezone
 from decimal import Decimal
 
 
-COMMISSION_RATE = Decimal('0.50')
+COMMISSION_RATE = Decimal(str(getattr(settings, 'COMMISSION_RATE', 0.15)))
 
 
 class Booking(models.Model):
@@ -100,7 +100,7 @@ class Booking(models.Model):
         self._notify_end()
 
     def _release_escrow(self):
-        """Libère la caution : le propriétaire reçoit ses 50%."""
+        """Libère le séquestre : le propriétaire reçoit sa part (85 %)."""
         try:
             payment = self.payment
         except Exception:

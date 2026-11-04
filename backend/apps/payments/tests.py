@@ -172,3 +172,66 @@ class BookingExternalPaymentTests(APITestCase):
         booking.refresh_from_db()
         self.assertEqual(booking.status, 'confirmed')
         self.assertEqual(booking.payment.status, 'completed')
+
+
+class WithdrawalTests(APITestCase):
+    def setUp(self):
+        self.owner = make_user('own', 'OWNER')
+        self.owner.balance = Decimal('100000')
+        self.owner.save()
+        self.admin = make_user('adm', 'ADMIN')
+        self.client.force_authenticate(self.owner)
+
+    def _request(self, amount=40000, method='mtn', phone='237670000000'):
+        return self.client.post('/api/payments/wallet/withdraw/',
+                                {'amount': amount, 'method': method, 'phone': phone}, format='json')
+
+    def test_withdraw_locks_funds_and_stays_pending(self):
+        r = self._request()
+        self.assertEqual(r.status_code, 201, r.data)
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.balance, Decimal('60000'))
+        tx = WalletTransaction.objects.get(pk=r.data['transaction']['id'])
+        self.assertEqual((tx.kind, tx.status), ('withdraw', 'pending'))
+
+    def test_withdraw_over_balance_rejected(self):
+        r = self._request(amount=150000)
+        self.assertEqual(r.status_code, 400)
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.balance, Decimal('100000'))
+
+    def test_withdraw_requires_phone(self):
+        self.assertEqual(self._request(phone='').status_code, 400)
+
+    def test_admin_marks_paid(self):
+        tx_id = self._request().data['transaction']['id']
+        self.client.force_authenticate(self.admin)
+        pending = self.client.get('/api/payments/wallet/withdrawals/').data
+        self.assertEqual([w['id'] for w in pending], [tx_id])
+        r = self.client.post(f'/api/payments/wallet/withdrawals/{tx_id}/process/',
+                             {'decision': 'paid', 'reference': 'MP2611.1234'}, format='json')
+        self.assertEqual(r.status_code, 200, r.data)
+        tx = WalletTransaction.objects.get(pk=tx_id)
+        self.assertEqual((tx.status, tx.provider_ref), ('completed', 'MP2611.1234'))
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.balance, Decimal('60000'))
+
+    def test_admin_rejects_refunds_owner(self):
+        tx_id = self._request().data['transaction']['id']
+        self.client.force_authenticate(self.admin)
+        r = self.client.post(f'/api/payments/wallet/withdrawals/{tx_id}/process/',
+                             {'decision': 'rejected'}, format='json')
+        self.assertEqual(r.status_code, 200, r.data)
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.balance, Decimal('100000'))
+        # déjà traité : seconde décision refusée
+        r = self.client.post(f'/api/payments/wallet/withdrawals/{tx_id}/process/',
+                             {'decision': 'paid'}, format='json')
+        self.assertEqual(r.status_code, 400)
+
+    def test_withdrawals_admin_only(self):
+        tx_id = self._request().data['transaction']['id']
+        self.assertEqual(self.client.get('/api/payments/wallet/withdrawals/').status_code, 403)
+        r = self.client.post(f'/api/payments/wallet/withdrawals/{tx_id}/process/',
+                             {'decision': 'paid'}, format='json')
+        self.assertEqual(r.status_code, 403)

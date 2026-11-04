@@ -34,8 +34,11 @@ class GoogleAuthView(APIView):
                 from google.auth.transport import requests as google_requests
                 info = google_id_token.verify_oauth2_token(
                     credential, google_requests.Request(),
-                    getattr(settings, 'GOOGLE_CLIENT_ID', '') or None)
-            except Exception:
+                    getattr(settings, 'GOOGLE_CLIENT_ID', '') or None,
+                    clock_skew_in_seconds=300)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning('Google token verify failed: %s', e)
                 return Response({'detail': 'Jeton Google invalide ou expiré.'}, status=status.HTTP_400_BAD_REQUEST)
             serializer = GoogleAuthSerializer(data={
                 'email': info.get('email', ''),

@@ -57,7 +57,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
-      <Route path="/catalogue" element={<Catalog />} />
+      <Route path="/Nos-vehicules" element={<Catalog />} />
       <Route path="/vehicule/:id" element={<VehicleDetail />} />
       <Route path="/comment-ca-marche" element={<HowItWorks />} />
       <Route path="/tarifs" element={<Pricing />} />

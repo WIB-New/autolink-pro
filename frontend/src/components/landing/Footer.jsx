@@ -17,7 +17,7 @@ export default function Footer() {
             </div>
             <p className="text-sm leading-relaxed mb-5">
               La première plateforme numérique de location de véhicules vérifiés
-              au Cameroun. Douala &amp; Yaoundé.
+              au Cameroun.
             </p>
             <div className="flex gap-3">
               <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook"
@@ -78,7 +78,7 @@ export default function Footer() {
               <li><Link to="/" className="hover:text-teal-400 transition-colors">Conditions générales</Link></li>
               <li><Link to="/" className="hover:text-teal-400 transition-colors">Politique de confidentialité</Link></li>
               <li><Link to="/" className="hover:text-teal-400 transition-colors">Politique d'annulation</Link></li>
-              <li><Link to="/login" className="hover:text-teal-400 transition-colors">Espace client</Link></li>
+              {/* <li><Link to="/login" className="hover:text-teal-400 transition-colors">Espace client</Link></li> */}
             </ul>
           </div>
         </div>
@@ -104,11 +104,11 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
           <p>© 2026 AutoLink Pro. Tous droits réservés — Douala &amp; Yaoundé, Cameroun.</p>
-          <div className="flex gap-6">
+          {/* <div className="flex gap-6">
             {['Politique de confidentialité', 'CGU', 'Cookies'].map(l => (
               <Link key={l} to="/" className="hover:text-teal-400 transition-colors">{l}</Link>
             ))}
-          </div>
+          </div> */}
         </div>
       </div>
     </footer>

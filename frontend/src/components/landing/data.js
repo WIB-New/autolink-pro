@@ -20,8 +20,8 @@ export const IMG = {
    DONNÉES DE LA LANDING
 ──────────────────────────────────────────────── */
 export const NAV_LINKS = [
-  { label: 'Accueil',             href: '#accueil' },
-  { label: 'Catalogue',           href: '/catalogue' },
+  { label: 'Accueil',             href: '/' },
+  { label: 'Nos véhicules',           href: '/Nos-vehicules' },
   { label: 'Comment ça marche',   href: '/comment-ca-marche' },
   { label: 'Tarifs',              href: '/tarifs' },
   // { label: 'Devenir propriétaire',href: '/devenir-proprietaire' },

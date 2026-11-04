@@ -124,7 +124,7 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000').split(',')
 CORS_ALLOW_CREDENTIALS = True
 
-COMMISSION_RATE = config('COMMISSION_RATE', default=0.50, cast=float)
+COMMISSION_RATE = config('COMMISSION_RATE', default=0.15, cast=float)
 
 # ─── Paiements externes (LIVE) ────────────────────────────────────────────────
 # Les secrets ne sont JAMAIS commités : ils viennent des variables d'env (.env

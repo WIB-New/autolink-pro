@@ -1,27 +1,22 @@
 import React from 'react';
-import { Receipt, CheckCircle2, Clock, FileDown } from 'lucide-react';
+import { Receipt, CheckCircle2, Clock } from 'lucide-react';
 
 const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
 const fmtDT = d => { try { return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) + ' · ' + new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); } catch (_) { return '—'; } };
 
 const KIND = {
-  topup:  { label: 'Rechargement solde', verb: 'vers' },
-  debit:  { label: 'Débit portefeuille', verb: 'depuis' },
-  refund: { label: 'Remboursement',      verb: 'vers' },
+  topup:  { label: 'Crédit',        verb: 'via' },
+  debit:  { label: 'Débit',         verb: 'via' },
+  refund: { label: 'Remboursement', verb: 'via' },
 };
 
-/* « Historique des retraits & Reçus télécom » — transactions wallet réelles. */
+/* « Mouvements du solde » — transactions wallet réelles. */
 export default function WithdrawHistory({ transactions = [] }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-      <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
-        <div>
-          <h3 className=" text-slate-500">Historique des retraits &amp; Reçus télécom</h3>
-          {/* <p className="text-[11px] text-slate-400 mt-0.5">Traçabilité complète des virements exécutés vers vos comptes certifiés.</p> */}
-        </div>
-        <button className="flex items-center gap-1.5 text-[10px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 px-3 py-2 rounded-xl transition-colors">
-          <FileDown size={11} /> Registre d'audit vérifié BEAC
-        </button>
+      <div className="mb-5">
+        <h3 className=" text-slate-500">Mouvements du solde</h3>
+        {/* <p className="text-[11px] text-slate-400 mt-0.5">Traçabilité complète des virements exécutés vers vos comptes certifiés.</p> */}
       </div>
 
       {transactions.length === 0 ? (
@@ -43,10 +38,9 @@ export default function WithdrawHistory({ transactions = [] }) {
                   </span>
                 </div>
                 <div className="text-xl font-black text-slate-900">{fmt(t.amount)} <span className="text-xs text-slate-400">FCFA</span></div>
-                <div className="text-[10px] text-slate-400 mt-1">{k.label} {k.verb} <strong className="text-slate-600">{t.method === 'mtn_momo' ? 'MTN MoMo' : t.method === 'orange_money' ? 'Orange Money' : t.method || 'Wallet'}</strong></div>
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-50">
+                <div className="text-[10px] text-slate-400 mt-1">{t.note || k.label} {k.verb} <strong className="text-slate-600">{t.method === 'mtn_momo' ? 'MTN MoMo' : t.method === 'orange_money' ? 'Orange Money' : t.method || 'Wallet'}</strong></div>
+                <div className="mt-3 pt-3 border-t border-slate-50">
                   <span className="text-[9px] font-bold text-slate-400">Réf : {t.reference || `TX-${t.id}`}</span>
-                  <button className="flex items-center gap-1 text-[9px] font-black text-teal-600 hover:text-teal-700"><FileDown size={9} /> Reçu</button>
                 </div>
               </div>
             );
