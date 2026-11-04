@@ -8,9 +8,9 @@ import {
 import StatCard from '../../components/StatCard';
 
 const PAGE_SIZE = 8;
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
-const shortDate = iso => iso ? new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
-const timeOf = iso => iso ? new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
+const shortDate = iso => iso ? new Date(iso).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+const timeOf = iso => iso ? new Date(iso).toLocaleTimeString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { hour: '2-digit', minute: '2-digit' }) : '';
 
 const TABS = [
   { id: 'all', label: 'Toutes' },

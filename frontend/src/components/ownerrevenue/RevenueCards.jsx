@@ -2,7 +2,7 @@ import React from 'react';
 import { Wallet, Clock, TrendingUp } from 'lucide-react';
 import StatCard from '../StatCard';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 
 /* 3 cartes soldes — StatCard partagé (maquette). La 1re carte déclenche le retrait. */
 export default function RevenueCards({ available = 0, pending = 0, total = 0, onWithdraw }) {

@@ -393,7 +393,7 @@ export default function SearchVehicles() {
   const [fuel, setFuel] = useState('');
 
   useEffect(() => {
-    vehiclesAPI.facets().then(({ data }) => { setFacets(f => ({ ...f, ...data })); setMaxPrice(Number(data.max_rate) || 280000); }).catch(() => {});
+    vehiclesAPI.facets().then(({ data }) => { setFacets(f => ({ ...f, ...data })); setMaxPrice(Math.max(300000, Number(data.max_rate) || 300000)); }).catch(() => {});
     const type = new URLSearchParams(window.location.search).get('type');
     if (type) setType(type);
   }, []);
@@ -441,7 +441,7 @@ export default function SearchVehicles() {
     if (params.get('vehicle')) { params.delete('vehicle'); navigate({ search: params.toString() }, { replace: true }); }
   };
 
-  const maxRate = Math.max(15000, Number(facets.max_rate) || 200000);
+  const maxRate = Math.max(300000, Number(facets.max_rate) || 300000);
 
   return (
     <DesignShell role="client">
@@ -467,7 +467,7 @@ export default function SearchVehicles() {
             <label><span className="label">{t('Disponible à partir du')}</span><input type="date" className="input-field" value={availabilityStart} min={new Date().toISOString().slice(0, 10)} disabled={!onlyAvailable} onChange={(e) => setAvailabilityStart(e.target.value)} /></label>
             <label><span className="label">{t('Jusqu’au')}</span><input type="date" className="input-field" value={availabilityEnd} min={availabilityStart || new Date().toISOString().slice(0, 10)} disabled={!onlyAvailable} onChange={(e) => setAvailabilityEnd(e.target.value)} /></label>
             <label><span className="label">{t('Marque')}</span><select className="input-field" value={brand} onChange={(e) => { setBrand(e.target.value); setModel(''); }}><option value="">{t('Toutes les marques')}</option>{facets.brands.map((value) => <option key={value}>{value}</option>)}</select></label>
-            <label><span className="label">{t('Modèle')}</span><select className="input-field" value={model} onChange={(e) => setModel(e.target.value)}><option value="">{t('Tous les modèles')}</option>{(facets.models[brand] || []).map((value) => <option key={value}>{value}</option>)}</select></label>
+            <label><span className="label">{t('Modèle')}</span><select className="input-field" value={model} onChange={(e) => setModel(e.target.value)}><option value="">{t('Tous les modèles')}</option>{(brand ? (facets.models[brand] || []) : [...new Set(vehicles.map((v) => v.model).filter(Boolean))].sort()).map((value) => <option key={value}>{value}</option>)}</select></label>
             <label><span className="label">{t('Carburant')}</span><select className="input-field" value={fuel} onChange={(e) => setFuel(e.target.value)}><option value="">{t('Tous les carburants')}</option>{facets.fuels.map((value) => <option key={value} value={value}>{vehicleLabel(value, 'fuel')}</option>)}</select></label>
           </div>
         </div>

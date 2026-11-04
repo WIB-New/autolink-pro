@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Star, Timer, MessageSquare, CheckCircle2, ShieldCheck, MapPin } from 'lucide-react';
 import { fleetImage } from '../ownerfleet/FleetCard';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
-const fmtDate = d => { try { return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }); } catch (_) { return '—'; } };
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
+const fmtDate = d => { try { return new Date(d).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short', year: 'numeric' }); } catch (_) { return '—'; } };
 
 const days = b => { try { return Math.max(1, Math.round((new Date(b.end_date) - new Date(b.start_date)) / 86400000)); } catch (_) { return b.days || 1; } };
 

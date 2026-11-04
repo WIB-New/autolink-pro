@@ -34,8 +34,8 @@ const TABS = [
 
 const DRIVER_LABEL = { internal: 'Chauffeur AutoLink', owner: 'Chauffeur proprio', none: 'Sans chauffeur' };
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
-const shortDate = iso => iso ? new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : '—';
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
+const shortDate = iso => iso ? new Date(iso).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short' }) : '—';
 const hubOf = b => /yaound|yde/i.test(b.pickup_address || '') ? 'Yaoundé' : 'Douala';
 
 export default function AdminBookings() {

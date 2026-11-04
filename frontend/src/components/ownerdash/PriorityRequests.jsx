@@ -9,7 +9,7 @@ const carImg = (name = '') => {
   return found?.image || CATALOG_VEHICLES[0].image;
 };
 
-const fmtDate = d => { try { return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }); } catch (_) { return d; } };
+const fmtDate = d => { try { return new Date(d).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short' }); } catch (_) { return d; } };
 
 /* Compte à rebours « Expire dans … » — délai de réponse de 8 h après création. */
 const useCountdown = (createdAt) => {
@@ -38,7 +38,7 @@ function RequestCard({ b, onDecide, busy }) {
         <div className="flex items-center justify-between gap-3 mb-1">
           <h4 className="font-black text-slate-900 text-sm truncate">{b.vehicle_name || 'Véhicule'}</h4>
           <div className="text-right shrink-0">
-            <div className="font-black text-slate-900 text-sm">{Number(b.total_price || 0).toLocaleString('fr-FR')} <span className="text-[10px] text-teal-600">FCFA</span></div>
+            <div className="font-black text-slate-900 text-sm">{Number(b.total_price || 0).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} <span className="text-[10px] text-teal-600">FCFA</span></div>
             <div className="text-[10px] text-slate-400 font-medium">{fmtDate(b.start_date)} → {fmtDate(b.end_date)}</div>
           </div>
         </div>

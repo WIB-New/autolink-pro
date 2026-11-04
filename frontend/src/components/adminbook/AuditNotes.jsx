@@ -10,15 +10,15 @@ export default function AuditNotes({ booking: b }) {
   const { user } = useAuth();
   const [text, setText] = useState('');
   const [notes, setNotes] = useState(() => [
-    { t: 'note', by: `Note interne — ${user?.first_name || 'Admin'} (Super-Admin)`, at: new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) + ' 15:00', txt: `Dossier #ALP-${String(b.id).padStart(4, '0')} ouvert — vérifications en cours sur la caution et le KYC locataire.` },
+    { t: 'note', by: `Note interne — ${user?.first_name || 'Admin'} (Super-Admin)`, at: new Date().toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short' }) + ' 15:00', txt: `Dossier #ALP-${String(b.id).padStart(4, '0')} ouvert — vérifications en cours sur la caution et le KYC locataire.` },
     { t: 'auto', by: 'Contrôle KYC Automatique', at: 'Système', txt: 'Score de risque client : Faible (2/100). Correspondance faciale biométrique 99,4 % avec le permis CEMAC présenté.' },
-    { t: 'escrow', by: 'Séquestration Caution MTN Mobile Money', at: 'Passerelle', txt: `Débit de garantie de ${Math.round(b.deposit_amount || 0).toLocaleString('fr-FR')} FCFA passé avec succès via API MoMo Cameroun. TXID : ALP-${String(b.id).padStart(4, '0')}-SEC. Statut COBAC : Protégé.` },
-    { t: 'create', by: 'Création de la Demande', at: 'Système', txt: `Réservation initiée sur l'application Web AutoLink Pro. Montant préautorisé : ${Math.round(b.subtotal || 0).toLocaleString('fr-FR')} FCFA.` },
+    { t: 'escrow', by: 'Séquestration Caution MTN Mobile Money', at: 'Passerelle', txt: `Débit de garantie de ${Math.round(b.deposit_amount || 0).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} FCFA passé avec succès via API MoMo Cameroun. TXID : ALP-${String(b.id).padStart(4, '0')}-SEC. Statut COBAC : Protégé.` },
+    { t: 'create', by: 'Création de la Demande', at: 'Système', txt: `Réservation initiée sur l'application Web AutoLink Pro. Montant préautorisé : ${Math.round(b.subtotal || 0).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} FCFA.` },
   ]);
 
   const add = () => {
     if (!text.trim()) return;
-    setNotes(n => [{ t: 'note', by: `Note interne — ${user?.first_name || 'Admin'} (Super-Admin)`, at: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), txt: text.trim() }, ...n]);
+    setNotes(n => [{ t: 'note', by: `Note interne — ${user?.first_name || 'Admin'} (Super-Admin)`, at: new Date().toLocaleTimeString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { hour: '2-digit', minute: '2-digit' }), txt: text.trim() }, ...n]);
     setText('');
   };
 

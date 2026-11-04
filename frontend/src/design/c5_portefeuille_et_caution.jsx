@@ -3,17 +3,17 @@ import DesignPage from './DesignPage';
 import useApiData from '../utils/useApiData';
 import api from '../services/api';
 
-const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
+const fmt = (n) => new Intl.NumberFormat((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')).format(Math.round(Number(n) || 0));
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-const dt = (iso) => (iso ? new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
-const hm = (iso) => (iso ? new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '');
+const dt = (iso) => (iso ? new Date(iso).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short', year: 'numeric' }) : '');
+const hm = (iso) => (iso ? new Date(iso).toLocaleTimeString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { hour: '2-digit', minute: '2-digit' }) : '');
 const KIND_UI = {
   topup: ['Recharge', 'text-primary', '+'], debit: ['Paiement', 'text-error', '-'], refund: ['Remboursement', 'text-primary', '+'],
 };
 const txRow = (t) => {
   const [label, cls, sign] = KIND_UI[t.kind] || [t.kind || 'Transaction', 'text-on-surface', ''];
   const done = t.status === 'completed' || t.status === 'succeeded';
-  return `<tr class="hover:bg-surface-container-low/70 transition-colors">
+  return `<tr class="tx-row hover:bg-surface-container-low/70 transition-colors" data-kind="${t.kind}" data-date="${esc(t.created_at)}" data-ref="${esc(t.reference || '')}">
 <td class="py-3.5 px-4 whitespace-nowrap"><div class="flex flex-col"><span class="font-label-md text-label-md text-on-surface">${dt(t.created_at)}</span><span class="text-on-surface-variant text-[11px]">${hm(t.created_at)}</span></div></td>
 <td class="py-3.5 px-4 whitespace-nowrap"><span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container font-label-sm text-label-sm text-on-surface">${esc(label)}</span></td>
 <td class="py-3.5 px-4 font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap">${esc(t.reference || t.id)}</td>
@@ -21,7 +21,7 @@ const txRow = (t) => {
 <td class="py-3.5 px-4 whitespace-nowrap text-on-surface-variant">${esc(t.method || '—')}</td>
 <td class="py-3.5 px-4 text-right whitespace-nowrap font-headline-sm text-headline-sm ${cls}">${sign}${fmt(t.amount)} FCFA</td>
 <td class="py-3.5 px-4 text-center whitespace-nowrap"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${done ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant'} font-label-sm text-label-sm"><span class="w-1.5 h-1.5 rounded-full ${done ? 'bg-primary' : 'bg-on-surface-variant'}"></span>${esc(t.status || '')}</span></td>
-<td class="py-3.5 px-4 text-center whitespace-nowrap"><button class="p-1.5 rounded-lg bg-surface-container-low text-secondary" title="Reçu" type="button"><span class="material-symbols-outlined text-[18px]">receipt</span></button></td>
+<td class="py-3.5 px-4 text-center whitespace-nowrap"><button class="p-1.5 rounded-lg bg-surface-container-low text-secondary tx-receipt" title="Reçu" data-ref="${esc(t.reference || '')}" type="button"><span class="material-symbols-outlined text-[18px]">receipt</span></button></td>
 </tr>`;
 };
 
@@ -129,8 +129,8 @@ const HTML = `<div class="flex flex-col w-full">
 <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">calendar_today</span>
 <select class="w-full pl-10 pr-8 py-2 rounded-lg bg-surface-container-low text-body-md font-body-md text-on-surface outline-none cursor-pointer appearance-none focus:ring-2 focus:ring-primary">
 <option value="30d">Derniers 30 jours</option>
-<option value="t3">Trimestre 3 (2025)</option>
-<option value="y2025">Année complète 2025</option>
+<option value="t3">Trimestre en cours</option>
+<option value="year">Année en cours</option>
 </select>
 <span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px] pointer-events-none">expand_more</span>
 </div>
@@ -518,7 +518,7 @@ const HTML = `<div class="flex flex-col w-full">
     // Mise à jour du solde estimé (solde actuel = 26 500)
     const baseBalance = 26500;
     const total = baseBalance + parseInt(amount, 10);
-    futureBalanceSpan.innerText = total.toLocaleString('fr-FR') + ' FCFA';
+    futureBalanceSpan.innerText = total.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')) + ' FCFA';
   }
 
   // Écoute de l'input manuel
@@ -529,7 +529,7 @@ const HTML = `<div class="flex flex-col w-full">
       const baseBalance = 26500;
       const total = baseBalance + val;
       const futureBalanceSpan = document.getElementById('future-balance');
-      futureBalanceSpan.innerText = total.toLocaleString('fr-FR') + ' FCFA';
+      futureBalanceSpan.innerText = total.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')) + ' FCFA';
     });
   }
 
@@ -626,10 +626,9 @@ const MODAL = `<div class="flex flex-col w-full relative">
 <div class="w-12 h-10 rounded-lg bg-[#FFCC00] flex items-center justify-center font-headline-sm font-black text-on-surface shadow-sm tracking-tighter">MoMo</div>
 <div class="flex flex-col">
 <span class="font-headline-sm text-headline-sm text-on-surface font-bold">MTN Mobile Money</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">+237 670 •• •• 89</span>
 </div>
 </div>
-<span class="px-2 py-0.5 rounded bg-primary/15 text-primary text-[11px] font-label-sm font-bold">Par défaut</span>
+
 </label>
 <label class="relative flex items-center justify-between p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container transition-all cursor-pointer shadow-sm">
 <div class="flex items-center gap-space-md flex-1">
@@ -637,10 +636,8 @@ const MODAL = `<div class="flex flex-col w-full relative">
 <div class="w-12 h-10 rounded-lg bg-[#FF7900] flex items-center justify-center font-headline-sm font-black text-on-primary shadow-sm tracking-tighter">OM</div>
 <div class="flex flex-col">
 <span class="font-headline-sm text-headline-sm text-on-surface font-bold">Orange Money Cameroun</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">+237 699 •• •• 42</span>
 </div>
 </div>
-<span class="material-symbols-outlined text-outline text-[20px] opacity-40">radio_button_unchecked</span>
 </label>
 <label class="relative flex items-center justify-between p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container transition-all cursor-pointer shadow-sm">
 <div class="flex items-center gap-space-md flex-1">
@@ -650,10 +647,8 @@ const MODAL = `<div class="flex flex-col w-full relative">
 </div>
 <div class="flex flex-col">
 <span class="font-headline-sm text-headline-sm text-on-surface font-bold">Carte Visa UBA Cameroun</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Expire 08/28 (•••• 4129)</span>
 </div>
 </div>
-<span class="material-symbols-outlined text-outline text-[20px] opacity-40">lock</span>
 </label>
 </div>
 </div>
@@ -665,8 +660,7 @@ const MODAL = `<div class="flex flex-col w-full relative">
 <span class="text-[16px]">🇨🇲</span>
 <span>+237</span>
 </div>
-<input class="w-full bg-transparent px-3 text-on-surface font-headline-sm text-headline-sm font-bold tracking-wider outline-none placeholder:text-outline" placeholder="6XX XX XX XX" type="tel" value="670 42 18 90"/>
-<span class="material-symbols-outlined text-primary text-[20px]">check_circle</span>
+<input class="w-full bg-transparent px-3 text-on-surface font-headline-sm text-headline-sm font-bold tracking-wider outline-none placeholder:text-outline" placeholder="6XX XX XX XX" type="tel"/>
 </div>
 </div>
 <!-- Champ numero de carte (visible si Visa) -->
@@ -761,5 +755,88 @@ export default function C5PortefeuilleEtCaution() {
       : '<tr><td class="py-10 px-4 text-center text-on-surface-variant" colspan="8">Aucune transaction pour le moment.</td></tr>';
     return h.replace(/<tbody[^>]*>[\s\S]*?<\/tbody>/, `<tbody>${rows}</tbody>`);
   }, [data]);
+
+  React.useEffect(() => {
+    const selBy = (pattern) => [...document.querySelectorAll('select')].find((x) => [...x.options].some((o) => pattern.test(o.textContent)))?.value || '';
+    const apply = () => {
+      const typeV = selBy(/Recharges|location|Top-ups|rental/i);
+      const periodV = selBy(/derniers jours|Trimestre|days|quarter|year/i);
+      const rows = [...document.querySelectorAll('.tx-row')];
+      const kindMap = { caution_restituee: ['refund'], restituee: ['refund'], remboursement: ['refund'], refund: ['refund'], caution_bloquee: ['debit'], caution: ['debit'], blocked: ['debit'], recharge: ['topup'], topup: ['topup'], 'top-up': ['topup'], paiement: ['debit'], payment: ['debit'], debit: ['debit'], rental: ['debit'] };
+      const key = Object.keys(kindMap).find((k) => (typeV || '').toLowerCase().includes(k));
+      const now = new Date();
+      const matched = [];
+      const isAll = (v) => /^(tous|toutes|all|tout)\b/i.test((v || '').trim());
+      const q = ([...document.querySelectorAll('input')].find((i) => /recherch|search|dossier|file|recherche|filtrer|référence|libellé|filter|reference|label/i.test(i.placeholder || ''))?.value || '').toLowerCase();
+      rows.forEach((r) => {
+        const d = new Date(r.dataset.date || 0);
+        const okT = !key || kindMap[key].includes(r.dataset.kind);
+        const okQ = !q || r.textContent.toLowerCase().includes(q);
+        const okP = !periodV || isAll(periodV)
+          || (/30|derniers|days/i.test(periodV) && d >= new Date(now.getTime() - 30 * 864e5))
+          || (periodV === 't3' && d.getFullYear() === now.getFullYear() && Math.floor(d.getMonth() / 3) === Math.floor(now.getMonth() / 3))
+          || (/ann[eé]e|year/i.test(periodV) && d.getFullYear() === now.getFullYear());
+        const ok = okT && okP && okQ;
+        r.dataset.match = ok ? '1' : '0';
+        if (ok) matched.push(r);
+      });
+      const perPage = 8;
+      const maxPage = Math.max(1, Math.ceil(matched.length / perPage));
+      window._wPage = Math.min(Math.max(1, window._wPage || 1), maxPage);
+      rows.forEach((r) => { if (r.dataset.match !== '1') r.style.display = 'none'; });
+      matched.forEach((r, i) => { r.style.display = (i >= (window._wPage - 1) * perPage && i < window._wPage * perPage) ? '' : 'none'; });
+      const info = [...document.querySelectorAll('strong')].find((x) => x.parentElement?.textContent.includes('opérations'));
+      if (info) info.parentElement.innerHTML = `Affichage de <strong class="text-on-surface">${matched.length ? (window._wPage - 1) * perPage + 1 : 0} à ${Math.min(matched.length, window._wPage * perPage)}</strong> sur <strong class="text-on-surface">${matched.length}</strong> opérations`;
+      document.querySelectorAll('button').forEach((x) => {
+        const t = x.textContent.trim();
+        if (t === 'Précédent') { x.disabled = window._wPage <= 1; x.style.opacity = x.disabled ? '.4' : '1'; }
+        if (t === 'Suivant') { x.disabled = window._wPage >= maxPage; x.style.opacity = x.disabled ? '.4' : '1'; }
+        if (/^\d+$/.test(t)) { x.style.display = Number(t) <= maxPage ? '' : 'none'; x.style.fontWeight = Number(t) === window._wPage ? '700' : '400'; }
+      });
+    };
+    const click = (e) => {
+      const el = e.target.closest('button, a');
+      if (!el) return;
+      const t = el.textContent.replace(/\s+/g, ' ').trim();
+      if (t === 'Précédent' || t === 'Suivant' || /^\d+$/.test(t)) {
+        const rows = [...document.querySelectorAll('.tx-row[data-match="1"]')];
+        const maxPage = Math.max(1, Math.ceil(rows.length / 8));
+        if (t === 'Précédent') window._wPage = Math.max(1, (window._wPage || 1) - 1);
+        else if (t === 'Suivant') window._wPage = Math.min(maxPage, (window._wPage || 1) + 1);
+        else window._wPage = Number(t);
+        apply(); return;
+      }
+      if (t.includes('Exporter CSV')) {
+        e.preventDefault();
+        const rows = [...document.querySelectorAll('.tx-row')].filter((r) => r.style.display !== 'none');
+        const csv = ['Date;Type;Référence;Libellé;Moyen;Montant;Statut',
+          ...rows.map((r) => [...r.cells].slice(0, 7).map((c) => `"${c.textContent.replace(/\s+/g, ' ').trim().replace(/"/g, '""')}"`).join(';'))].join('\n');
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+        a.download = 'transactions-autolink.csv'; a.click(); return;
+      }
+      if (t.includes('Relevé PDF')) { e.preventDefault(); window.print(); return; }
+      const rec = el.closest('.tx-receipt');
+      if (rec) {
+        const m = (rec.dataset.ref || '').match(/\d+/);
+        if (m) window.location.href = `/client/bookings/${Number(m[0])}`;
+      }
+    };
+    window._wPage = 1;
+    document.addEventListener('click', click);
+    document.addEventListener('change', apply);
+    document.addEventListener('input', apply);
+    // Ecouteur direct sur le champ recherche (secours si delegation ne remonte pas)
+    const searchIn = [...document.querySelectorAll('input')].find((i) => /filtrer|référence|libellé|recherch|search|dossier|filter|reference|label/i.test(i.placeholder || ''));
+    if (searchIn) searchIn.addEventListener('input', apply);
+    apply();
+    return () => {
+      document.removeEventListener('click', click);
+      document.removeEventListener('change', apply);
+      document.removeEventListener('input', apply);
+      if (searchIn) searchIn.removeEventListener('input', apply);
+    };
+  }, [data]);
+
   return <DesignPage html={html} links={LINKS} modalHtml={MODAL} />;
 }

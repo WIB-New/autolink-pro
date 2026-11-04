@@ -9,7 +9,7 @@ import {
 import StatCard from '../../components/StatCard';
 import DataTable from '../../components/DataTable';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 const initialsOf = name => (name || 'P').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
 export default function AdminPartners() {

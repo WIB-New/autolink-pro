@@ -7,7 +7,7 @@ import {
   Loader, MessageCircle, Flag, UserCheck, AlertTriangle, ArrowLeft,
 } from 'lucide-react';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 const initialsOf = name => (name || 'C').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 const BSTATUS = { completed: ['Terminée', 'bg-slate-100 text-slate-500'], confirmed: ['Confirmée', 'bg-blue-100 text-blue-700'], active: ['En cours', 'bg-emerald-100 text-emerald-700'], pending: ['En attente', 'bg-amber-100 text-amber-700'], cancelled: ['Refusée', 'bg-red-100 text-red-600'], disputed: ['Litige', 'bg-red-500 text-white'] };
 
@@ -38,7 +38,7 @@ export default function AdminClientDetail() {
   const spent = cBookings.reduce((s, b) => s + Number(b.subtotal || 0), 0);
   const escrow = cBookings.filter(b => b.escrow_status === 'held').reduce((s, b) => s + Number(b.deposit_amount || 0), 0);
 
-  const addNote = () => { if (note.trim()) { setNotes(n => [{ by: 'Super-Admin', at: new Date().toLocaleDateString('fr-FR'), txt: note.trim() }, ...n]); setNote(''); } };
+  const addNote = () => { if (note.trim()) { setNotes(n => [{ by: 'Super-Admin', at: new Date().toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')), txt: note.trim() }, ...n]); setNote(''); } };
 
   return (
     <AdminLayout
@@ -67,7 +67,7 @@ export default function AdminClientDetail() {
                   {c.is_verified !== false && <span className="bg-teal-600 text-white text-[8px] font-black px-2 py-0.5 rounded-md">Client Vérifié</span>}
                   <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1"><Star size={10} className="text-amber-400 fill-amber-400" /> 4.95 (12 avis)</span>
                 </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">Inscrit {c.date_joined ? new Date(c.date_joined).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : 'Fév. 2023'} · {c.email} · {c.phone || '+237 6·· ·· ·· 90'}</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Inscrit {c.date_joined ? new Date(c.date_joined).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { month: 'long', year: 'numeric' }) : 'Fév. 2023'} · {c.email} · {c.phone || '+237 6·· ·· ·· 90'}</div>
               </div>
               <div className="flex gap-2">
                 <button className="flex items-center gap-1.5 text-[10px] font-black text-white bg-emerald-600 hover:bg-emerald-700 px-3.5 py-2 rounded-xl transition-colors"><MessageCircle size={11} /> WhatsApp</button>

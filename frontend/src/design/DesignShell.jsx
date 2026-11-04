@@ -4,6 +4,8 @@ import Icon from '../components/Icon';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import AutoLinkLogo from '../components/AutoLinkLogo';
+import dict from '../i18n/design-dict.json';
+import i18next from '../i18n';
 
 const NAVS = {
   client: [
@@ -11,9 +13,9 @@ const NAVS = {
     { icon: 'directions_car', label: 'Mes Réservations', path: '/client/bookings' },
     { icon: 'account_balance_wallet', label: 'Portefeuille & Caution', path: '/client/wallet' },
     { icon: 'search', label: 'Catalogue', path: '/client/search' },
-    { icon: 'notifications', label: 'Notifications', path: '/notifications', badge: '3' },
+    { icon: 'notifications', label: 'Notifications', path: '/notifications', badge: 'notif' },
     { icon: 'favorite', label: 'Favoris', path: '/client/favorites' },
-    { icon: 'chat', label: 'Messagerie', path: '/messages' },
+    { icon: 'chat', label: 'Messagerie', path: '/messages', badge: 'msg' },
     { icon: 'badge', label: 'Profil & Paramètres', path: '/profile' },
     { icon: 'loyalty', label: 'Parrainage & Réductions', path: '/client/referrals' },
     { icon: 'settings', label: 'Paramètres', path: '/settings' },
@@ -35,6 +37,11 @@ const USERS = {
   owner: { init: 'AY', name: 'ANANGUE Yves', short: 'ANANGUE Y.', role: 'Propriétaire', email: 'anague@autolink.cm', space: 'Espace Propriétaire' },
 };
 
+const tr = (fr) => {
+  if (i18next.language !== 'en') return fr;
+  return i18next.exists(`ui.common|${fr}`) ? i18next.t(`ui.common|${fr}`) : (dict[fr] || fr);
+};
+
 export default function DesignShell({ children, role = 'client' }) {
   const NAV = role === 'owner' ? [
     { icon: 'dashboard', label: 'Tableau de bord', path: '/owner/dashboard' },
@@ -53,6 +60,23 @@ export default function DesignShell({ children, role = 'client' }) {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
   const toggleDark = (v) => { setDark(v); document.documentElement.classList.toggle('dark', v); localStorage.setItem('autolink_theme', v ? 'dark' : 'light'); };
   const [open, setOpen] = useState(false);
+  const { user: meUser } = useAuth();
+  const [unreadNotif, setUnreadNotif] = useState(0);
+  const [unreadMsg, setUnreadMsg] = useState(0);
+  useEffect(() => {
+    if (!meUser) return undefined;
+    let alive = true;
+    import('../services/api').then(({ notificationsAPI, messagingAPI }) => {
+      notificationsAPI.list().then((r) => {
+        const items = r.data?.results || r.data || [];
+        if (alive) setUnreadNotif(items.filter((n) => !n.is_read).length);
+      }).catch(() => {});
+      messagingAPI.unread().then((r) => {
+        if (alive) setUnreadMsg(r.data?.unread ?? r.data?.count ?? 0);
+      }).catch(() => {});
+    });
+    return () => { alive = false; };
+  }, [meUser]);
   const [navExpanded, setNavExpanded] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef(null);
@@ -92,15 +116,17 @@ export default function DesignShell({ children, role = 'client' }) {
           <NavLink key={path + label} to={path} onClick={() => setOpen(false)} title={label}
             className={({ isActive }) => `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all font-label-lg text-label-lg ${isActive ? 'bg-primary text-white font-semibold shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'} ${navExpanded ? '' : 'lg:justify-center lg:px-0'}`}>
             <Icon name={icon} size={20} />
-            <span className={`truncate flex-1 ${navExpanded ? '' : 'lg:hidden'}`}>{label}</span>
-            {badge && <span className={`px-2 py-0.5 rounded-full bg-error text-on-error font-label-sm text-label-sm font-bold ${navExpanded ? '' : 'lg:hidden'}`}>{badge}</span>}
+            <span className={`truncate flex-1 ${navExpanded ? '' : 'lg:hidden'}`}>{tr(label)}</span>
+            {badge && (badge === 'notif' ? unreadNotif : badge === 'msg' ? unreadMsg : Number(badge)) > 0 && (
+              <span className={`px-2 py-0.5 rounded-full bg-error text-on-error font-label-sm text-label-sm font-bold ${navExpanded ? '' : 'lg:hidden'}`}>{badge === 'notif' ? unreadNotif : badge === 'msg' ? unreadMsg : badge}</span>
+            )}
           </NavLink>
         ))}
       </nav>
       <div className={`p-4 border-t border-outline-variant/30 shrink-0 ${navExpanded ? '' : 'lg:px-3'}`}>
         <button onClick={doLogout} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-label-md text-label-md text-error hover:bg-error-container transition-all ${navExpanded ? '' : 'lg:justify-center lg:px-0'}`}>
           <Icon name="logout" size={18} />
-          <span className={navExpanded ? '' : 'lg:hidden'}>Déconnexion</span>
+          <span className={navExpanded ? '' : 'lg:hidden'}>{tr('Déconnexion')}</span>
         </button>
       </div>
     </div>
@@ -125,11 +151,11 @@ export default function DesignShell({ children, role = 'client' }) {
           <div className="flex items-center gap-2 sm:gap-3">
             <button onClick={() => navigate(role === 'driver' ? '/driver/messages' : '/messages')} className="relative w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high" title="Messages">
               <Icon name="chat_bubble" size={22} />
-              <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-on-primary text-[10px] font-bold flex items-center justify-center">2</span>
+              {unreadMsg > 0 && <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-on-primary text-[10px] font-bold flex items-center justify-center">{unreadMsg}</span>}
             </button>
             <button onClick={() => navigate(notifPath)} className="relative w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high" title="Notifications">
               <Icon name="notifications" size={22} />
-              <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-error text-on-error text-[10px] font-bold flex items-center justify-center">3</span>
+              {unreadNotif > 0 && <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-error text-on-error text-[10px] font-bold flex items-center justify-center">{unreadNotif}</span>}
             </button>
             <div className="relative" ref={profileRef}>
               <button onClick={() => setProfileOpen((o) => !o)} className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-surface-container-low hover:bg-surface-container transition-colors">
@@ -148,15 +174,15 @@ export default function DesignShell({ children, role = 'client' }) {
                   <div className="flex items-center justify-between px-4 py-2">
                     <span className="flex items-center gap-2 font-body-md text-body-md text-on-surface-variant"><Icon name="dark_mode" size={18} />Thème</span>
                     <div className="flex rounded-lg overflow-hidden border border-outline-variant/40">
-                      <button onClick={() => toggleDark(false)} className={`px-2.5 py-1 font-label-sm text-label-sm ${!dark ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant'}`}>On</button>
-                      <button onClick={() => toggleDark(true)} className={`px-2.5 py-1 font-label-sm text-label-sm ${dark ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant'}`}>Off</button>
+                      <button onClick={() => toggleDark(false)} className={`px-2.5 py-1 font-label-sm text-label-sm ${!dark ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant'}`}>Clair</button>
+                      <button onClick={() => toggleDark(true)} className={`px-2.5 py-1 font-label-sm text-label-sm ${dark ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant'}`}>Sombre</button>
                     </div>
                   </div>
                   <div className="flex items-center justify-between px-4 py-2">
                     <span className="flex items-center gap-2 font-body-md text-body-md text-on-surface-variant"><Icon name="language" size={18} />Langue</span>
                     <div className="flex rounded-lg overflow-hidden border border-outline-variant/40">
-                      <button onClick={() => i18n.changeLanguage('fr')} className={`px-2.5 py-1 font-label-sm text-label-sm ${i18n.language === 'fr' ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant'}`}>FR</button>
-                      <button onClick={() => i18n.changeLanguage('en')} className={`px-2.5 py-1 font-label-sm text-label-sm ${i18n.language === 'en' ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant'}`}>EN</button>
+                      <button onClick={() => { i18n.changeLanguage('fr'); import('../services/api').then(({ usersAPI }) => usersAPI.updateMe({ language: 'fr' }).catch(() => {})); }} className={`px-2.5 py-1 font-label-sm text-label-sm ${i18n.language === 'fr' ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant'}`}>FR</button>
+                      <button onClick={() => { i18n.changeLanguage('en'); import('../services/api').then(({ usersAPI }) => usersAPI.updateMe({ language: 'en' }).catch(() => {})); }} className={`px-2.5 py-1 font-label-sm text-label-sm ${i18n.language === 'en' ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant'}`}>EN</button>
                     </div>
                   </div>
                   <button onClick={() => { setProfileOpen(false); navigate('/profile'); }}

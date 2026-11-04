@@ -15,6 +15,26 @@ export default function DriverRevenue() {
   const [method, setMethod] = useState('mtn');
   const [amount, setAmount] = useState('60000');
   const [state, setState] = useState('idle');
+  const [earnings, setEarnings] = useState(null);
+  const [ops, setOps] = useState(null);
+
+  const fmt = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`;
+
+  React.useEffect(() => {
+    import('../services/api').then(({ driversAPI }) => {
+      driversAPI.earnings().then(({ data }) => setEarnings(data)).catch(() => {});
+      driversAPI.earningLedger({ page_size: 15 }).then(({ data }) => {
+        const rows = Array.isArray(data) ? data : (data.results || []);
+        if (rows.length) setOps(rows.map((e) => [
+          new Date(e.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }),
+          e.booking_ref || `Gain course #${e.booking || e.id}`, `+${Number(e.amount).toLocaleString('fr-FR')} FCFA`, 'Crédité']));
+      }).catch(() => {});
+    });
+  }, []);
+
+  const balance = earnings ? Number(earnings.total_earned || 0) : 85000;
+  const monthEarn = earnings?.monthly_earnings?.[0];
+  const monthAmt = monthEarn ? Number(monthEarn.earnings) : balance;
 
   const withdraw = () => {
     if (state !== 'idle') return;
@@ -35,18 +55,18 @@ export default function DriverRevenue() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-space-md">
           <div className="rounded-xl bg-primary text-on-primary p-6 shadow-md flex flex-col gap-2">
             <span className="font-label-sm text-label-sm uppercase tracking-wider text-primary-fixed">Solde disponible</span>
-            <div className="flex items-baseline gap-2"><span className="font-display-lg text-display-lg">85 000</span><span className="font-headline-md text-headline-md text-primary-fixed">FCFA</span></div>
+            <div className="flex items-baseline gap-2"><span className="font-display-lg text-display-lg">{balance.toLocaleString('fr-FR')}</span><span className="font-headline-md text-headline-md text-primary-fixed">FCFA</span></div>
             <span className="font-body-sm text-body-sm text-primary-fixed-dim">Retirable immédiatement</span>
           </div>
           <div className="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col gap-2">
             <span className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Gains ce mois</span>
-            <span className="font-headline-lg text-headline-lg font-extrabold text-on-surface">85 000 FCFA</span>
-            <span className="font-body-sm text-body-sm text-primary flex items-center gap-1"><Icon name="trending_up" size={16} />+24% vs septembre</span>
+            <span className="font-headline-lg text-headline-lg font-extrabold text-on-surface">{fmt(monthAmt)}</span>
+            <span className="font-body-sm text-body-sm text-primary flex items-center gap-1"><Icon name="trending_up" size={16} />{monthEarn?.month || 'ce mois'}</span>
           </div>
           <div className="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col gap-2">
             <span className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Total encaissé</span>
-            <span className="font-headline-lg text-headline-lg font-extrabold text-on-surface">1 240 000 FCFA</span>
-            <span className="font-body-sm text-body-sm text-on-surface-variant">142 courses depuis janvier</span>
+            <span className="font-headline-lg text-headline-lg font-extrabold text-on-surface">{fmt(earnings?.total_earned)}</span>
+            <span className="font-body-sm text-body-sm text-on-surface-variant">{earnings?.total_trips ?? 0} courses au total</span>
           </div>
         </div>
 
@@ -68,14 +88,14 @@ export default function DriverRevenue() {
           <div className="flex flex-col sm:flex-row gap-3 items-stretch">
             <input value={amount} onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))} type="text" className="flex-1 px-4 py-3 rounded-xl bg-surface-container-low font-headline-sm text-headline-sm text-on-surface outline-none focus:ring-2 focus:ring-primary" placeholder="Montant FCFA" />
             <button onClick={withdraw} disabled={state !== 'idle'} className="px-6 py-3 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg font-bold shadow-md transition-all active:scale-[0.98] disabled:opacity-80 flex items-center justify-center gap-2">
-              {state === 'idle' && <><Icon name="payments" size={18} />Retirer {amount ? `${Number(amount).toLocaleString('fr-FR')} FCFA` : 'maintenant'}</>}
+              {state === 'idle' && <><Icon name="payments" size={18} />Retirer {amount ? `${Number(amount).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} FCFA` : 'maintenant'}</>}
               {state === 'sent' && <><Icon name="refresh" size={18} />Prompt USSD envoyé...</>}
               {state === 'ok' && <><Icon name="check_circle" size={18} />Retrait approuvé !</>}
             </button>
           </div>
           <div className="flex items-center gap-2 font-body-sm text-body-sm text-on-surface-variant">
             <Icon name="info" size={16} className="text-primary" />
-            <span>Solde après retrait estimé : <strong className="text-on-surface">{Math.max(0, 85000 - (parseInt(amount, 10) || 0)).toLocaleString('fr-FR')} FCFA</strong></span>
+            <span>Solde après retrait estimé : <strong className="text-on-surface">{Math.max(0, balance - (parseInt(amount, 10) || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} FCFA</strong></span>
           </div>
         </section>
 
@@ -83,7 +103,7 @@ export default function DriverRevenue() {
           <section className="lg:col-span-2 bg-surface-container-lowest rounded-2xl p-6 shadow-sm flex flex-col gap-3">
             <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface">Historique des opérations</h2>
             <div className="flex flex-col divide-y divide-surface-container">
-              {OPS.map(([d, lbl, amt, st]) => (
+              {(ops || OPS).map(([d, lbl, amt, st]) => (
                 <div key={d + lbl} className="py-3 flex items-center justify-between gap-3">
                   <div className="flex flex-col min-w-0"><span className="font-label-md text-label-md text-on-surface truncate">{lbl}</span><span className="font-body-sm text-body-sm text-on-surface-variant">{d}</span></div>
                   <div className="flex flex-col items-end shrink-0"><span className={`font-label-md text-label-md font-bold ${amt.startsWith('-') ? 'text-error' : 'text-primary'}`}>{amt}</span><span className="font-body-sm text-body-sm text-on-surface-variant">{st}</span></div>
@@ -93,7 +113,7 @@ export default function DriverRevenue() {
           </section>
           <section className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm flex flex-col gap-3">
             <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface">Gains mensuels</h2>
-            {MOIS.map(([m, amt, n]) => (
+            {(earnings?.monthly_earnings?.length ? earnings.monthly_earnings.map((x) => [x.month, Number(x.earnings).toLocaleString('fr-FR'), x.trips]) : MOIS).map(([m, amt, n]) => (
               <div key={m} className="flex items-center justify-between p-3 rounded-lg bg-surface-container-low">
                 <div className="flex flex-col"><span className="font-label-md text-label-md font-semibold text-on-surface capitalize">{m}</span><span className="font-body-sm text-body-sm text-on-surface-variant">{n} courses</span></div>
                 <span className="font-headline-sm text-headline-sm font-bold text-on-surface">{amt}</span>

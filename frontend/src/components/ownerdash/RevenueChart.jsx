@@ -23,7 +23,7 @@ export default function RevenueChart({ data }) {
             tickFormatter={v => `${Math.round(v / 1000)}k`} />
           <YAxis yAxisId="cnt" orientation="right" hide />
           <Tooltip
-            formatter={(v, name) => name === 'revenue' ? [`${Math.round(v).toLocaleString('fr-FR')} FCFA`, 'Revenu net'] : [v, 'Locations']}
+            formatter={(v, name) => name === 'revenue' ? [`${Math.round(v).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} FCFA`, 'Revenu net'] : [v, 'Locations']}
             contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 11, fontWeight: 700 }}
             cursor={{ fill: '#f8fafc' }}
           />

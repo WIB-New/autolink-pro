@@ -118,7 +118,7 @@ export default function VehicleAudit() {
     { label: 'En ligne', sub: vehicle.status === 'approved' || vehicle.status === 'rented' ? 'Visible au catalogue' : 'Hors ligne', done: ['approved', 'rented'].includes(vehicle.status) },
   ];
   const today = dayKey(new Date());
-  const monthLabel = month.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const monthLabel = month.toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { month: 'long', year: 'numeric' });
 
   return (
     <DashboardLayout title={vehicleName(vehicle)}

@@ -4,7 +4,7 @@ import DesignPage from './DesignPage';
 import useApiData from '../utils/useApiData';
 import { vehiclesAPI } from '../services/api';
 
-const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
+const fmt = (n) => new Intl.NumberFormat((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')).format(Math.round(Number(n) || 0));
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
 const HTML = `<div class="flex flex-col w-full pb-16 max-w-[1280px] mx-auto">
@@ -128,12 +128,8 @@ const HTML = `<div class="flex flex-col w-full pb-16 max-w-[1280px] mx-auto">
 </div>
 </div>`;
 const LINKS = {
-  'Réserver maintenant': '/client/booking/recap?vehicle=2',
   'Voir les 6 photos': '#',
   'Voir tout le catalogue': '/client/search',
-  'Ajouter aux favoris': '/client/favorites',
-  'Appeler': '/client/help',
-  'WhatsApp': '/messages',
 };
 
 export default function C11VehiculeDetail() {
@@ -142,6 +138,16 @@ export default function C11VehiculeDetail() {
   const { data: rev } = useApiData(() => vehiclesAPI.reviews(id), [id]);
   const { data: sim } = useApiData(() => vehiclesAPI.similar(id), [id]);
   const links = { ...LINKS, 'Réserver maintenant': `/client/booking/recap?vehicle=${id}` };
+  // Toggle favori réel + Appeler tel: / WhatsApp wa.me
+  React.useEffect(() => {
+    const favBtn = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('favoris'));
+    const callBtn = [...document.querySelectorAll('button, a')].find((b) => b.textContent.trim() === 'Appeler' || b.textContent.includes('Appeler'));
+    const waBtn = [...document.querySelectorAll('button, a')].find((b) => b.textContent.includes('WhatsApp'));
+    const phone = (v?.owner_phone || v?.owner?.phone || '').replace(/\s/g, '');
+    if (callBtn) { const h = () => { if (phone) window.location.href = `tel:${phone}`; }; callBtn.addEventListener('click', h); }
+    if (waBtn) { const h = () => window.open(phone ? `https://wa.me/${phone.replace('+', '')}` : '/messages', '_self'); waBtn.removeEventListener('click', h); waBtn.addEventListener('click', h); }
+    if (favBtn) { const h = async () => { try { const { vehiclesAPI } = await import('../services/api'); const { data: favs } = await vehiclesAPI.favorites(); const has = (favs || []).some((f) => f.id === v.id || f.vehicle === v.id); if (has) await vehiclesAPI.removeFavorite(v.id); else await vehiclesAPI.addFavorite(v.id); favBtn.classList.toggle('bg-error-container'); } catch (_e) { window.location.href = '/client/favorites'; } }; favBtn.removeEventListener('click', h); favBtn.addEventListener('click', h); }
+  }, [v, id]);
   const html = useMemo(() => {
     if (!v) return HTML;
     const name = `${v.brand || ''} ${v.model || ''} ${v.year || ''}`.trim();

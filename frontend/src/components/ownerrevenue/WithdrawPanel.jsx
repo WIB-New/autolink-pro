@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Smartphone, Landmark, ShieldCheck, Zap, Lock, CheckCircle2, X, Banknote, Loader, ChevronLeft } from 'lucide-react';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 
 const METHODS = [
   { id: 'mtn',    icon: Smartphone, name: 'MTN MoMo',       sub: '+237 670 ·· ·· 90 — Marc T.', badge: 'Compte vérifié' },

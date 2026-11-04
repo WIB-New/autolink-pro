@@ -21,15 +21,15 @@ const HTML = `<div class="flex flex-col w-full pb-16 max-w-[1100px] mx-auto">
 </div>
 <!-- FAQ accordéons -->
 <div class="bg-surface-container-lowest rounded-2xl shadow-sm divide-y divide-outline-variant/30 mb-8">
-<div class="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Quel est le délai minimum pour réserver un véhicule ?</span><span class="material-symbols-outlined text-outline">expand_more</span></div>
-<div class="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Est-ce que le prix affiché varie entre Douala et Yaoundé ?</span><span class="material-symbols-outlined text-outline">expand_more</span></div>
-<div class="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Comment fonctionne l'option avec chauffeur certifié ?</span><span class="material-symbols-outlined text-outline">expand_more</span></div>
-<div class="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Comment recharger mon portefeuille avec MTN/Orange Money ?</span><span class="material-symbols-outlined text-outline">expand_more</span></div>
-<div class="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Quand ma caution est-elle débloquée après la location ?</span><span class="material-symbols-outlined text-outline">expand_more</span></div>
-<div class="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Quels documents dois-je fournir pour débloquer mon compte ?</span><span class="material-symbols-outlined text-outline">expand_more</span></div>
-<div class="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Que faire si mon véhicule tombe en panne pendant la location ?</span><span class="material-symbols-outlined text-outline">expand_more</span></div>
-<div class="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Puis-je modifier ou annuler ma réservation gratuitement ?</span><span class="material-symbols-outlined text-outline">expand_more</span></div>
-<div class="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Les véhicules sont-ils équipés pour les trajets interurbains ?</span><span class="material-symbols-outlined text-outline">expand_more</span></div>
+<div class="faq-item" data-cat="reservation"><div class="faq-q flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Quel est le délai minimum pour réserver un véhicule ?</span><span class="material-symbols-outlined text-outline faq-arrow">expand_more</span></div><div class="faq-a hidden px-5 pb-4 -mt-1"><p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">Vous pouvez réserver jusqu'à 2 heures avant le départ pour les formules courtes (3h/8h/24h). Pour une location Longue durée ou Interurbain avec chauffeur, réservez de préférence 24h à l'avance afin de garantir la disponibilité du véhicule et du chauffeur certifié.</p></div></div>
+<div class="faq-item" data-cat="reservation"><div class="faq-q flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Est-ce que le prix affiché varie entre Douala et Yaoundé ?</span><span class="material-symbols-outlined text-outline faq-arrow">expand_more</span></div><div class="faq-a hidden px-5 pb-4 -mt-1"><p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">Non. Le tarif journalier affiché sur la fiche véhicule est identique à Douala et à Yaoundé. Seuls peuvent s'ajouter les options choisies (chauffeur certifié +10 000 FCFA/24h, livraison aéroport +5 000 FCFA) ou une livraison hors zone standard.</p></div></div>
+<div class="faq-item" data-cat="reservation"><div class="faq-q flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Comment fonctionne l'option avec chauffeur certifié ?</span><span class="material-symbols-outlined text-outline faq-arrow">expand_more</span></div><div class="faq-a hidden px-5 pb-4 -mt-1"><p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">L'option « Avec chauffeur » ajoute un chauffeur professionnel certifié AutoLink Pro, bilingue FR/EN, pour +10 000 FCFA par tranche de 24h. Vous êtes uniquement passager : aucun permis n'est requis de votre part et la responsabilité de conduite incombe au chauffeur.</p></div></div>
+<div class="faq-item" data-cat="paiement"><div class="faq-q flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Comment recharger mon portefeuille avec MTN/Orange Money ?</span><span class="material-symbols-outlined text-outline faq-arrow">expand_more</span></div><div class="faq-a hidden px-5 pb-4 -mt-1"><p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">Allez dans Portefeuille → « Recharger mon portefeuille », choisissez MTN Mobile Money ou Orange Money, saisissez le numéro à débiter et le montant (minimum 500 FCFA). Validez la demande USSD reçue sur votre téléphone : le solde est crédité immédiatement.</p></div></div>
+<div class="faq-item" data-cat="paiement"><div class="faq-q flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Quand ma caution est-elle débloquée après la location ?</span><span class="material-symbols-outlined text-outline faq-arrow">expand_more</span></div><div class="faq-a hidden px-5 pb-4 -mt-1"><p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">La caution reste bloquée sous séquestre pendant toute la location. Elle est restituée intégralement sous 24 à 72h ouvrées après le check-out, dès que l'inspection du véhicule confirme l'absence de dommage ou de litige en cours.</p></div></div>
+<div class="faq-item" data-cat="assistance"><div class="faq-q flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Quels documents dois-je fournir pour débloquer mon compte ?</span><span class="material-symbols-outlined text-outline faq-arrow">expand_more</span></div><div class="faq-a hidden px-5 pb-4 -mt-1"><p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">Pour prendre le volant : une pièce d'identité (CNI camerounaise ou passeport) et un permis de conduire B valide au Cameroun (recto-verso). Téléversez-les depuis Profil → Documents ou directement à l'étape « Récapitulatif & Documents » de votre réservation.</p></div></div>
+<div class="faq-item" data-cat="assistance"><div class="faq-q flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Que faire si mon véhicule tombe en panne pendant la location ?</span><span class="material-symbols-outlined text-outline faq-arrow">expand_more</span></div><div class="faq-a hidden px-5 pb-4 -mt-1"><p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">Contactez immédiatement le standard 24h/24 au +237 699 456 123. L'assistance dépêche un dépanneur partenaire — le remorquage est couvert par l'assurance Activa incluse. Si le véhicule est immobilisé, un véhicule de remplacement vous est proposé ou la location est remboursée au prorata.</p></div></div>
+<div class="faq-item" data-cat="reservation"><div class="faq-q flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Puis-je modifier ou annuler ma réservation gratuitement ?</span><span class="material-symbols-outlined text-outline faq-arrow">expand_more</span></div><div class="faq-a hidden px-5 pb-4 -mt-1"><p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">Oui. Les réservations « À venir » se modifient (dates, options, véhicule) ou s'annulent gratuitement jusqu'à 48h avant le départ, depuis Mes Réservations → Modifier / Annuler. Sous 48h, des frais peuvent s'appliquer ; le remboursement est crédité directement sur votre portefeuille.</p></div></div>
+<div class="faq-item" data-cat="reservation"><div class="faq-q flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-surface-container-low transition-colors"><span class="font-label-md text-label-md font-semibold text-on-surface">Les véhicules sont-ils équipés pour les trajets interurbains ?</span><span class="material-symbols-outlined text-outline faq-arrow">expand_more</span></div><div class="faq-a hidden px-5 pb-4 -mt-1"><p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">Oui. Tous les véhicules du catalogue sont inspectés pour les longs trajets (axe Douala–Yaoundé et liaisons nationales). Choisissez la formule « Interurbain » : kilométrage élargi inclus ; l'option chauffeur est fortement recommandée pour ces trajets.</p></div></div>
 </div>
 <!-- Canaux d'assistance -->
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -68,8 +68,61 @@ const HTML = `<div class="flex flex-col w-full pb-16 max-w-[1100px] mx-auto">
 </button>
 </div>
 </div>`;
-const LINKS = {};
+const LINKS = { 'Démarrer sur WhatsApp': 'https://wa.me/237699456123', 'Envoyer le message': '#send-msg' };
 
-export default function c10aide() {
+export default function C10Aide() {
+  React.useEffect(() => {
+    // Accordéons : .faq-q toggle .faq-a + rotation icone
+    document.querySelectorAll('.faq-q').forEach((el) => {
+      el.addEventListener('click', () => {
+        const body = el.parentElement.querySelector('.faq-a');
+        const arrow = el.querySelector('.faq-arrow');
+        const hid = body.classList.toggle('hidden');
+        if (arrow) arrow.textContent = hid ? 'expand_more' : 'expand_less';
+      });
+    });
+    // Catégories -> data-cat
+    const catKey = { 'réservation': 'reservation', 'reservation': 'reservation', 'paiement': 'paiement', 'payment': 'paiement', 'assistance': 'assistance', 'sécurité': 'assistance', 'security': 'assistance' };
+    const cats = [...document.querySelectorAll('button')].filter((b) => /catégorie|Réservation|Paiement|Assistance/i.test(b.textContent));
+    const q = document.querySelector('input[placeholder*="Rechercher"]');
+    const apply = () => {
+      const act = (cats.find((b) => b.classList.contains('bg-primary'))?.textContent || 'Toutes').trim();
+      const actKey = act === 'Toutes' || /toutes/i.test(act) ? '' : Object.keys(catKey).find((k) => act.toLowerCase().includes(k));
+      const term = (q?.value || '').toLowerCase();
+      document.querySelectorAll('.faq-item').forEach((f) => {
+        const okQ = !term || f.textContent.toLowerCase().includes(term);
+        const okC = !actKey || (f.dataset.cat || '') === catKey[actKey];
+        f.style.display = okQ && okC ? '' : 'none';
+      });
+    };
+    cats.forEach((b) => b.addEventListener('click', () => { cats.forEach((x) => { x.classList.remove('bg-primary', 'text-on-primary'); x.classList.add('bg-surface-container-lowest', 'text-on-surface-variant'); }); b.classList.add('bg-primary', 'text-on-primary'); b.classList.remove('bg-surface-container-lowest', 'text-on-surface-variant'); apply(); }));
+    q?.addEventListener('input', apply);
+    // Appels / WhatsApp
+    document.querySelectorAll('a[href^="tel:"], a[href="#"]').forEach(() => {});
+    const callBtn = [...document.querySelectorAll('a, button')].find((b) => /699 456 123|Appeler le standard/i.test(b.textContent));
+    if (callBtn && callBtn.tagName !== 'A') callBtn.closest('div')?.addEventListener('click', () => { window.location.href = 'tel:+237699456123'; });
+    const waBtn = [...document.querySelectorAll('a, button')].find((b) => /WhatsApp/i.test(b.textContent));
+    if (waBtn) {
+      if (waBtn.tagName === 'A') { waBtn.href = 'https://wa.me/237699456123'; waBtn.target = '_blank'; }
+      else waBtn.addEventListener('click', () => window.open('https://wa.me/237699456123', '_blank'));
+    }
+    // Formulaire de contact -> contactAPI.send
+    const send = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Envoyer le message'));
+    send?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const form = send.closest('div');
+      const ins = [...form.querySelectorAll('input')]; const ta = form.querySelector('textarea');
+      const [nom, tel, email] = ins.map((i) => i.value.trim());
+      const msg = ta?.value.trim() || '';
+      if (!email || !msg) { send.textContent = 'Email et message requis'; setTimeout(() => { send.innerHTML = '<span class="material-symbols-outlined text-[18px]">send</span>Envoyer le message'; }, 2000); return; }
+      send.disabled = true; send.textContent = 'Envoi…';
+      try {
+        const { contactAPI } = await import('../services/api');
+        await contactAPI.send({ name: nom || 'Client', email, phone: tel, subject: `Support — ${nom || 'client'}`, message: msg });
+        send.textContent = 'Message envoyé !'; if (ta) ta.value = '';
+        setTimeout(() => { send.innerHTML = '<span class="material-symbols-outlined text-[18px]">send</span>Envoyer le message'; send.disabled = false; }, 2500);
+      } catch (_e) { send.textContent = 'Erreur — réessayez'; setTimeout(() => { send.innerHTML = '<span class="material-symbols-outlined text-[18px]">send</span>Envoyer le message'; send.disabled = false; }, 2500); }
+    });
+  }, []);
   return <DesignPage html={HTML} links={LINKS} />;
 }

@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Search, ChevronDown, MoreHorizontal, ShieldCheck } from 'lucide-react';
 import { fleetImage } from '../ownerfleet/FleetCard';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
-const fmtDate = d => { try { return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }); } catch (_) { return '—'; } };
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
+const fmtDate = d => { try { return new Date(d).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short', year: 'numeric' }); } catch (_) { return '—'; } };
 const PAGE = 4;
 
 /* « Détail par location & Décomposition des revenus » — table paginée. */

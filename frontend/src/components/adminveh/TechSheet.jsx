@@ -1,7 +1,7 @@
 import React from 'react';
 import { Car, BadgeCheck } from 'lucide-react';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 
 /* Fiche technique déclarée — caractéristiques du véhicule soumis. */
 export default function TechSheet({ vehicle: v }) {

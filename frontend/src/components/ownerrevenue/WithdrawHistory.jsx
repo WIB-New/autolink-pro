@@ -1,8 +1,8 @@
 import React from 'react';
 import { Receipt, CheckCircle2, Clock, FileDown } from 'lucide-react';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
-const fmtDT = d => { try { return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) + ' · ' + new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); } catch (_) { return '—'; } };
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
+const fmtDT = d => { try { return new Date(d).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short', year: 'numeric' }) + ' · ' + new Date(d).toLocaleTimeString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { hour: '2-digit', minute: '2-digit' }); } catch (_) { return '—'; } };
 
 const KIND = {
   topup:  { label: 'Rechargement solde', verb: 'vers' },

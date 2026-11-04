@@ -2,7 +2,7 @@ import React from 'react';
 import { Wallet, Percent, Car, CalendarCheck } from 'lucide-react';
 import StatCard from '../StatCard';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 
 /* 4 KPI style maquette — icône colorée + valeur + libellé (StatCard partagé). */
 export default function KpiCards({ grossRevenue = 0, commission = 0, activeFleet = 0, totalFleet = 0, interventions = 0, sparkData = [] }) {

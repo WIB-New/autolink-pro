@@ -4,9 +4,9 @@ import DesignPage from './DesignPage';
 import useApiData from '../utils/useApiData';
 import { bookingsAPI, authAPI } from '../services/api';
 
-const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
+const fmt = (n) => new Intl.NumberFormat((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')).format(Math.round(Number(n) || 0));
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-const dmy = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' }) : '');
+const dmy = (d) => (d ? new Date(d).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' }) : '');
 
 const HTML = `<div class="flex flex-col w-full pb-16">
 <div class="max-w-7xl mx-auto px-margin-sm lg:px-margin w-full flex flex-col gap-8">
@@ -33,7 +33,7 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Numéro de réservation</span>
 <div class="flex items-center gap-2">
 <span class="font-headline-md text-headline-md text-primary tracking-wide" id="booking-ref">#ALP-2025-DLA-8924</span>
-<button class="p-2 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface" id="copy-btn" onclick="navigator.clipboard.writeText('ALP-2025-DLA-8924'); showToast();" title="Copier le code">
+<button class="p-2 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface" id="copy-btn" title="Copier le code">
 <span class="material-symbols-outlined text-[18px]">content_copy</span>
 </button>
 </div>
@@ -351,5 +351,15 @@ export default function C2TunnelEtape3Confirmation() {
     return h;
   }, [b, me]);
 
+  React.useEffect(() => {
+    const cp = document.getElementById('copy-btn');
+    cp?.addEventListener('click', () => { navigator.clipboard.writeText(b?.reference || `BK-${String(b?.id || 0).padStart(4, '0')}`); if (window.showToast) window.showToast(); });
+    const dl = [...document.querySelectorAll('button')].find((x) => x.textContent.includes('Télécharger le reçu'));
+    dl?.addEventListener('click', () => {
+      const w = window.open('', '_blank');
+      w.document.write(`<html><body style="font-family:sans-serif;padding:40px"><h1>Reçu AutoLink — ${b?.reference || ''}</h1><p>Véhicule : ${b?.vehicle_name || ''}</p><p>Du ${b?.start_date || ''} au ${b?.end_date || ''}</p><p>Montant : ${b?.subtotal || b?.total_price || ''} FCFA — Caution : ${b?.deposit_amount || ''} FCFA</p><hr><p>Client : ${me?.first_name || ''} ${me?.last_name || ''}</p></body></html>`);
+      w.document.close(); w.print();
+    });
+  }, [b, me]);
   return <DesignPage html={html} links={LINKS} />;
 }

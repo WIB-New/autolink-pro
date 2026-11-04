@@ -82,7 +82,7 @@ export default function AdminDashboard() {
       title={`Bienvenue, ${user?.first_name || user?.firstName || 'Admin'}`}
       subtitle={
         <span className="flex items-center gap-3">
-          <span>{online ? `Synchro ${lastSync?.toLocaleTimeString('fr-FR')}` : 'API injoignable'}</span>
+          <span>{online ? `Synchro ${lastSync?.toLocaleTimeString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))}` : 'API injoignable'}</span>
           {online ? <Wifi size={11} className="text-emerald-500" /> : <WifiOff size={11} className="text-red-500" />}
         </span>
       }
@@ -135,7 +135,7 @@ export default function AdminDashboard() {
                           BK-{String(b.id).padStart(4, '0')} — {b.client_name} · {b.vehicle_name}
                         </p>
                         <p className="text-[10px] text-slate-500">
-                          {b.start_date} → {b.end_date} · {Number(b.subtotal).toLocaleString('fr-FR')} F gelés
+                          {b.start_date} → {b.end_date} · {Number(b.subtotal).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} F gelés
                         </p>
                       </div>
                       <div className="flex gap-1.5 shrink-0">

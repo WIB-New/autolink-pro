@@ -46,7 +46,7 @@ export default function BookingSidebar({ vehicle: v }) {
           <div className="text-[11px] text-slate-400 mt-0.5">{v.plate} · {v.city}</div>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-black text-teal-600">{v.price.toLocaleString('fr-FR')}</div>
+          <div className="text-2xl font-black text-teal-600">{v.price.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))}</div>
           <div className="text-[10px] text-slate-400 font-bold uppercase">FCFA / jour</div>
         </div>
       </div>
@@ -103,7 +103,7 @@ export default function BookingSidebar({ vehicle: v }) {
           <input type="checkbox" checked={extraDriver} onChange={e => setExtraDriver(e.target.checked)}
             className="w-4 h-4 accent-teal-600 rounded" />
           <span className="text-xs text-slate-600">
-            Conducteur additionnel <span className="font-bold text-slate-800">+{EXTRA_DRIVER_FEE.toLocaleString('fr-FR')} F</span>
+            Conducteur additionnel <span className="font-bold text-slate-800">+{EXTRA_DRIVER_FEE.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} F</span>
           </span>
         </label>
       )}
@@ -111,19 +111,19 @@ export default function BookingSidebar({ vehicle: v }) {
       {/* Décomposition du prix */}
       <div className="bg-slate-50 rounded-xl p-4 mb-4 space-y-2 text-xs">
         <div className="flex justify-between text-slate-600">
-          <span>{rt.label} — {v.price.toLocaleString('fr-FR')} F × {days} j</span>
-          <span className="font-semibold text-slate-800">{Math.round(base).toLocaleString('fr-FR')} F</span>
+          <span>{rt.label} — {v.price.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} F × {days} j</span>
+          <span className="font-semibold text-slate-800">{Math.round(base).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} F</span>
         </div>
         {driverFee > 0 && (
           <div className="flex justify-between text-slate-600">
             <span>Chauffeur AutoLink</span>
-            <span className="font-semibold text-slate-800">+{driverFee.toLocaleString('fr-FR')} F</span>
+            <span className="font-semibold text-slate-800">+{driverFee.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} F</span>
           </div>
         )}
         {extraFee > 0 && (
           <div className="flex justify-between text-slate-600">
             <span>Conducteur additionnel</span>
-            <span className="font-semibold text-slate-800">+{extraFee.toLocaleString('fr-FR')} F</span>
+            <span className="font-semibold text-slate-800">+{extraFee.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} F</span>
           </div>
         )}
         <div className="flex justify-between text-slate-500">
@@ -132,11 +132,11 @@ export default function BookingSidebar({ vehicle: v }) {
         </div>
         <div className="flex justify-between font-black text-slate-900 border-t border-slate-200 pt-2 text-sm">
           <span>Total TTC</span>
-          <span className="text-teal-600">{total.toLocaleString('fr-FR')} FCFA</span>
+          <span className="text-teal-600">{total.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} FCFA</span>
         </div>
         <div className="flex justify-between text-[11px] text-amber-700">
           <span>Caution (pré-autorisation, non débitée)</span>
-          <span className="font-bold">{deposit.toLocaleString('fr-FR')} F</span>
+          <span className="font-bold">{deposit.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} F</span>
         </div>
       </div>
 

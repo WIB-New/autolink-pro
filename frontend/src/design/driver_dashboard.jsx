@@ -22,9 +22,56 @@ const GAINS = [
 export default function DriverDesignDashboard() {
   const [online, setOnline] = useState(true);
   const [courses, setCourses] = useState(COURSES_INIT);
+  const [earnings, setEarnings] = useState(null);
+  const [user] = useState(() => { try { return JSON.parse(localStorage.getItem('autolink_user') || '{}'); } catch { return {}; } });
   const navigate = useNavigate();
 
-  const setStatus = (id, status) => setCourses((cs) => cs.map((c) => (c.id === id ? { ...c, status } : c)));
+  React.useEffect(() => {
+    import('../services/api').then(({ driversAPI }) => {
+      driversAPI.earnings().then(({ data }) => setEarnings(data)).catch(() => {});
+      driversAPI.profiles().then(({ data }) => {
+        const p = Array.isArray(data) ? data[0] : (data.results || [])[0] || data;
+        if (p) setOnline(!!p.is_online);
+      }).catch(() => {});
+      import('../services/api').then(({ bookingsAPI, driversAPI }) => {
+        driversAPI.earningLedger({ page_size: 8 }).then(({ data }) => {
+          const rows = Array.isArray(data) ? data : (data.results || []);
+          if (rows.length) setGains(rows.map((e) => [new Date(e.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }), `+${Number(e.amount).toLocaleString('fr-FR')} FCFA`, e.booking_ref || `Course #${e.booking || e.id}`]));
+        }).catch(() => {});
+        bookingsAPI.list({ page_size: 50 }).then(({ data }) => {
+          const list = Array.isArray(data) ? data : (data.results || []);
+          if (list.length) {
+            setCourses(list.slice(0, 6).map((b) => ({
+              id: `BK-${String(b.id).padStart(4, '0')}`,
+              client: b.client_name || 'Client', tel: b.client_phone || '—',
+              car: b.vehicle_name || 'Véhicule', from: b.pickup_address || '—', to: b.dropoff_address || '—',
+              dates: `${new Date(b.start_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })} → ${new Date(b.end_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}`,
+              price: `${Number(b.subtotal || 0).toLocaleString('fr-FR')} FCFA`,
+              status: b.driver_response === 'offered' ? 'pending' : (b.driver_response === 'accepted' || b.status === 'active' ? 'accepted' : b.status),
+              realId: b.id,
+            })));
+          }
+        }).catch(() => {});
+      });
+    });
+  }, []);
+
+  const [gains, setGains] = useState(null);
+
+  const toggleOnline = () => {
+    const next = !online;
+    setOnline(next);
+    import('../services/api').then(({ driversAPI }) => driversAPI.availability(next).catch(() => {}));
+  };
+
+  const setStatus = (id, status) => {
+    const course = courses.find((c) => c.id === id);
+    setCourses((cs) => cs.map((c) => (c.id === id ? { ...c, status } : c)));
+    if (course?.realId) import('../services/api').then(({ bookingsAPI }) => {
+      if (status === 'accepted') bookingsAPI.acceptDriverRide(course.realId).catch(() => {});
+      else if (status === 'refused') bookingsAPI.refuseDriverRide(course.realId).catch(() => {});
+    });
+  };
 
   return (
     <DesignShell role="driver">
@@ -33,10 +80,10 @@ export default function DriverDesignDashboard() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <span className="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold">Espace Chauffeur Certifié</span>
-            <h1 className="font-headline-xl text-headline-xl text-on-surface">Bonjour, Jean-Pierre</h1>
+            <h1 className="font-headline-xl text-headline-xl text-on-surface">Bonjour, {user.first_name || 'Chauffeur'}</h1>
             <p className="font-body-md text-body-md text-on-surface-variant">Gérez votre disponibilité et les courses qui vous sont attribuées.</p>
           </div>
-          <button onClick={() => setOnline(!online)} className={`self-start flex items-center gap-2 px-4 py-2 rounded-full font-label-lg text-label-lg font-semibold shadow-sm transition-all ${online ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>
+          <button onClick={toggleOnline} className={`self-start flex items-center gap-2 px-4 py-2 rounded-full font-label-lg text-label-lg font-semibold shadow-sm transition-all ${online ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>
             <span className={`w-2.5 h-2.5 rounded-full ${online ? 'bg-primary-fixed animate-pulse' : 'bg-outline'}`} />
             {online ? 'En ligne' : 'Hors ligne'}
           </button>
@@ -45,10 +92,10 @@ export default function DriverDesignDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-space-md">
           {[
-            ['star', 'Note moyenne', '4,98 / 5', '142 avis vérifiés'],
-            ['check_circle', 'Courses terminées', '142', 'dont 6 ce mois-ci'],
-            ['account_balance_wallet', 'Gains octobre', '85 000 FCFA', '+24% vs septembre'],
-            ['directions_car', 'Véhicule attribué', 'Toyota RAV4', 'LT-890-JA · Flotte Akwa'],
+            ['star', 'Note moyenne', `${earnings ? Number(earnings.rating).toFixed(1).replace('.', ',') : '—'} / 5`, `${earnings?.rating_count ?? 0} avis vérifiés`],
+            ['check_circle', 'Courses terminées', String(earnings?.total_trips ?? 0), 'au total'],
+            ['account_balance_wallet', 'Gains totaux', `${earnings ? Number(earnings.total_earned).toLocaleString('fr-FR') : 0} FCFA`, 'cumulés'],
+            ['directions_car', 'Véhicule attribué', earnings?.assigned_vehicle || '—', 'Flotte AutoLink'],
           ].map(([icon, label, val, sub]) => (
             <div key={label} className="bg-surface-container-lowest rounded-xl p-5 shadow-sm flex flex-col gap-1">
               <span className="flex items-center justify-between"><span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">{label}</span><Icon name={icon} size={20} className="text-primary" /></span>
@@ -105,7 +152,7 @@ export default function DriverDesignDashboard() {
               <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface">Gains mensuels</h2>
               <button onClick={() => navigate('/driver/revenue')} className="text-primary font-label-md text-label-md font-semibold hover:underline flex items-center gap-1">Voir détail<Icon name="arrow_forward" size={16} /></button>
             </div>
-            {MONTHS.map(([m, n, amt]) => (
+            {(earnings?.monthly_earnings?.length ? earnings.monthly_earnings.map((x) => [x.month, x.trips, Number(x.earnings).toLocaleString('fr-FR')]) : MONTHS).map(([m, n, amt]) => (
               <div key={m} className="flex items-center justify-between p-3 rounded-lg bg-surface-container-low">
                 <div className="flex flex-col"><span className="font-label-md text-label-md font-semibold text-on-surface capitalize">{m}</span><span className="font-body-sm text-body-sm text-on-surface-variant">{n} course(s)</span></div>
                 <span className="font-headline-sm text-headline-sm font-bold text-on-surface">{amt} <span className="font-label-sm text-primary">FCFA</span></span>
@@ -114,7 +161,7 @@ export default function DriverDesignDashboard() {
           </section>
           <section className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm flex flex-col gap-3">
             <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface">Historique des gains</h2>
-            {GAINS.map(([d, amt, lbl]) => (
+            {(gains || GAINS).map(([d, amt, lbl]) => (
               <div key={d + lbl} className="flex items-center justify-between py-2 border-b border-surface-container last:border-0">
                 <div className="flex flex-col"><span className="font-label-md text-label-md text-on-surface">{lbl}</span><span className="font-body-sm text-body-sm text-on-surface-variant">{d}</span></div>
                 <span className="font-label-md text-label-md font-bold text-primary">{amt}</span>

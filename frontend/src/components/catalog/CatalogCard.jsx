@@ -80,7 +80,7 @@ export default function CatalogCard({ v, formuleLabel = '24h', wide = false }) {
             <div>
               <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1 whitespace-nowrap">Total pour {formuleLabel}</div>
               <div className={`font-black text-slate-900 ${wide ? 'text-xl' : 'text-lg'}`}>
-                {v.price.toLocaleString('fr-FR')} <span className="text-xs font-bold text-teal-600">FCFA</span>
+                {v.price.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} <span className="text-xs font-bold text-teal-600">FCFA</span>
               </div>
             </div>
             <button onClick={() => reserve(v)}

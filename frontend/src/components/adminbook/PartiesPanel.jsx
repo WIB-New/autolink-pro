@@ -2,7 +2,7 @@ import React from 'react';
 import { Phone, MessageCircle, UserCheck, ShieldCheck, FileText, Thermometer, Star } from 'lucide-react';
 import { getVehicleImage } from '../../utils/carImages';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 const initialsOf = name => (name || 'C').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
 /* Parties prenantes du dossier : locataire / véhicule / propriétaire. */

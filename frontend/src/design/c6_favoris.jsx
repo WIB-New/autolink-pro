@@ -4,13 +4,13 @@ import useApiData from '../utils/useApiData';
 import { vehiclesAPI } from '../services/api';
 
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
+const fmt = (n) => new Intl.NumberFormat((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')).format(Math.round(Number(n) || 0));
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800&q=70';
 const TIER = { premium: 'Gamme Premium', standard: 'Gamme Standard', basic: 'Gamme Basic', luxury: 'Gamme Luxe' };
 
 const card = (v) => {
   const img = v.photos?.[0]?.image || v.image || FALLBACK_IMG;
-  return `<article class="fav-card group flex flex-col rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden" data-card-id="${v.id}" data-city="${esc(v.city || '')}" data-gamme="${esc(v.tier || '')}">
+  return `<article class="fav-card group flex flex-col rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden" data-card-id="${v.id}" data-city="${esc(v.city || '')}" data-gamme="${esc(v.tier || '')}" data-name="${esc(((v.brand || '') + ' ' + (v.model || '') + ' ' + (v.year || '')).trim())}" data-brand="${esc(v.brand || '')}" data-model="${esc(v.model || '')}" data-fuel="${esc(v.fuel || '')}" data-price="${Number(v.daily_rate || v.price_min || 0)}" data-type="${esc(v.rental_type || '')}" data-available="${v.available === false ? '0' : '1'}" data-rating="${Number(v.rating || 0)}" data-year="${Number(v.year || 0)}">
 <div class="relative aspect-[16/10] w-full overflow-hidden bg-surface-container">
 <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="${esc(img)}" alt="${esc(v.brand)} ${esc(v.model)}"/>
 <div class="absolute inset-0 bg-gradient-to-t from-inverse-surface/80 via-transparent to-black/20"></div>
@@ -71,10 +71,12 @@ const HTML = `<div class="flex flex-col w-full">
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
 <input class="w-full pl-9 pr-3 py-2.5 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface placeholder:text-outline outline-none focus:bg-surface-container-lowest transition-colors" placeholder="Rechercher un véhicule, une marque…" type="text">
 </div>
+<select id="fav-sort" class="px-3 py-2 rounded-lg bg-surface-container-low font-body-sm text-body-sm text-on-surface outline-none cursor-pointer"><option value="name">Nom</option><option value="price">Prix</option><option value="year">Année</option><option selected value="rating">Note</option></select>
+<button id="fav-sort-order" class="p-2 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-on-surface transition-colors" title="Ordre" type="button"><span class="material-symbols-outlined text-[18px]">arrow_downward</span></button>
 <div class="flex items-center gap-2">
 <span class="font-body-sm text-body-sm text-on-surface-variant">Prix max :</span>
-<input class="w-32 accent-primary" max="280000" min="15000" step="5000" type="range" value="280000">
-<span class="font-label-lg text-label-lg text-primary whitespace-nowrap">280 000 F</span>
+<input class="w-32 accent-primary" max="300000" min="15000" step="5000" type="range" value="300000">
+<span class="font-label-lg text-label-lg text-primary whitespace-nowrap">300 000 F</span>
 </div>
 <label class="flex items-center gap-2 font-label-md text-label-md cursor-pointer"><input checked="" class="w-4 h-4 accent-primary" type="checkbox">Disponibles uniquement</label>
 </div>
@@ -556,7 +558,16 @@ const LINKS = {
 };
 
 export default function C6Favoris() {
-  const { data } = useApiData(() => vehiclesAPI.favorites(), []);
+  const { data } = useApiData(async () => {
+    const r = await vehiclesAPI.favorites().catch(() => null);
+    let arr = r?.data ?? r;
+    if (arr && !Array.isArray(arr)) arr = arr.results || arr.favorites || arr.data || arr;
+    if (Array.isArray(arr) && arr.length) return { data: arr };
+    // Secours : vehicules marques is_favorite
+    const all = await vehiclesAPI.getAll({ status: 'approved', page_size: 200 }).catch(() => null);
+    const list = (all?.data?.results || all?.data || []).filter((v) => v.is_favorite);
+    return { data: list };
+  }, []);
   const html = useMemo(() => {
     if (!data) return HTML;
     const items = Array.isArray(data) ? data : data.results || [];
@@ -567,10 +578,88 @@ export default function C6Favoris() {
       `id="favorites-grid">${cards}`);
   }, [data]);
   useEffect(() => {
+    const grid = document.getElementById('favorites-grid');
+    if (!grid) return;
+    const cards = () => [...grid.querySelectorAll('.fav-card')];
+    const selBy = (label) => [...document.querySelectorAll('label')].find((l) => l.querySelector('span')?.textContent.trim().toLowerCase().startsWith(label.toLowerCase()))?.querySelector('select');
+    const uniq = (attr) => [...new Set(cards().map((c) => c.dataset[attr]).filter(Boolean))].sort();
+    const fillSel = (sel, allLabel, values) => {
+      if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = `<option value="">${allLabel}</option>` + values.map((v) => `<option value="${v}">${v}</option>`).join('');
+      if (values.includes(cur)) sel.value = cur;
+    };
+    const brandSel = selBy('Marque');
+    const modelSel = selBy('Modèle');
+    const fuelSel = selBy('Carburant');
+    const typeSel = selBy('Formule');
+    const tierSel = selBy('Gamme');
+    fillSel(brandSel, 'Toutes les marques', uniq('brand'));
+    fillSel(modelSel, 'Tous les modèles', uniq('model'));
+    fillSel(fuelSel, 'Tous les carburants', uniq('fuel'));
+    fillSel(tierSel, 'Toutes les gammes', uniq('gamme'));
+    fillSel(typeSel, 'Toutes les formules', uniq('type'));
+    const selVal = (v) => (/^tou[st]es?\b|^all\b|^tout\b/i.test((v || '').trim()) ? '' : v);
+    const searchIn = document.querySelector('input[placeholder*="Rechercher"], input[type="text"]');
+    const range = document.querySelector('input[type="range"]');
+    const onlyAvail = document.querySelector('input[type="checkbox"]');
+    if (range) {
+      const mx = Math.max(300000, ...cards().map((c) => Number(c.dataset.price || 0)));
+      range.max = String(mx);
+      if (!range.value || Number(range.value) < 15000 || Number(range.value) > mx) range.value = String(mx);
+    }
+    const priceOut = range?.nextElementSibling;
+    const apply = () => {
+      const q = (searchIn?.value || '').toLowerCase().trim();
+      const maxP = Number(range?.value || 0);
+      const brand = selVal(brandSel?.value);
+      const model = selVal(modelSel?.value);
+      const fuel = selVal(fuelSel?.value);
+      const type = selVal(typeSel?.value);
+      const tier = selVal(tierSel?.value);
+      const avail = !!onlyAvail?.checked;
+      const sortV = document.getElementById('fav-sort')?.value || 'rating';
+      let n = 0;
+      const list = cards();
+      const key = (c, k) => (k === 'name' ? (c.dataset.name || '').toLowerCase()
+        : k === 'price' ? Number(c.dataset.price || 0)
+        : k === 'year' ? -Number(c.dataset.year || 0)
+        : -Number(c.dataset.rating || 0));
+      [...list].sort((a, b) => {
+        const x = key(a, sortV), y = key(b, sortV);
+        const c = typeof x === 'string' ? x.localeCompare(y, 'fr') : x - y; return window._favAsc ? -c : c;
+      }).forEach((c) => grid.appendChild(c));
+      cards().forEach((c) => {
+        const ok = (!q || (c.dataset.name || '').toLowerCase().includes(q))
+          && (!maxP || Number(c.dataset.price || 0) <= maxP)
+          && (!brand || c.dataset.brand === brand)
+          && (!model || c.dataset.model === model)
+          && (!fuel || c.dataset.fuel === fuel)
+          && (!type || !c.dataset.type || c.dataset.type === type)
+          && (!tier || c.dataset.gamme === tier)
+          && (!avail || c.dataset.available !== '0');
+        c.style.display = ok ? '' : 'none';
+        if (ok) n += 1;
+      });
+      const counter = document.getElementById('fav-count-badge');
+      if (counter) counter.textContent = `${n}`;
+      if (priceOut && maxP) priceOut.textContent = `${maxP.toLocaleString('fr-FR')} F`;
+      return n;
+    };
+    document.addEventListener('input', apply);
+    document.addEventListener('change', apply);
+    apply();
     const click = (e) => {
       const rm = e.target.closest('.remove-fav-btn');
       const book = e.target.closest('.fav-book');
       const detail = e.target.closest('.fav-detail');
+      const orderBtn = e.target.closest('#fav-sort-order');
+      if (orderBtn) {
+        window._favAsc = !window._favAsc;
+        orderBtn.querySelector('.material-symbols-outlined').textContent = window._favAsc ? 'arrow_upward' : 'arrow_downward';
+        apply();
+        return;
+      }
       if (rm) {
         const id = rm.dataset.removeId;
         vehiclesAPI.removeFavorite(id).catch(() => {});
@@ -579,7 +668,7 @@ export default function C6Favoris() {
       else if (detail) window.location.href = `/client/vehicule/${detail.dataset.id}`;
     };
     document.addEventListener('click', click);
-    return () => document.removeEventListener('click', click);
-  }, []);
+    return () => { document.removeEventListener('click', click); document.removeEventListener('input', apply); document.removeEventListener('change', apply); };
+  }, [data]);
   return <DesignPage html={html} links={LINKS} />;
 }

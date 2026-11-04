@@ -1,7 +1,7 @@
 import React from 'react';
 import { ClipboardCheck, UserPlus, Camera, CheckCircle2 } from 'lucide-react';
 
-const shortDate = iso => iso ? new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+const shortDate = iso => iso ? new Date(iso).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
 /* Contrôles techniques & états des lieux numérisés. */
 export default function InspectionPanel({ booking: b }) {

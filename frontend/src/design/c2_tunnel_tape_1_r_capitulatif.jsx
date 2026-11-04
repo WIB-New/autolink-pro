@@ -4,10 +4,10 @@ import DesignPage from './DesignPage';
 import useApiData from '../utils/useApiData';
 import { vehiclesAPI } from '../services/api';
 
-const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
+const fmt = (n) => new Intl.NumberFormat((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')).format(Math.round(Number(n) || 0));
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const iso = (d) => d.toISOString().slice(0, 10);
-const dmy = (isoStr) => new Date(isoStr).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+const dmy = (isoStr) => new Date(isoStr).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
 const HTML = `<div class="flex flex-col w-full">
 <!-- Stepper Bar Sub-Header -->
@@ -51,9 +51,9 @@ const HTML = `<div class="flex flex-col w-full">
 <!-- 2-Column</div>
 </div>
 <!-- 2-Column Responsive Split Grid -->
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-space-lg items-start">
 <!-- LEFT COLUMN: Main Verification & Vehicle Details (7 cols) -->
-<section class="lg:col-span-7 flex flex-col gap-space-lg min-w-0">
+<section class="md:col-span-7 flex flex-col gap-space-lg min-w-0">
 <!-- Vehicle Hero Overview Card -->
 <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
 <div class="flex flex-col sm:flex-row gap-space-md items-start sm:items-center justify-between">
@@ -288,19 +288,17 @@ const HTML = `<div class="flex flex-col w-full">
 <textarea class="w-full rounded-lg bg-surface-container-low text-on-surface p-space-md font-body-md text-body-md focus:outline-none focus:bg-surface-container-lowest transition-all resize-y placeholder:text-outline" id="bookingNotes" placeholder="Ex: Arrivée vol Camair-Co QC204 à 08:15 avec 2 valises, merci de prévoir un panneau d'accueil au nom de K. Emmanuel..." rows="3"></textarea>
 </div>
 </div>
-</div>
 <!-- Big Primary Step Forward Action (Mobile & Desktop) -->
 <div class="pt-space-xs">
 <button class="w-full h-14 bg-primary hover:bg-primary-container text-on-primary rounded-xl font-headline-sm text-headline-sm flex items-center justify-center gap-space-md shadow-lg transition-transform active:scale-[0.99]" id="btnContinuePayment" type="button">
 <span>Continuer vers le paiement (Étape 2)</span>
 <span class="material-symbols-outlined text-[24px]">arrow_forward</span>
 </button>
-</div>
-</section></div>
+
 </div>
 </section>
 <!-- RIGHT COLUMN: Sticky Financial Summary & Wallet Readiness (5 cols) -->
-<aside class="lg:col-span-5 sticky top-20 flex flex-col gap-space-md">
+<aside class="md:col-span-5 sticky top-20 flex flex-col gap-space-md">
 <!-- Booking Financial Summary Bento Card -->
 <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
 <div class="flex items-center justify-between pb-space-xs">
@@ -366,8 +364,6 @@ const HTML = `<div class="flex flex-col w-full">
 </div>
 <span class="font-currency-display text-currency-display text-on-surface">150 000 FCFA</span>
 </div>
-</div>
-<!-- Wallet Balance Status Callout --></div>
 </div>
 <!-- Wallet Balance Status Callout -->
 <div class="p-space-md rounded-xl bg-surface-container flex flex-col gap-space-sm">

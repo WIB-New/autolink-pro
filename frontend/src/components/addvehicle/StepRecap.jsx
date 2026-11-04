@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { fleetImage } from '../ownerfleet/FleetCard';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 
 const ROADMAP = [
   { n: 1, t: 'Vérification administrative', d: 'Contrôle légal de la carte grise, de la validité de l\'assurance et de la conformité fiscale par nos juristes à Douala Akwa.', eta: 'Est. 4h', on: true },

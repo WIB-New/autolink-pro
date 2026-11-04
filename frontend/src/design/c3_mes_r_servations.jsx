@@ -12,9 +12,9 @@ const STATUS_UI = {
   disputed: ['Litige', 'bg-secondary-fixed text-secondary'],
 };
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
-const dt = (iso) => (iso ? new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : '');
-const hm = (iso) => (iso ? new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '');
+const fmt = (n) => new Intl.NumberFormat((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')).format(Math.round(Number(n) || 0));
+const dt = (iso) => (iso ? new Date(iso).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short' }) : '');
+const hm = (iso) => (iso ? new Date(iso).toLocaleTimeString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { hour: '2-digit', minute: '2-digit' }) : '');
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=200&q=70';
 
 const row = (b) => {
@@ -33,8 +33,13 @@ const row = (b) => {
 <td class="px-4 py-4 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-label-sm text-label-sm font-bold ${cls}">${label}</span></td>
 <td class="px-4 py-4"><div class="flex items-center justify-end gap-1">
 <button class="w-8 h-8 rounded-lg text-primary hover:bg-primary-fixed flex items-center justify-center transition-colors booking-open" data-id="${b.id}" title="Voir en détail" type="button"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
-${['pending', 'confirmed'].includes(b.status) ? `<button class="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container flex items-center justify-center transition-colors booking-edit" data-id="${b.id}" title="Modifier" type="button"><span class="material-symbols-outlined text-[18px]">edit_calendar</span></button>
-<button class="w-8 h-8 rounded-lg text-error hover:bg-error-container flex items-center justify-center transition-colors booking-cancel" data-id="${b.id}" title="Annuler" type="button"><span class="material-symbols-outlined text-[18px]">cancel</span></button>` : ''}
+${['pending', 'confirmed', 'active'].includes(b.status) ? `<button class="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container flex items-center justify-center transition-colors booking-edit" data-id="${b.id}" title="Modifier" type="button"><span class="material-symbols-outlined text-[18px]">edit_calendar</span></button>` : ''}
+${['pending', 'confirmed'].includes(b.status) ? `<button class="w-8 h-8 rounded-lg text-error hover:bg-error-container flex items-center justify-center transition-colors booking-cancel" data-id="${b.id}" title="Annuler" type="button"><span class="material-symbols-outlined text-[18px]">cancel</span></button>` : ''}
+${b.status === 'active' ? `<button class="w-8 h-8 rounded-lg text-error hover:bg-error-container flex items-center justify-center transition-colors booking-open" data-id="${b.id}" title="Signaler un litige" type="button"><span class="material-symbols-outlined text-[18px]">flag</span></button>` : ''}
+${b.status === 'completed' && !b.client_rating ? `<button class="w-8 h-8 rounded-lg text-amber-500 hover:bg-amber-50 flex items-center justify-center transition-colors booking-open" data-id="${b.id}" title="Laisser un avis" type="button"><span class="material-symbols-outlined text-[18px]">star</span></button>` : ''}
+${b.status === 'completed' && b.client_rating ? `<button class="w-8 h-8 rounded-lg text-green-600 hover:bg-green-50 flex items-center justify-center transition-colors" title="Noté ${b.client_rating}/5" type="button"><span class="material-symbols-outlined text-[18px]">check_circle</span></button>` : ''}
+${['completed', 'cancelled'].includes(b.status) ? `<button class="w-8 h-8 rounded-lg text-secondary hover:bg-secondary-container flex items-center justify-center transition-colors booking-rebook" data-vehicle="${b.vehicle || b.vehicle_id || ''}" title="Réserver à nouveau" type="button"><span class="material-symbols-outlined text-[18px]">event_repeat</span></button>` : ''}
+${b.status === 'disputed' ? `<button class="w-8 h-8 rounded-lg text-error hover:bg-error-container flex items-center justify-center transition-colors booking-open" data-id="${b.id}" title="Voir le litige" type="button"><span class="material-symbols-outlined text-[18px]">gavel</span></button>` : ''}
 </div></td></tr>`;
 };
 
@@ -101,7 +106,7 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
 <input class="w-full pl-9 pr-3 py-2 bg-surface-container-low rounded-lg font-body-sm text-body-sm text-on-surface placeholder:text-outline outline-none focus:bg-surface-container-lowest transition-colors" placeholder="Véhicule, ville, n° de dossier..." type="text">
 </div>
-<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full md:w-auto">
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full md:w-auto md:ml-auto">
 <div class="relative bg-surface-container-low rounded-lg px-3 py-1.5 min-w-[110px]">
 <label class="block font-label-sm text-[10px] text-on-surface-variant">Période</label>
 <select class="w-full bg-transparent font-label-sm text-label-sm text-on-surface outline-none cursor-pointer">
@@ -318,41 +323,77 @@ export default function C3MesReservations() {
       .replace('Année 2025', `Année ${new Date().getFullYear()}`);
   }, [data]);
   React.useEffect(() => {
+    const selByLabel = (...names) => {
+      const w = [...document.querySelectorAll('div')].find((d) => {
+        const l = d.querySelector(':scope > label, :scope label');
+        return l && d.querySelector(':scope select') && names.some((n) => l.textContent.trim().toLowerCase().startsWith(n));
+      });
+      return w?.querySelector('select')?.value || '';
+    };
     const applyFilters = () => {
-      const q = (document.querySelector('input[placeholder*="dossier"]')?.value || '').toLowerCase();
-      const selects = [...document.querySelectorAll('select')];
-      const [period, city, sort, statut] = selects.slice(-4).map((s) => s.value);
+      const q = ([...document.querySelectorAll('input')].find((i) => /dossier|vehicule|vehicle|file|recherch|search/i.test(i.placeholder || ''))?.value || '').toLowerCase();
+      const period = selByLabel('période', 'period');
+      const city = selByLabel('ville', 'city');
+      const sort = selByLabel('trier', 'sort');
+      const statut = selByLabel('statut', 'status');
       const now = new Date();
-      const map = { 'À venir': ['pending', 'confirmed'], 'En cours': ['active'], 'Terminées': ['completed'], 'Annulées': ['cancelled'], 'Litiges': ['disputed'] };
+      const map = { 'à venir': ['pending', 'confirmed'], 'upcoming': ['pending', 'confirmed'], 'en cours': ['active'], 'in progress': ['active'], 'terminées': ['completed'], 'terminée': ['completed'], 'completed': ['completed'], 'annulées': ['cancelled'], 'annulée': ['cancelled'], 'cancelled': ['cancelled'], 'litiges': ['disputed'], 'litige': ['disputed'], 'disputes': ['disputed'], 'dispute': ['disputed'] };
       const rows = [...document.querySelectorAll('.booking-row')];
-      let visible = 0;
+      const matched = [];
+      const isAll = (v) => /^(toutes?|all)[\s(]/i.test(((v || '') + ' ' ).trim() + ' ');
       rows.forEach((r) => {
         const date = new Date(r.dataset.date || 0);
         const okQ = !q || r.textContent.toLowerCase().includes(q);
-        const okC = !city || city === 'Toutes' || (r.dataset.city || '').includes(city.toLowerCase());
-        const okS = !statut || statut.startsWith('Toutes') || (map[statut.split(' ')[0] === 'À' ? 'À venir' : statut.split(' ')[0]] || []).includes(r.dataset.status);
-        const okP = !period || period === 'Toutes'
-          || (period === '30 derniers jours' && date >= new Date(now - 30 * 864e5))
-          || (period.startsWith('Année') && date.getFullYear() === Number(period.match(/\d{4}/)?.[1] || now.getFullYear()));
+        const okC = isAll(city) || (r.dataset.city || '').toLowerCase().includes((city || '').toLowerCase());
+        const sk = Object.keys(map).find((k) => (statut || '').toLowerCase().startsWith(k));
+        const okS = isAll(statut) || !sk || map[sk].includes(r.dataset.status);
+        const okP = !period || isAll(period)
+          || (/30/.test(period) && date >= new Date(now.getTime() - 30 * 864e5))
+          || (/ann[eé]e|year/i.test(period) && date.getFullYear() === Number(period.match(/\d{4}/)?.[0] || now.getFullYear()));
         const show = okQ && okC && okS && okP;
-        r.style.display = show ? '' : 'none';
-        if (show) visible += 1;
+        r.dataset.match = show ? '1' : '0';
+        if (show) matched.push(r);
       });
-      if (sort?.includes('Montant')) {
-        const tb = rows[0]?.parentElement;
-        if (tb) rows.sort((a, b) => {
-          const n = (r) => Number((r.children[4]?.textContent || '0').replace(/\D/g, '')) || 0;
-          return n(b) - n(a);
-        }).forEach((r) => tb.appendChild(r));
-      }
+      const keyDate = (r) => new Date(r.dataset.date || 0).getTime() || 0;
+      const keyAmt = (r) => Number((r.children[4]?.textContent || '0').replace(/\D/g, '')) || 0;
+      if (/montant|amount/i.test(sort || '')) matched.sort((a, b) => keyAmt(b) - keyAmt(a));
+      else if (/récentes|recent/i.test(sort || '')) matched.sort((a, b) => keyDate(b) - keyDate(a));
+      else if (/proche|nearest|close/i.test(sort || '')) matched.sort((a, b) => Math.abs(keyDate(a) - now.getTime()) - Math.abs(keyDate(b) - now.getTime()));
+      const tb = matched[0]?.parentElement;
+      if (tb) matched.forEach((r) => tb.appendChild(r));
+      const perPage = 8;
+      const maxPage = Math.max(1, Math.ceil(matched.length / perPage));
+      window._resPage = Math.min(Math.max(1, window._resPage || 1), maxPage);
+      const p = window._resPage;
+      const visible = matched.length;
+      rows.forEach((r) => { if (r.dataset.match !== '1') r.style.display = 'none'; });
+      matched.forEach((r, i) => { r.style.display = (i >= (p - 1) * perPage && i < p * perPage) ? '' : 'none'; });
+      const pag = [...document.querySelectorAll('button')].filter((x) => ['Précédent', 'Suivant'].includes(x.textContent.trim()));
+      pag.forEach((x) => { x.disabled = (x.textContent.trim() === 'Précédent' && p <= 1) || (x.textContent.trim() === 'Suivant' && p >= maxPage); x.style.opacity = x.disabled ? '.4' : '1'; });
+      document.querySelectorAll('button').forEach((x) => { if (/^\d+$/.test(x.textContent.trim())) { x.style.fontWeight = Number(x.textContent.trim()) === p ? '700' : '400'; x.style.display = Number(x.textContent.trim()) <= maxPage ? '' : 'none'; } });
       const counter = document.querySelector('.font-semibold.text-on-surface');
-      if (counter && counter.textContent.includes('réservation')) counter.textContent = `${visible} réservations`;
+      if (counter && /réservation/.test(counter.textContent)) counter.textContent = `${visible} réservations`;
+    };
+    window._resPage = 1;
+    const pagClick = (e) => {
+      const el = e.target.closest('button');
+      if (!el) return;
+      const t = el.textContent.trim();
+      const rows = [...document.querySelectorAll('.booking-row[data-match="1"]')];
+      const maxPage = Math.max(1, Math.ceil(rows.length / 8));
+      if (t === 'Précédent') window._resPage = Math.max(1, (window._resPage || 1) - 1);
+      else if (t === 'Suivant') window._resPage = Math.min(maxPage, (window._resPage || 1) + 1);
+      else if (/^\d+$/.test(t)) window._resPage = Number(t);
+      else return;
+      applyFilters();
     };
     const root = document;
-    root.addEventListener('input', applyFilters);
-    root.addEventListener('change', applyFilters);
+    root.addEventListener('click', pagClick);
+    const resetAndApply = () => { window._resPage = 1; applyFilters(); };
+    root.addEventListener('input', resetAndApply);
+    root.addEventListener('change', resetAndApply);
     applyFilters();
-    return () => { root.removeEventListener('input', applyFilters); root.removeEventListener('change', applyFilters); };
+    return () => { root.removeEventListener('click', pagClick); root.removeEventListener('input', resetAndApply); root.removeEventListener('change', resetAndApply); };
   }, [data]);
 
   React.useEffect(() => {
@@ -360,8 +401,10 @@ export default function C3MesReservations() {
       const open = e.target.closest('.booking-open');
       const edit = e.target.closest('.booking-edit');
       const cancel = e.target.closest('.booking-cancel');
+      const rebook = e.target.closest('.booking-rebook');
       if (open) window.location.href = `/client/bookings/${open.dataset.id}`;
       else if (edit) window.location.href = `/client/bookings/${edit.dataset.id}/modifier`;
+      else if (rebook) window.location.href = rebook.dataset.vehicle ? `/client/vehicle/${rebook.dataset.vehicle}` : '/client/search';
       else if (cancel && window.confirm('Annuler cette réservation ?')) {
         bookingsAPI.updateStatus(cancel.dataset.id, 'cancelled').then(() => window.location.reload()).catch(() => {});
       }

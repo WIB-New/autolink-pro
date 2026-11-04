@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import DesignShell from './DesignShell';
+import { usersAPI } from '../services/api';
 
 function Row({ icon, title, desc, children }) {
   return (
@@ -39,12 +41,15 @@ const Opt = ({ label, active, onClick }) => (
 );
 
 export default function Parametres({ role = 'client' }) {
-  const [lang, setLang] = useState('fr');
+  const { i18n } = useTranslation();
+  const lang = i18n.language === 'en' ? 'en' : 'fr';
+  const setLang = (v) => { i18n.changeLanguage(v); usersAPI.updateMe({ language: v }).catch(() => {}); };
   const [sms, setSms] = useState(true);
   const [wa, setWa] = useState(true);
   const [email, setEmail] = useState(false);
   const [push, setPush] = useState(true);
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const toggleDark = (v) => { setDark(v); document.documentElement.classList.toggle('dark', v); localStorage.setItem('autolink_theme', v ? 'dark' : 'light'); };
   const [twofa, setTwofa] = useState(true);
   const [saved, setSaved] = useState(false);
 
@@ -73,7 +78,7 @@ export default function Parametres({ role = 'client' }) {
             <div className="flex gap-1"><Opt label="Douala" active onClick={() => {}} /><Opt label="Yaoundé" active={false} onClick={() => {}} /></div>
           </Row>
           <Row icon="dark_mode" title="Mode sombre" desc="Thème de l'interface">
-            <Toggle on={dark} setOn={setDark} />
+            <Toggle on={dark} setOn={toggleDark} />
           </Row>
         </section>
 

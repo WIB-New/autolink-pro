@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShieldCheck, FileDown, CheckCircle2, Disc, Wind, Satellite, AlertTriangle } from 'lucide-react';
 
-const fmtDate = d => { try { return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }); } catch (_) { return '—'; } };
+const fmtDate = d => { try { return new Date(d).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short', year: 'numeric' }); } catch (_) { return '—'; } };
 
 const CHECKS = [
   { icon: Disc,          t: 'Système de freinage & ABS',      s: 'Plaquettes neuves (usure < 10 %)', tag: 'Conforme',   cls: 'bg-teal-50 text-teal-700' },

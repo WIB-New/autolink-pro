@@ -4,9 +4,9 @@ import DesignPage from './DesignPage';
 import useApiData from '../utils/useApiData';
 import { bookingsAPI, authAPI, vehiclesAPI } from '../services/api';
 
-const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
+const fmt = (n) => new Intl.NumberFormat((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')).format(Math.round(Number(n) || 0));
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-const dmy = (isoStr) => new Date(isoStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+const dmy = (isoStr) => new Date(isoStr).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: 'numeric', month: 'short' });
 
 const HTML = `<div class="flex flex-col w-full">
 <!-- Progress Stepper Header -->

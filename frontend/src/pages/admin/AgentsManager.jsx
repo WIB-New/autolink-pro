@@ -53,7 +53,7 @@ export default function AgentsManager() {
           <StatCard icon={Users} iconCls="bg-blue-50 text-blue-600" value={agents.filter(a=>a.active).length} label="Agents actifs" />
           <StatCard icon={TrendingUp} iconCls="bg-emerald-50 text-emerald-600" value={totalConversions} label="Conversions" />
           <StatCard icon={DollarSign} iconCls="bg-violet-50 text-violet-600" value={`${(totalAmount/1000).toFixed(0)} K`} unit="FCFA" label="CA généré" />
-          <StatCard icon={Tag} iconCls="bg-amber-50 text-amber-600" value={totalCommissions.toLocaleString('fr-FR')} unit="F" label="Commissions dues" />
+          <StatCard icon={Tag} iconCls="bg-amber-50 text-amber-600" value={totalCommissions.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} unit="F" label="Commissions dues" />
         </div>
 
         {/* Header */}

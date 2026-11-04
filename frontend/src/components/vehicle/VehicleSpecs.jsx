@@ -10,7 +10,7 @@ export default function VehicleSpecs({ vehicle: v }) {
     { icon: Fuel,     label: 'Carburant',   value: v.fuel },
     { icon: Calendar, label: 'Année',       value: v.year },
     { icon: Palette,  label: 'Couleur',     value: vehicleColor(v) },
-    { icon: Gauge,    label: 'Kilométrage', value: `${vehicleKm(v).toLocaleString('fr-FR')} km` },
+    { icon: Gauge,    label: 'Kilométrage', value: `${vehicleKm(v).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} km` },
   ];
 
   return (

@@ -10,7 +10,7 @@
 //   const g = SIM_GAMMES.find(x => x.id === gamme);
 //   const gross = g.dayPrice * days;
 //   const net = Math.round(gross * OWNER_SHARE / 1000) * 1000;
-//   const fmt = n => n.toLocaleString('fr-FR');
+//   const fmt = n => n.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 
 //   return (
 //     <section id="simulateur" className="py-20 bg-slate-50">

@@ -7,11 +7,11 @@ const STAGE_BY_STATUS = { pending: 3, confirmed: 4, active: 4, completed: 5, dis
 export default function Roadmap({ booking: b, onTransmit }) {
   const stage = STAGE_BY_STATUS[b.status] || 3;
   const steps = [
-    { n: 1, t: 'Demande Reçue & Caution Bloquée', d: 'API MoMo validée le ' + new Date(b.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) },
+    { n: 1, t: 'Demande Reçue & Caution Bloquée', d: 'API MoMo validée le ' + new Date(b.created_at).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short' }) },
     { n: 2, t: 'Vérification KYC & Solvabilité', d: 'Pièces CNI + permis validées' },
     { n: 3, t: 'Transmission au Propriétaire', d: 'Délai d\'acceptation automatique : 02h45m restantes', cta: 'Relancer SMS Bailleur' },
-    { n: 4, t: 'Confirmation & Remise des Clés', d: 'Prévu ' + new Date(b.start_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) },
-    { n: 5, t: 'Inspection Retour & Déblocage Caution', d: 'Prévu ' + new Date(b.end_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) },
+    { n: 4, t: 'Confirmation & Remise des Clés', d: 'Prévu ' + new Date(b.start_date).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short' }) },
+    { n: 5, t: 'Inspection Retour & Déblocage Caution', d: 'Prévu ' + new Date(b.end_date).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short' }) },
   ];
 
   return (

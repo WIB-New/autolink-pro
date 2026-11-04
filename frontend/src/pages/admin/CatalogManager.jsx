@@ -219,7 +219,7 @@ export default function CatalogManager() {
           <StatCard icon={Car} iconCls="bg-blue-50 text-blue-600" value={stats.total} unit={`· ${stats.categories} gammes`} label="Véhicules au catalogue" />
           <StatCard icon={CheckCircle2} iconCls="bg-emerald-50 text-emerald-600" value={stats.dispo} unit={`· ${stats.total ? Math.round(stats.dispo / stats.total * 100) : 0} %`} label="Disponibles" />
           <StatCard icon={Wrench} iconCls="bg-amber-50 text-amber-600" value={stats.maintenance} label="En maintenance / indispo" />
-          <StatCard icon={Wallet} iconCls="bg-violet-50 text-violet-600" value={stats.avgPrice.toLocaleString('fr-FR')} unit="F/jour" label="Tarif moyen" />
+          <StatCard icon={Wallet} iconCls="bg-violet-50 text-violet-600" value={stats.avgPrice.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} unit="F/jour" label="Tarif moyen" />
         </div>
 
         {saved && (

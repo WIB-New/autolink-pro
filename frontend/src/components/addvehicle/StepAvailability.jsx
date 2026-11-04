@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { fleetImage } from '../ownerfleet/FleetCard';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 const OWNER_SHARE = 0.5; // part propriétaire définie par le backend (COMMISSION_RATE)
 

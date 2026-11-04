@@ -133,7 +133,7 @@ export default function Catalog() {
     ...filters.transmissions.map(t => ({ key: `tr-${t}`, label: t, clear: () => setFilters(f => ({ ...f, transmissions: f.transmissions.filter(x => x !== t) })) })),
     ...filters.energies.map(e => ({ key: `en-${e}`, label: e, clear: () => setFilters(f => ({ ...f, energies: f.energies.filter(x => x !== e) })) })),
     ...filters.equipements.map(e => ({ key: `eq-${e}`, label: e, clear: () => setFilters(f => ({ ...f, equipements: f.equipements.filter(x => x !== e) })) })),
-    ...(filters.priceMax < PRICE_MAX ? [{ key: 'prix', label: `≤ ${filters.priceMax.toLocaleString('fr-FR')} F`, clear: () => setFilters(f => ({ ...f, priceMax: PRICE_MAX })) }] : []),
+    ...(filters.priceMax < PRICE_MAX ? [{ key: 'prix', label: `≤ ${filters.priceMax.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} F`, clear: () => setFilters(f => ({ ...f, priceMax: PRICE_MAX })) }] : []),
   ];
 
   const activeCount = activeChips.length - 1;

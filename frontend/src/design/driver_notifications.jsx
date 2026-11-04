@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import DesignPage from './DesignPage';
+import useApiData from '../utils/useApiData';
+import { notificationsAPI } from '../services/api';
 
 const CARD = (cat, status, icon, iconCls, title, badge, badgeCls, time, body, dot) => `
 <article class="notification-card group relative p-space-md rounded-xl transition-all duration-200 ${status === 'unread' ? 'bg-surface-container-low' : 'bg-surface-container-lowest shadow-sm'} hover:bg-surface-container" data-category="${cat}" data-status="${status}">
@@ -108,6 +110,74 @@ const LINKS = {
   'Paramètres': '/driver/settings',
 };
 
+const KIND_MAP = { booking: 'courses', payment: 'revenus', message: 'messages', security: 'securite' };
+const KIND_ICON = { courses: 'directions_car', revenus: 'payments', messages: 'chat_bubble', securite: 'devices' };
+const KIND_CLS = { courses: 'bg-primary-fixed text-on-primary-fixed-variant', revenus: 'bg-secondary-fixed text-on-secondary-fixed', messages: 'bg-primary-fixed text-on-primary-fixed-variant', securite: 'bg-inverse-surface text-inverse-on-surface' };
+const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const ago = (d) => {
+  const s = (Date.now() - new Date(d).getTime()) / 1000;
+  if (s < 3600) return `Il y a ${Math.max(1, Math.round(s / 60))} min`;
+  if (s < 86400) return `Il y a ${Math.round(s / 3600)} h`;
+  return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+};
+
+function buildFeed(items) {
+  if (!items.length) return `<div class="p-space-xl text-center text-on-surface-variant font-body-md">Aucune notification pour le moment.</div>`;
+  const today = new Date().toDateString();
+  const yesterday = new Date(Date.now() - 864e5).toDateString();
+  const groups = {};
+  items.forEach((n) => {
+    const g = new Date(n.created_at).toDateString() === today ? "Aujourd'hui"
+      : new Date(n.created_at).toDateString() === yesterday ? 'Hier' : 'Cette semaine';
+    (groups[g] = groups[g] || []).push(n);
+  });
+  return Object.entries(groups).map(([label, ns]) => TF(label, `${ns.length} événement(s)`, 'bg-surface-container-high text-on-surface-variant', '',
+    ns.map((n) => {
+      const cat = KIND_MAP[n.kind] || 'courses';
+      return `<article class="notification-card group relative p-space-md rounded-xl transition-all duration-200 ${n.is_read ? 'bg-surface-container-lowest shadow-sm' : 'bg-surface-container-low'} hover:bg-surface-container" data-category="${cat}" data-status="${n.is_read ? 'read' : 'unread'}" data-id="${n.id}">
+<div class="flex items-start gap-space-md">
+<div class="relative shrink-0"><div class="w-12 h-12 rounded-xl ${KIND_CLS[cat]} flex items-center justify-center shadow-sm"><span class="material-symbols-outlined text-[24px]">${KIND_ICON[cat]}</span></div>${!n.is_read ? '<span class="unread-dot absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary ring-2 ring-surface-container-low"></span>' : ''}</div>
+<div class="flex-1 min-w-0 space-y-space-xs">
+<div class="flex flex-wrap items-center justify-between gap-space-xs"><h2 class="font-headline-sm text-headline-sm text-on-surface font-bold truncate">${esc(n.title)}</h2><time class="font-label-sm text-label-sm text-outline shrink-0">${ago(n.created_at)}</time></div>
+<p class="font-body-md text-body-md text-on-surface-variant">${esc(n.message)}</p>
+<div class="pt-space-xs flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">${CARD_ACTIONS[cat] || ''}</div>
+<div class="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+${!n.is_read ? `<button class="notif-read p-1.5 rounded-lg text-outline hover:text-primary hover:bg-surface-container-high transition-colors" title="Marquer comme lu" type="button" data-id="${n.id}"><span class="material-symbols-outlined text-[18px]">done</span></button>` : ''}
+<button class="notif-del p-1.5 rounded-lg text-outline hover:text-error hover:bg-error-container/30 transition-colors" title="Supprimer" type="button" data-id="${n.id}"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+</div></div></div></div></article>`;
+    }).join(''))).join('');
+}
+
 export default function DriverNotifications() {
-  return <DesignPage html={HTML} links={LINKS} role="driver" />;
+  const { data } = useApiData(() => notificationsAPI.list(), []);
+  const html = useMemo(() => {
+    const items = data?.results || (Array.isArray(data) ? data : []) || [];
+    return HTML.replace(/<div class="space-y-space-lg" id="feed-container">[\s\S]*?<\/div>\n<div class="hidden flex-col/, `<div class="space-y-space-lg" id="feed-container">${buildFeed(items)}</div>\n<div class="hidden flex-col`);
+  }, [data]);
+
+  React.useEffect(() => {
+    const click = (e) => {
+      const read = e.target.closest('.notif-read');
+      const del = e.target.closest('.notif-del');
+      if (e.target.closest('#mark-all-read-btn')) notificationsAPI.readAll().then(() => window.location.reload()).catch(() => {});
+      else if (read) notificationsAPI.read(read.dataset.id).then(() => window.location.reload()).catch(() => {});
+      else if (del) notificationsAPI.remove(del.dataset.id).then(() => window.location.reload()).catch(() => {});
+    };
+    document.addEventListener('click', click);
+    return () => document.removeEventListener('click', click);
+  }, []);
+
+  // Filtres onglets Toutes / Non lues / catégories
+  React.useEffect(() => {
+    document.querySelectorAll('.filter-tab').forEach((tab) => tab.addEventListener('click', () => {
+      const f = tab.dataset.filter;
+      document.querySelectorAll('.filter-tab').forEach((t) => { t.classList.remove('bg-primary', 'text-on-primary', 'font-semibold', 'shadow-sm'); t.classList.add('text-on-surface-variant'); });
+      tab.classList.add('bg-primary', 'text-on-primary', 'font-semibold', 'shadow-sm'); tab.classList.remove('text-on-surface-variant');
+      document.querySelectorAll('.notification-card').forEach((c) => {
+        c.style.display = (f === 'all' || (f === 'unread' ? c.dataset.status === 'unread' : c.dataset.category === f)) ? '' : 'none';
+      });
+    }));
+  });
+  return <DesignPage html={html} links={LINKS} role="driver" />;
 }

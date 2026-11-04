@@ -2,7 +2,7 @@ import React from 'react';
 import { TrendingUp, Pause, FileText, BadgeCheck, MapPin, Gauge } from 'lucide-react';
 import { fleetImage } from '../ownerfleet/FleetCard';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 
 const STATUS = {
   approved:    { label: 'En ligne · Prochain départ demain', cls: 'bg-teal-100 text-teal-700' },

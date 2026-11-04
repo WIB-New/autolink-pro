@@ -8,7 +8,7 @@ import {
   FileText, Timer, Loader, Lock,
 } from 'lucide-react';
 
-const shortDate = iso => iso ? new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+const shortDate = iso => iso ? new Date(iso).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
 const STATUS_BADGE = {
   pending:   { label: 'À transmettre au propriétaire', cls: 'bg-amber-100 text-amber-700 border-amber-200' },

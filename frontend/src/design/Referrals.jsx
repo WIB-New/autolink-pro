@@ -14,7 +14,7 @@ export default function Referrals({ role = 'client' }) {
   const [copied, setCopied] = useState(false);
   const code = data?.code || '…';
   const refs = data?.referred || [];
-  const dmy = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+  const dmy = (d) => new Date(d).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: 'numeric', month: 'short', year: 'numeric' });
   const copy = () => { navigator.clipboard?.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); };
 
   return (
@@ -36,7 +36,7 @@ export default function Referrals({ role = 'client' }) {
                 </button>
               </div>
               <p className="font-body-sm text-body-sm text-surface-variant/80">Vous gagnez 5 000 FCFA quand votre filleul termine sa première location.</p>
-              <p className="font-body-sm text-body-sm text-surface-variant/80">Crédits gagnés : <strong>{new Intl.NumberFormat('fr-FR').format(Number(data?.credits || 0))} FCFA</strong></p>
+              <p className="font-body-sm text-body-sm text-surface-variant/80">Crédits gagnés : <strong>{new Intl.NumberFormat((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')).format(Number(data?.credits || 0))} FCFA</strong></p>
             </div>
           </div>
           <div className="card flex flex-col gap-4">

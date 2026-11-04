@@ -18,7 +18,7 @@ const rel = (iso) => {
   if (m < 1) return "À l'instant";
   if (m < 60) return `Il y a ${m} min`;
   if (m < 1440) return `Il y a ${Math.floor(m / 60)} h`;
-  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  return new Date(iso).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: 'numeric', month: 'short' });
 };
 const row = (n) => `<tr class="border-b border-outline-variant/20 ${n.is_read ? '' : 'bg-primary-fixed/10'} hover:bg-surface-container-low/60 transition-colors">
 <td class="px-5 py-4"><div class="flex items-start gap-3">

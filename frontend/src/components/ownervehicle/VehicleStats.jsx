@@ -1,7 +1,7 @@
 import React from 'react';
 import { Banknote, CalendarRange, Star, CheckCircle2 } from 'lucide-react';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 
 /* 4 KPI de la fiche véhicule : revenus, occupation, note, missions. */
 export default function VehicleStats({ earned = 0, occupancy = 0, rating = 4.9, missions = 0 }) {

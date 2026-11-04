@@ -4,7 +4,7 @@ import {
   Route, Gauge, CheckCircle2, XCircle, ExternalLink,
 } from 'lucide-react';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 
 /* Panneau droit — dossier locataire, itinéraire et décomposition financière. */
 export default function RequestDetail({ b, onDecide, busy }) {

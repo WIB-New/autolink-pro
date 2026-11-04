@@ -1,7 +1,9 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import i18n from './i18n';
+import translateDom, { observeDom } from './i18n/translateDom';
 
 import Landing from './pages/Landing';
 import Catalog from './pages/Catalog';
@@ -179,11 +181,27 @@ function AppRoutes() {
   );
 }
 
+function GlobalTranslate() {
+  const { pathname } = useLocation();
+  React.useEffect(() => {
+    translateDom(document.body);
+    const stop = observeDom(document.body);
+    return stop;
+  }, [pathname]);
+  React.useEffect(() => {
+    const onLang = () => translateDom(document.body);
+    i18n.on('languageChanged', onLang);
+    return () => i18n.off('languageChanged', onLang);
+  }, []);
+  return null;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
         <Router>
+          <GlobalTranslate />
           <AppRoutes />
         </Router>
       </AuthProvider>

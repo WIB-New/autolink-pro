@@ -3,7 +3,7 @@ import DesignPage from './DesignPage';
 import useApiData from '../utils/useApiData';
 import { bookingsAPI, authAPI } from '../services/api';
 
-const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
+const fmt = (n) => new Intl.NumberFormat((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')).format(Math.round(Number(n) || 0));
 
 const HTML = `<div class="w-full px-gutter py-space-lg flex flex-col gap-space-lg">
 <!-- Header Greeting & Action Bar -->
@@ -154,7 +154,7 @@ const HTML = `<div class="w-full px-gutter py-space-lg flex flex-col gap-space-l
 const LINKS = {
   'Rechercher un véhicule': '/client/search',
   'Recharger mon portefeuille': '/client/wallet?recharge=1',
-  'Factures': '/client/bookings',
+  'Factures': '/client/wallet',
 };
 
 export default function C1TableauDeBordClient() {

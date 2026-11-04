@@ -179,6 +179,10 @@ bs.append(mk_booking(p208, today - timedelta(days=3), 1, 'completed', 'none', ra
 bs.append(mk_booking(p208, today + timedelta(days=10), 2, 'pending'))
 bs.append(mk_booking(elantra, today - timedelta(days=45), 2, 'cancelled'))
 bs.append(mk_booking(corolla, today - timedelta(days=60), 3, 'disputed'))
+# À venir garanties — dates futures pour tester modifier/annuler
+bs.append(mk_booking(sorento, today + timedelta(days=7), 3, 'confirmed'))
+bs.append(mk_booking(elantra, today + timedelta(days=14), 2, 'pending'))
+bs.append(mk_booking(duster, today + timedelta(days=21), 4, 'pending', 'internal'))
 print('Bookings OK:', len(bs))
 
 # ============ PAIEMENTS (séquestre/caution) ============

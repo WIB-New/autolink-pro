@@ -141,7 +141,7 @@ function NotificationsBell() {
       const diff = (Date.now() - dt.getTime()) / 60000;
       if (diff < 60) return `il y a ${Math.max(1, Math.round(diff))} min`;
       if (diff < 1440) return `il y a ${Math.round(diff / 60)} h`;
-      return dt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+      return dt.toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: 'numeric', month: 'short' });
     } catch (_) { return ''; }
   };
 
