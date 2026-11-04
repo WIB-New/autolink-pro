@@ -5,6 +5,8 @@ from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 from decimal import Decimal
+from datetime import datetime
+from math import ceil
 
 
 COMMISSION_RATE = Decimal('0.50')
@@ -51,6 +53,14 @@ class Booking(models.Model):
 
     start_date = models.DateField()
     end_date = models.DateField()
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
+    delivery_requested = models.BooleanField(default=False)
+    driver_fee = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    terms_accepted_at = models.DateTimeField(null=True, blank=True)
+    debit_authorized_at = models.DateTimeField(null=True, blank=True)
+    terms_version = models.CharField(max_length=30, blank=True)
     pickup_address = models.TextField(blank=True)
     dropoff_address = models.TextField(blank=True)
     notes = models.TextField(blank=True)
@@ -85,15 +95,22 @@ class Booking(models.Model):
     def __str__(self):
         return f'BK-{self.pk:04d} — {self.client} / {self.vehicle}'
 
-    def save(self, *args, **kwargs):
+    def calculate_price(self):
+        timed = self.start_time is not None and self.end_time is not None
         if self.start_date and self.end_date:
-            self.days = (self.end_date - self.start_date).days or 1
+            duration = (datetime.combine(self.end_date, self.end_time) - datetime.combine(self.start_date, self.start_time)).total_seconds() if timed else (self.end_date - self.start_date).days * 86400
+            self.days = max(1, ceil(duration / 86400))
         # Tarification dynamique : dégressivité longue durée
-        self.discount_percent = 10 if self.days >= 30 else 5 if self.days > 3 else 0
+        self.discount_percent = 0 if timed else 10 if self.days >= 30 else 5 if self.days > 3 else 0
         gross = self.daily_rate * self.days
-        self.subtotal = (gross * Decimal(100 - self.discount_percent) / 100).quantize(Decimal('0.01'))
+        self.driver_fee = Decimal('10000') * self.days if timed and self.driver_type != self.DriverType.NONE else Decimal('0')
+        self.delivery_fee = Decimal('5000') if timed and self.delivery_requested else Decimal('0')
+        self.subtotal = (gross * Decimal(100 - self.discount_percent) / 100 + self.driver_fee + self.delivery_fee).quantize(Decimal('0.01'))
         self.commission_amount = (self.subtotal * commission_rate()).quantize(Decimal('0.01'))
         self.owner_amount = self.subtotal - self.commission_amount
+
+    def save(self, *args, **kwargs):
+        self.calculate_price()
         super().save(*args, **kwargs)
 
     def sync_vehicle_status(self):

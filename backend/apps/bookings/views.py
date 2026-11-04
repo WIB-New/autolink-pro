@@ -255,6 +255,28 @@ class BookingViewSet(viewsets.ModelViewSet):
             self._last_payment_reference = None
         return resp
 
+    @action(detail=False, methods=['post'])
+    def quote(self, request):
+        serializer = self.get_serializer(data=request.data, context={**self.get_serializer_context(), 'quote': True})
+        serializer.is_valid(raise_exception=True)
+        data = dict(serializer.validated_data)
+        data.pop('terms_accepted', None)
+        data.pop('debit_authorized', None)
+        vehicle = data['vehicle']
+        booking = Booking(**data, daily_rate=vehicle.daily_rate or vehicle.computed_rate, deposit_amount=vehicle.deposit_amount or 0)
+        booking.calculate_price()
+        balance = request.user.balance or Decimal('0')
+        required = booking.subtotal + booking.deposit_amount
+        return Response({
+            'days': booking.days, 'daily_rate': str(booking.daily_rate),
+            'rental_amount': str(booking.subtotal - booking.driver_fee - booking.delivery_fee),
+            'driver_fee': str(booking.driver_fee), 'delivery_fee': str(booking.delivery_fee),
+            'subtotal': str(booking.subtotal), 'deposit_amount': str(booking.deposit_amount),
+            'required_balance': str(required), 'balance': str(balance),
+            'remaining_balance': str(balance - required),
+            'shortfall': str(max(Decimal('0'), required - balance)),
+        })
+
     def perform_create(self, serializer):
         request = self.request
         vehicle = serializer.validated_data['vehicle']

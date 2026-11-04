@@ -24,8 +24,8 @@ const NAVS = {
   driver: [
     { icon: 'dashboard', label: 'Tableau de bord', path: '/driver/dashboard' },
     { icon: 'payments', label: 'Revenus & Retraits', path: '/driver/revenue' },
-    { icon: 'chat', label: 'Messages', path: '/driver/messages' },
-    { icon: 'notifications', label: 'Notifications', path: '/driver/notifications', badge: '1' },
+    { icon: 'chat', label: 'Messages', path: '/driver/messages', badge: 'msg' },
+    { icon: 'notifications', label: 'Notifications', path: '/driver/notifications', badge: 'notif' },
     { icon: 'badge', label: 'Profil & Documents', path: '/driver/profile' },
     { icon: 'settings', label: 'Paramètres', path: '/driver/settings' },
   ],

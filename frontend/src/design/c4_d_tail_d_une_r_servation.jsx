@@ -2,11 +2,11 @@ import React, { useMemo, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import DesignPage from './DesignPage';
 import useApiData from '../utils/useApiData';
-import { bookingsAPI } from '../services/api';
+import { bookingsAPI, vehiclesAPI } from '../services/api';
 
-const fmt = (n) => new Intl.NumberFormat((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')).format(Math.round(Number(n) || 0));
+const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0));
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-const dmy = (d) => (d ? new Date(d).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '');
+const dmy = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '');
 const ST = { pending: 'En attente', confirmed: 'Confirmée', active: 'En cours', completed: 'Terminée', cancelled: 'Annulée', disputed: 'Litige' };
 
 const HTML = `<div class="flex flex-col w-full pb-16">
@@ -409,6 +409,7 @@ const LINKS = {
 export default function C4DetailReservation() {
   const { id } = useParams();
   const { data: b } = useApiData(() => bookingsAPI.detail(id), [id]);
+  const { data: veh } = useApiData(() => (b?.vehicle ? vehiclesAPI.detail(b.vehicle) : Promise.resolve({ data: null })), [b?.vehicle]);
 
   useEffect(() => {
     const click = (e) => {
@@ -420,18 +421,6 @@ export default function C4DetailReservation() {
         if (window.confirm('Annuler cette réservation ?')) {
           bookingsAPI.updateStatus(id, 'cancelled').then(() => window.location.reload()).catch(() => {});
         }
-      } else if (t.trim() === 'star' && el.closest('[data-rate-zone]')) {
-        e.preventDefault();
-        const stars = [...el.closest('[data-rate-zone]').querySelectorAll('button')];
-        window._rating = stars.indexOf(el.closest('button') || el) + 1;
-        if (window._rating < 1) window._rating = 1;
-        stars.slice(0, window._rating).forEach((s) => { s.style.color = '#f59e0b'; });
-      } else if (t.includes('Envoyer mon évaluation') || t.includes('Soumettre')) {
-        e.preventDefault();
-        const ta = document.querySelector('[data-rate-zone] textarea');
-        bookingsAPI.rate(id, window._rating || 5, ta?.value || '')
-          .then(() => window.location.reload())
-          .catch((err) => alert(err?.response?.data?.detail || 'Évaluation impossible.'));
       } else if (t.includes('médiation') || t.includes('Signaler un litige')) {
         e.preventDefault();
         const reason = window.prompt('Décrivez le problème rencontré :');
@@ -449,54 +438,88 @@ export default function C4DetailReservation() {
   const html = useMemo(() => {
     if (!b) return HTML;
     const name = b.vehicle_name || 'Véhicule';
-    const days = Math.max(1, Math.round((new Date(b.end_date) - new Date(b.start_date)) / 864e5));
+    const days = b.days || Math.max(1, Math.round((new Date(b.end_date) - new Date(b.start_date)) / 864e5));
+    const sTime = (b.start_time || '08:30').slice(0, 5);
+    const eTime = (b.end_time || '08:30').slice(0, 5);
+    const created = b.created_at ? new Date(b.created_at) : null;
+    const createdTxt = created ? `${created.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })} à ${created.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : '';
+    const createdShort = created ? created.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
+    const STEP = { pending: 1, confirmed: 2, active: 4, completed: 5, cancelled: 0, disputed: 3 };
+    const stepIdx = STEP[b.status] ?? 2;
+    const stepTxt = b.status === 'cancelled' ? 'Réservation annulée' : `Étape ${stepIdx} sur 5 complétée avec succès`;
+    const hoursLeft = Math.max(0, Math.round((new Date(`${b.start_date}T${sTime}`) - Date.now()) / 36e5));
+    const pickup = b.pickup_address || (b.vehicle_city ? `${b.vehicle_city} - Prise en charge à convenir` : '');
+    const drvName = b.driver_name || null;
+    const drvPhone = b.driver_phone || '';
+    const phoneDigits = (drvPhone || b.owner_phone || '').replace(/\D/g, '') || '237670421890';
+    const DRESP = { offered: 'assigné — en attente de sa confirmation', accepted: 'confirmé', refused: 'remplacement en cours' };
     let h = HTML
       .replace(/Toyota RAV4 AWD Hybrid 2022/g, esc(name))
       .replace(/Toyota RAV4 AWD Hybrid/g, esc(name))
-      .replace('#ALP-2025-DLA-8924', `#${esc(b.reference || `BK-${String(b.id).padStart(4, '0')}`)}`)
-      .replace(/data-alt="[^"]*" src="[^"]+">/, b.vehicle_image ? `src="${b.vehicle_image}">` : (m) => m)
-      .replace('MAT-LT-4921-CM', esc(b.vehicle_plate || ''))
+      .replace('#ALP-2025-DLA-8924', `BK-${String(b.id).padStart(4, '0')}`)
       .replace('Confirmée • Clés prêtes pour demain', ST[b.status] || b.status)
+      .replace('Créée le 27 Octobre 2025 à 14:12', `Créée le ${esc(createdTxt)}`)
+      .replace('Étape 2 sur 5 complétée avec succès', esc(stepTxt))
+      .replace('27 Oct à 14:15 via Portefeuille', `${esc(createdShort)} via ${esc(b.payment_method === 'wallet' ? 'Portefeuille' : b.payment_method || 'Portefeuille')}`)
+      .replace('29 Oct • 08:30 (Hub Akwa)', `${dmy(b.start_date)} • ${sTime}`)
+      .replace('30 Oct • 08:30', `${dmy(b.end_date)} • ${eTime}`)
+      .replace('Gamme Premium', `Gamme ${esc(b.vehicle_tier || 'Standard')}`)
+      .replace('Inspection certifiée 9.8 / 10', `Inspection certifiée ${esc(veh?.last_inspection_score ?? veh?.condition_score ?? '—')} / 10`)
+      .replace(/data-alt="[^"]*" src="[^"]+">/, b.vehicle_image ? `src="${esc(b.vehicle_image)}">` : (m) => m)
+      .replace('MAT-LT-4921-CM • Châssis vérifié CEMAC', `${esc(b.vehicle_plate || '')} • ${esc(b.vehicle_city || '')}`)
       .replace(/55 000 FCFA\/j/g, `${fmt(b.daily_rate)} FCFA/j`)
       .replace(/55 000 FCFA/g, `${fmt(b.subtotal)} FCFA`)
       .replace(/73 500 FCFA/g, `${fmt(b.subtotal)} FCFA`)
       .replace(/150 000 FCFA/g, `${fmt(b.deposit_amount)} FCFA`)
-      .replace('Déblocage caution :', `Déblocage caution : ${fmt(b.deposit_amount)} FCFA`)
-      .replace('Mercredi 29 Octobre 2025 • 08:30', dmy(b.start_date))
-      .replace('Jeudi 30 Octobre 2025 • 08:30', dmy(b.end_date))
+      .replace('Déblocage caution :</span>\n</div>', `Déblocage caution :</span>\n<span class="font-bold text-primary">${fmt(b.deposit_amount)} FCFA</span>\n</div>`)
+      .replace('Mercredi 29 Octobre 2025 • 08:30', `${dmy(b.start_date)} • ${sTime}`)
+      .replace('Jeudi 30 Octobre 2025 • 08:30', `${dmy(b.end_date)} • ${eTime}`)
+      .replace('Hub Central Akwa, Douala (Face Direction MTN)', esc(pickup))
+      .replace('Hub Akwa ou Dépose Aéroport International DLA', esc(b.dropoff_address || pickup))
       .replace('Location véhicule (24 heures)', `Location véhicule (${days} jour${days > 1 ? 's' : ''} / ${days * 24}h)`)
-      .replace('Jean-Pierre Mbida', esc(b.driver_name || 'Sans chauffeur'))
-      .replace(/\+237 670 42 18 90|\+237 699 12 34 56/g, esc(b.driver_phone || b.owner_phone || ''))
-      .replace(/Douala - Hub Akwa( \(Face Direction MTN\))?/g, esc(b.pickup_address || b.vehicle_city || ''))
-      .replace(/Hub Akwa ou D.pose A.roport International DLA/g, esc(b.dropoff_address || b.pickup_address || ''))
-      .replace('Hub Central Akwa, Douala (Face Direction MTN)', esc(b.pickup_address || b.vehicle_city || ''))
-      .replace('Douala - Hub Central Akwa', esc(b.dropoff_address || b.vehicle_city || ''));
-    // Bloc Avis : interactif si terminée non notée, note affichée si notée
-    if (b.status === 'completed' && !b.client_rating) {
-      h = h.replace(/<section class="[^"]*"[^>]*>[\s\S]*?Avis & Évaluation[\s\S]*?<\/section>/,
-        `<section class="bg-surface-container-lowest rounded-xl p-5 shadow-sm flex flex-col gap-3" data-rate-zone>
-          <h2 class="font-headline-sm text-headline-sm text-on-surface">Avis & Évaluation</h2>
-          <div class="flex gap-1">${[1, 2, 3, 4, 5].map(() => '<button type="button" class="material-symbols-outlined text-[32px] text-outline hover:text-amber-500 transition-colors">star</button>').join('')}</div>
-          <textarea class="w-full rounded-lg border border-outline-variant p-3 text-sm" rows="3" placeholder="Décrivez votre expérience..."></textarea>
-          <button class="self-start px-4 py-2 rounded-lg bg-primary text-on-primary font-label-md font-semibold">Envoyer mon évaluation</button>
-        </section>`);
-    } else if (b.client_rating) {
-      h = h.replace(/<section class="[^"]*"[^>]*>[\s\S]*?Avis & Évaluation[\s\S]*?<\/section>/,
-        `<section class="bg-surface-container-lowest rounded-xl p-5 shadow-sm flex flex-col gap-2 opacity-90">
-          <h2 class="font-headline-sm text-headline-sm text-on-surface">Avis & Évaluation</h2>
-          <div class="flex gap-0.5 text-amber-500">${'<span class="material-symbols-outlined text-[24px]">star</span>'.repeat(b.client_rating)}${'<span class="material-symbols-outlined text-[24px] text-outline">star</span>'.repeat(5 - b.client_rating)}</div>
-          ${b.client_review ? `<p class="text-body-sm text-on-surface-variant italic">“${esc(b.client_review)}”</p>` : ''}
-          <span class="text-label-sm text-on-surface-variant">Merci pour votre évaluation.</span>
-        </section>`);
+      .replace('Chauffeur privé certifié (24h)', `Chauffeur AutoLink (${days} jour${days > 1 ? 's' : ''})`)
+      .replace('Livraison personnalisée (Hub / Aéroport DLA)', 'Livraison du véhicule')
+      .replace('3 500 FCFA', 'Inclus')
+      .replace('Portefeuille AutoLink • 27 Octobre', `${esc(b.payment_method === 'wallet' ? 'Portefeuille AutoLink' : b.payment_method || 'Portefeuille')} • ${esc(createdShort)}`)
+      .replace('Jean-Pierre Mbida', esc(drvName || 'Sans chauffeur attitré'))
+      .replace('Chauffeur professionnel bilingue (FR/EN) • 4.98 ★ (184 courses)',
+        esc(drvName ? `Chauffeur AutoLink — ${DRESP[b.driver_response] || 'assigné'}` : 'Aucun chauffeur attitré à cette location'))
+      .replace(/\+237 670 42 18 90|\+237 699 12 34 56/g, esc(drvPhone || b.owner_phone || ''))
+      .replace(/tel:\+237670421890/g, `tel:+${phoneDigits}`)
+      .replace(/wa\.me\/237670421890/g, `wa.me/${phoneDigits}`)
+      .replace('18h restantes', hoursLeft > 0 ? `${hoursLeft}h restantes` : 'Échue')
+      .replace('Jusqu\'au 28 Oct à 08:30', `Jusqu'au ${dmy(b.start_date)} à ${sTime}`)
+      .replace('Véhicule de remplacement garanti sous 45 min en cas de panne technique à Douala.',
+        'Assistance AutoLink disponible 24/7 pendant toute la durée de votre location.');
+    if (veh) {
+      h = h
+        .replace('250 km inclus', `${fmt(veh.km_included_per_day)} km inclus`)
+        .replace('150 FCFA/km sup.', `${fmt(veh.extra_km_rate)} FCFA/km sup.`)
+        .replace('Automatique AWD', esc(veh.transmission || 'Automatique'))
+        .replace('4x4 Intelligent', esc(veh.category || ''))
+        .replace('Essence Hybride', esc(veh.fuel_display || veh.fuel || ''))
+        .replace('Plein au départ (100%)', veh.fuel_level != null ? `Plein (${veh.fuel_level}%)` : 'Niveau à vérifier')
+        .replace('Climatisation Pro', 'Climatisation')
+        .replace('Filtre anti-poussière', `${fmt(veh.mileage)} km`);
     }
-    if (b.driver_type === 'none') {
-      h = h.replace(/Chauffeur privé certifié \(24h\)[^<]*/g, '')
-           .replace(/<span[^>]*>10 000 FCFA<\/span>/, '')
-           .replace(/Livraison personnalisée \(Hub \/ Aéroport DLA\)[^<]*/g, '')
-           .replace(/<span[^>]*>5 000 FCFA<\/span>/, '');
+    // Lignes financières : montants réels ou masquage
+    const drvFee = Number(b.driver_fee || 0);
+    const delFee = Number(b.delivery_fee || 0);
+    if (drvFee > 0) h = h.replace('10 000 FCFA', `${fmt(drvFee)} FCFA`);
+    else h = h.replace(/<div class="flex items-center justify-between text-on-surface-variant">\s*<span class="flex items-center gap-1\.5">\s*<span class="">Chauffeur AutoLink[\s\S]*?<\/div>\n/, '');
+    if (delFee > 0) h = h.replace('5 000 FCFA', `${fmt(delFee)} FCFA`);
+    else h = h.replace(/<div class="flex items-center justify-between text-on-surface-variant">\s*<span class="">Livraison du véhicule<\/span>[\s\S]*?<\/div>\n/, '');
+    // Chauffeur : masquer les boutons d'appel si aucun chauffeur
+    if (!drvName) {
+      h = h.replace(/<a aria-label="Appeler le chauffeur"[\s\S]*?<\/a>/, '')
+           .replace(/<a aria-label="Contacter via WhatsApp"[\s\S]*?<\/a>/, '');
+    }
+    // Annulation : uniquement si le statut le permet
+    if (!['pending', 'confirmed'].includes(b.status)) {
+      h = h.replace(/<button[^>]*>\s*<span class="material-symbols-outlined text-\[18px\]">cancel<\/span>\s*Demander l'annulation[\s\S]*?<\/button>/, '');
     }
     return h;
-  }, [b]);
+  }, [b, veh]);
 
   return <DesignPage html={html} links={LINKS} />;
 }

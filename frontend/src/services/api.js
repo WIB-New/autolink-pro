@@ -91,6 +91,7 @@ export const bookingsAPI = {
   getAll: (params) => api.get('/bookings/', { params }),
   detail: (id) => api.get(`/bookings/${id}/`),
   create: (payload) => api.post('/bookings/', payload),
+  quote: (payload) => api.post('/bookings/quote/', payload),
   update: (id, payload) => api.patch(`/bookings/${id}/`, payload),
   updateStatus: (id, status) => api.patch(`/bookings/${id}/`, { status }),
   acceptDriverRide: (id) => api.post(`/bookings/${id}/driver-accept/`),
