@@ -8,7 +8,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0010_notification_kind_notification_link'),
+        ('users', '0009_notification_kind_notification_link'),
     ]
 
     operations = [

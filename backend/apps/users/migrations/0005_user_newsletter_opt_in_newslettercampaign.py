@@ -13,7 +13,7 @@ def enable_newsletter_for_existing_users(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0005_contactmessage'),
+        ('users', '0004_logincode'),
     ]
 
     operations = [

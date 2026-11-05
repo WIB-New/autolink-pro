@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0009_fix_legacy_notnull_columns'),
+        ('users', '0008_fix_legacy_notnull_columns'),
     ]
 
     operations = [

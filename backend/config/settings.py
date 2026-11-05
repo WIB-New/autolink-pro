@@ -27,6 +27,8 @@ INSTALLED_APPS = [
     'apps.payments',
     'apps.drivers',
     'apps.inspections',
+    'apps.affiliates',
+    'apps.messaging',
 ]
 
 MIDDLEWARE = [

@@ -64,7 +64,7 @@ class AddFieldIfMissing(migrations.AddField):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0007_user_language'),
+        ('users', '0006_user_language'),
     ]
 
     operations = [
