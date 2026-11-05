@@ -81,6 +81,8 @@ export const vehiclesAPI = {
   favorites: () => api.get('/vehicles/favorites/'),
   addFavorite: (vehicle) => api.post('/vehicles/favorites/', { vehicle }),
   removeFavorite: (vehicle) => api.delete(`/vehicles/favorites/${vehicle}/`),
+  reviews: (id) => api.get(`/vehicles/${id}/reviews/`),
+  similar: (id) => api.get(`/vehicles/${id}/similar/`),
 };
 
 export const adminVehiclesAPI = {
@@ -94,6 +96,7 @@ export const bookingsAPI = {
   getAll: (params) => api.get('/bookings/', { params }),
   detail: (id) => api.get(`/bookings/${id}/`),
   create: (payload) => api.post('/bookings/', payload),
+  quote: (payload) => api.post('/bookings/quote/', payload),
   update: (id, payload) => api.patch(`/bookings/${id}/`, payload),
   updateStatus: (id, status) => api.patch(`/bookings/${id}/`, { status }),
   acceptDriverRide: (id) => api.post(`/bookings/${id}/driver-accept/`),
@@ -103,6 +106,7 @@ export const bookingsAPI = {
   disputes: (params) => api.get('/bookings/disputes/', { params }),
   stats: () => api.get('/bookings/stats/'),
   clientStats: () => api.get('/bookings/client-stats/'),
+  clientDashboard: () => api.get('/bookings/client-dashboard/'),
   receipt: (id) => api.get(`/bookings/${id}/receipt/`, { responseType: 'blob' }),
   emailReceipt: (id) => api.post(`/bookings/${id}/receipt/email/`),
   rate: (id, rating, review) => api.post(`/bookings/${id}/rate/`, { rating, review }),
@@ -177,6 +181,7 @@ export const usersAPI = {
   delete: (id) => api.delete(`/users/${id}/`),
   me: () => api.get('/users/me/'),
   updateMe: (payload) => api.patch('/users/me/', payload),
+  referral: () => api.get('/users/me/referral/'),
 };
 
 // Agents / parrainage — admin uniquement

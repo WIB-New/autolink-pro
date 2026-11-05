@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Wallet, ArrowDownLeft, Clock, ArrowRight } from 'lucide-react';
 import { ownerNet } from '../../utils/commission';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
-const timeOf = iso => { try { return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }); } catch (_) { return '—'; } };
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
+const timeOf = iso => { try { return new Date(iso).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short' }); } catch (_) { return '—'; } };
 
 /* « Transactions » — liste compacte des derniers encaissements (maquette). */
 export default function RecentPayments({ bookings = [] }) {

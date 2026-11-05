@@ -8,8 +8,8 @@ import {
 } from 'lucide-react';
 import StatCard from '../../components/StatCard';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
-const shortDate = iso => iso ? new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
+const shortDate = iso => iso ? new Date(iso).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
 export default function AdminDisputes() {
   const [bookings, setBookings] = useState([]);

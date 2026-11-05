@@ -3,8 +3,8 @@ import { Search } from 'lucide-react';
 import { fleetImage } from '../ownerfleet/FleetCard';
 import { COMMISSION_LABEL, ownerNet } from '../../utils/commission';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
-const fmtDate = d => { try { return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }); } catch (_) { return '—'; } };
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
+const fmtDate = d => { try { return new Date(d).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short', year: 'numeric' }); } catch (_) { return '—'; } };
 const PAGE = 4;
 
 /* « Détail par location & Décomposition des revenus » — table paginée. */

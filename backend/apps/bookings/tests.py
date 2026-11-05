@@ -39,6 +39,49 @@ class BookingFlowTests(APITestCase):
         return self.client.post('/api/bookings/', {**self.payload, **extra}, format='json')
 
     # ── Création + paiement wallet ──────────────────────────────────────────
+    def test_timed_quote_and_wallet_payment_match(self):
+        self.client_user.balance = 5_000_000
+        self.client_user.save()
+        payload = {
+            **self.payload, 'end_date': str(self.start + timedelta(days=3)),
+            'start_time': '08:30', 'end_time': '12:30', 'driver_type': 'internal',
+            'terms_accepted': True, 'debit_authorized': True,
+            'notes': 'Merci de me contacter avant la prise en charge.',
+        }
+        quote = self.client.post('/api/bookings/quote/', payload, format='json')
+        self.assertEqual(quote.status_code, 200, quote.data)
+        self.assertEqual(quote.data['days'], 4)
+        self.assertEqual(Decimal(quote.data['subtotal']), Decimal('140000'))
+        response = self.client.post('/api/bookings/', payload, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        booking = Booking.objects.get(pk=response.data['id'])
+        self.assertEqual(booking.subtotal, Decimal('140000'))
+        self.assertEqual(booking.notes, payload['notes'])
+        self.assertIsNotNone(booking.terms_accepted_at)
+        self.assertEqual(booking.payment.amount, booking.subtotal)
+        self.client_user.refresh_from_db()
+        self.assertEqual(self.client_user.balance, Decimal('5000000') - booking.subtotal - booking.deposit_amount)
+
+    def test_timed_booking_requires_both_consents(self):
+        response = self._book(start_time='08:30', end_time='12:30')
+        self.assertEqual(response.status_code, 400, response.data)
+        self.assertIn('terms_accepted', response.data)
+        self.assertFalse(Booking.objects.exists())
+
+    def test_timed_quote_rounds_up_and_rejects_negative_duration(self):
+        for end_time, expected in [('08:30', 1), ('08:31', 2)]:
+            response = self.client.post('/api/bookings/quote/', {
+                **self.payload, 'end_date': str(self.start + timedelta(days=1)),
+                'start_time': '08:30', 'end_time': end_time,
+            }, format='json')
+            self.assertEqual(response.status_code, 200, response.data)
+            self.assertEqual(response.data['days'], expected)
+        response = self.client.post('/api/bookings/quote/', {
+            **self.payload, 'end_date': str(self.start),
+            'start_time': '12:30', 'end_time': '08:30',
+        }, format='json')
+        self.assertEqual(response.status_code, 400)
+
     def test_wallet_booking_insufficient_balance(self):
         r = self._book()
         self.assertEqual(r.status_code, 400, r.data)

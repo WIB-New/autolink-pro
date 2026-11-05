@@ -1,7 +1,6 @@
 import React from 'react';
-import { CalendarRange } from 'lucide-react';
+import { CalendarRange, MoreHorizontal } from 'lucide-react';
 import { CATALOG_VEHICLES } from '../../utils/carImages';
-import { ownerNet } from '../../utils/commission';
 
 const carImg = (name = '') => {
   const found = CATALOG_VEHICLES.find(v => name.toLowerCase().includes((v.model || '').toLowerCase()) && v.model);
@@ -14,7 +13,7 @@ const STATUS = {
   pending:   { label: 'À confirmer',   cls: 'bg-amber-100 text-amber-700' },
 };
 
-const fmtDate = d => { try { return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }); } catch (_) { return d || '—'; } };
+const fmtDate = d => { try { return new Date(d).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short' }); } catch (_) { return d || '—'; } };
 
 /* « Prochaines locations » — table compacte style Recent Orders (maquette). */
 export default function UpcomingBookings({ bookings }) {
@@ -36,13 +35,14 @@ export default function UpcomingBookings({ bookings }) {
               <th className="px-5 py-2.5">Véhicule</th>
               <th className="px-4 py-2.5">Locataire</th>
               <th className="px-4 py-2.5">Période</th>
-              <th className="px-4 py-2.5">Net propriétaire</th>
+              <th className="px-4 py-2.5">Montant</th>
               <th className="px-4 py-2.5">Statut</th>
+              <th className="px-4 py-2.5" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {rows.length === 0 && (
-              <tr><td colSpan={5} className="px-5 py-8 text-center text-xs text-slate-400">Aucune location confirmée.</td></tr>
+              <tr><td colSpan={6} className="px-5 py-8 text-center text-xs text-slate-400">Aucune location confirmée.</td></tr>
             )}
             {rows.map(b => {
               const st = STATUS[b.status] || STATUS.pending;
@@ -60,9 +60,10 @@ export default function UpcomingBookings({ bookings }) {
                   <td className="px-4 py-3 text-[11px] font-semibold text-slate-700">{b.client_name || 'Client'}</td>
                   <td className="px-4 py-3 text-[11px] text-slate-500 whitespace-nowrap">{fmtDate(b.start_date)} → {fmtDate(b.end_date)}</td>
                   <td className="px-4 py-3 text-[12px] font-black text-slate-900 whitespace-nowrap">
-                    {Math.round(ownerNet(b)).toLocaleString('fr-FR')} <span className="text-[9px] text-slate-400 font-bold">F</span>
+                    {Math.round(Number(b.owner_amount || b.total_price || 0) * 0.85).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} <span className="text-[9px] text-slate-400 font-bold">F</span>
                   </td>
                   <td className="px-4 py-3"><span className={`text-[9px] font-black px-2 py-1 rounded-md ${st.cls}`}>{st.label}</span></td>
+                  <td className="px-4 py-3 text-right"><button className="p-1 text-slate-300 hover:text-teal-600 transition-colors"><MoreHorizontal size={15} /></button></td>
                 </tr>
               );
             })}

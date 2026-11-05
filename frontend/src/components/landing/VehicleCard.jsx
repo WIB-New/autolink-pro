@@ -37,7 +37,7 @@ export default function VehicleCard({ v }) {
         </div>
         <div className="flex items-center justify-between pt-3 border-t border-slate-50">
           <div>
-            <span className="font-black text-teal-700 text-sm">{v.price.toLocaleString('fr-FR')} FCFA</span>
+            <span className="font-black text-teal-700 text-sm">{v.price.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} FCFA</span>
             <span className="text-slate-400 text-xs">/jour</span>
           </div>
           <button onClick={() => reserve(v)}

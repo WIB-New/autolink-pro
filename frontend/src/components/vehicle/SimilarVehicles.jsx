@@ -40,7 +40,7 @@ export default function SimilarVehicles({ vehicle }) {
               </div>
               <h4 className="font-black text-slate-900 text-sm mb-2">{s.name}</h4>
               <div className="font-black text-teal-700 text-sm">
-                {s.price.toLocaleString('fr-FR')} <span className="text-xs text-slate-400 font-medium">FCFA/jour</span>
+                {s.price.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} <span className="text-xs text-slate-400 font-medium">FCFA/jour</span>
               </div>
             </div>
           </Link>

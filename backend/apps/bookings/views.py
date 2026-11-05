@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.mail import EmailMessage
 from django.db import transaction as db_transaction
 from django.db.models import Sum, Count, Avg
+from django.db.models.functions import TruncMonth
 from django.utils import timezone
 from django.http import HttpResponse
 from xml.sax.saxutils import escape
@@ -70,7 +71,18 @@ class BookingViewSet(viewsets.ModelViewSet):
         if user.role in ('ADMIN', 'CONTROLLER'):
             return Booking.objects.all()
         if user.role == 'CLIENT':
-            return Booking.objects.filter(client=user)
+            qs = Booking.objects.filter(client=user)
+            bucket = self.request.query_params.get('bucket')
+            now = timezone.now()
+            if bucket == 'upcoming':
+                qs = qs.filter(status__in=['pending', 'confirmed'], start_date__gte=now)
+            elif bucket == 'ongoing':
+                qs = qs.filter(status='active')
+            elif bucket == 'completed':
+                qs = qs.filter(status='completed')
+            elif bucket == 'cancelled':
+                qs = qs.filter(status='cancelled')
+            return qs
         if user.role == 'DRIVER':
             return Booking.objects.filter(driver=user)
         if user.role == 'OWNER':
@@ -242,6 +254,28 @@ class BookingViewSet(viewsets.ModelViewSet):
             resp.data['payment_reference'] = self._last_payment_reference
             self._last_payment_reference = None
         return resp
+
+    @action(detail=False, methods=['post'])
+    def quote(self, request):
+        serializer = self.get_serializer(data=request.data, context={**self.get_serializer_context(), 'quote': True})
+        serializer.is_valid(raise_exception=True)
+        data = dict(serializer.validated_data)
+        data.pop('terms_accepted', None)
+        data.pop('debit_authorized', None)
+        vehicle = data['vehicle']
+        booking = Booking(**data, daily_rate=vehicle.daily_rate or vehicle.computed_rate, deposit_amount=vehicle.deposit_amount or 0)
+        booking.calculate_price()
+        balance = request.user.balance or Decimal('0')
+        required = booking.subtotal + booking.deposit_amount
+        return Response({
+            'days': booking.days, 'daily_rate': str(booking.daily_rate),
+            'rental_amount': str(booking.subtotal - booking.driver_fee - booking.delivery_fee),
+            'driver_fee': str(booking.driver_fee), 'delivery_fee': str(booking.delivery_fee),
+            'subtotal': str(booking.subtotal), 'deposit_amount': str(booking.deposit_amount),
+            'required_balance': str(required), 'balance': str(balance),
+            'remaining_balance': str(balance - required),
+            'shortfall': str(max(Decimal('0'), required - balance)),
+        })
 
     def perform_create(self, serializer):
         request = self.request
@@ -639,6 +673,41 @@ class BookingViewSet(viewsets.ModelViewSet):
         except Booking.DoesNotExist:
             from rest_framework.exceptions import NotFound
             raise NotFound('Réservation introuvable.')
+
+    @action(detail=False, methods=['get'], url_path='client-dashboard')
+    def client_dashboard(self, request):
+        if request.user.role != 'CLIENT':
+            raise PermissionDenied('Réservé aux clients.')
+        now = timezone.now()
+        qs = Booking.objects.filter(client=request.user)
+        paid = qs.exclude(status='cancelled')
+        # Séries mensuelles (6 derniers mois) : dépenses + locations
+        monthly = (
+            paid.filter(start_date__gte=now - timezone.timedelta(days=185))
+            .annotate(month=TruncMonth('start_date'))
+            .values('month')
+            .annotate(total=Sum('subtotal'), count=Count('id'))
+            .order_by('month')
+        )
+        driver_split = paid.values('driver_type').annotate(count=Count('id'))
+        disputes = qs.filter(status='disputed').count()
+        cancelled = qs.filter(status='cancelled').count()
+        completed = paid.filter(status='completed').count()
+        trust = max(0, min(100, 100 - 5 * cancelled - 15 * disputes + 2 * completed))
+        return Response({
+            'balance': request.user.balance,
+            'held_deposit': paid.filter(status__in=['confirmed', 'active'])
+                .aggregate(v=Sum('deposit_amount'))['v'] or Decimal('0'),
+            'bookings_total': qs.count(),
+            'upcoming': qs.filter(status__in=['pending', 'confirmed'], start_date__gte=now).count(),
+            'ongoing': qs.filter(status='active').count(),
+            'completed': completed,
+            'cancelled': cancelled,
+            'average_rating': qs.aggregate(v=Avg('client_rating'))['v'] or 0,
+            'trust_score': round(trust, 1),
+            'monthly': list(monthly),
+            'driver_split': list(driver_split),
+        })
 
     @action(detail=False, methods=['get'], url_path='client-stats')
     def client_stats(self, request):

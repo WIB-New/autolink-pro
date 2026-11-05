@@ -7,7 +7,7 @@ import VehicleCard from '../../components/VehicleCard';
 import TopUpModal from '../../components/TopUpModal';
 import { RENTAL_TYPES, TIERS } from '../../utils/carImages';
 import { vehicleImage, vehicleName, vehicleRate, TIER_BADGES } from '../../utils/vehicles';
-import { bookingsAPI, paymentsAPI, walletAPI } from '../../services/api';
+import { bookingsAPI, paymentsAPI, vehiclesAPI, walletAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import useFavorites from '../../utils/useFavorites';
 import { formatDate, formatNumber, uiText, vehicleLabel } from '../../i18n';
@@ -393,7 +393,7 @@ export default function SearchVehicles() {
   const [fuel, setFuel] = useState('');
 
   useEffect(() => {
-    Promise.resolve({ data: { max_rate: 280000, brands: ['Toyota','Porsche','Mercedes','BMW','Dacia','Kia'], models: {'Toyota':['RAV4 AWD Hybrid','Corolla','Land Cruiser Prado'],'Porsche':['Panamera'],'Mercedes':['Classe S 500'],'BMW':['X7'],'Dacia':['Duster'],'Kia':['Sorento']}, categories: ['Berline','SUV','Citadine','Pick-up','Van','Minibus'], fuels: ['Essence','Diesel','Hybride'] } }).then(({ data }) => { setFacets(f => ({ ...f, max_rate: data.max_rate })); setMaxPrice(Number(data.max_rate) || 280000); }).catch(() => {});
+    vehiclesAPI.facets().then(({ data }) => { setFacets(f => ({ ...f, ...data })); setMaxPrice(Math.max(300000, Number(data.max_rate) || 300000)); }).catch(() => {});
     const type = new URLSearchParams(window.location.search).get('type');
     if (type) setType(type);
   }, []);
@@ -401,10 +401,10 @@ export default function SearchVehicles() {
   useEffect(() => {
     let mounted = true;
     setLoadingList(true);
-    Promise.resolve({ data: { results: MOCK_VEHICLES } }) /* vehiclesAPI.getAll({
+    vehiclesAPI.getAll({
       status: 'approved', page_size: 200,
       ...(onlyAvailable ? { available: 1, ...(availabilityStart ? { start: availabilityStart } : {}), ...(availabilityEnd ? { end: availabilityEnd } : {}) } : {}),
-    }) */
+    })
       .then((res) => {
         if (!mounted) return;
         const list = (res.data.results || res.data || []).map(mapApiVehicle);
@@ -441,7 +441,7 @@ export default function SearchVehicles() {
     if (params.get('vehicle')) { params.delete('vehicle'); navigate({ search: params.toString() }, { replace: true }); }
   };
 
-  const maxRate = Math.max(15000, Number(facets.max_rate) || 200000);
+  const maxRate = Math.max(300000, Number(facets.max_rate) || 300000);
 
   return (
     <DesignShell role="client">
@@ -467,15 +467,8 @@ export default function SearchVehicles() {
             <label><span className="label">{t('Disponible à partir du')}</span><input type="date" className="input-field" value={availabilityStart} min={new Date().toISOString().slice(0, 10)} disabled={!onlyAvailable} onChange={(e) => setAvailabilityStart(e.target.value)} /></label>
             <label><span className="label">{t('Jusqu’au')}</span><input type="date" className="input-field" value={availabilityEnd} min={availabilityStart || new Date().toISOString().slice(0, 10)} disabled={!onlyAvailable} onChange={(e) => setAvailabilityEnd(e.target.value)} /></label>
             <label><span className="label">{t('Marque')}</span><select className="input-field" value={brand} onChange={(e) => { setBrand(e.target.value); setModel(''); }}><option value="">{t('Toutes les marques')}</option>{facets.brands.map((value) => <option key={value}>{value}</option>)}</select></label>
-            <label><span className="label">{t('Modèle')}</span><select className="input-field" value={model} onChange={(e) => setModel(e.target.value)}><option value="">{t('Tous les modèles')}</option>{(facets.models[brand] || []).map((value) => <option key={value}>{value}</option>)}</select></label>
+            <label><span className="label">{t('Modèle')}</span><select className="input-field" value={model} onChange={(e) => setModel(e.target.value)}><option value="">{t('Tous les modèles')}</option>{(brand ? (facets.models[brand] || []) : [...new Set(vehicles.map((v) => v.model).filter(Boolean))].sort()).map((value) => <option key={value}>{value}</option>)}</select></label>
             <label><span className="label">{t('Carburant')}</span><select className="input-field" value={fuel} onChange={(e) => setFuel(e.target.value)}><option value="">{t('Tous les carburants')}</option>{facets.fuels.map((value) => <option key={value} value={value}>{vehicleLabel(value, 'fuel')}</option>)}</select></label>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {['', ...(facets.categories || [])].map((value) => (
-              <button key={value || 'all'} onClick={() => setCategory(value)} className={`px-4 py-1.5 rounded-full font-label-md text-label-md ${category === value ? 'bg-primary text-on-primary' : 'bg-surface-container-low text-on-surface-variant dark:bg-slate-900 dark:text-slate-300'}`}>
-                {value ? vehicleLabel(value, 'category') : t('Toutes les catégories')}
-              </button>
-            ))}
           </div>
         </div>
 
@@ -486,7 +479,7 @@ export default function SearchVehicles() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
           {filtered.map((v) => (
-            <VehicleCard key={v.id} vehicle={v} unavailable={!v.available} onClick={() => navigate(`/vehicles/${v.id}`)}
+            <VehicleCard key={v.id} vehicle={v} unavailable={!v.available} onClick={() => navigate(`/client/vehicule/${v.id}`)}
               favorite={favorites.ids.includes(v.id)} onToggleFavorite={favorites.toggle} />
           ))}
         </div>

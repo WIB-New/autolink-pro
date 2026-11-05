@@ -1,15 +1,16 @@
-import React from 'react';
+import React, { useMemo, useEffect } from 'react';
 import DesignPage from './DesignPage';
+import useApiData from '../utils/useApiData';
+import { authAPI, kycAPI } from '../services/api';
+
+const STATUS_TEXT = { none: 'À FOURNIR', pending: 'EN VÉRIFICATION', approved: 'VALIDÉ', rejected: 'REFUSÉ' };
 
 const HTML = `<div class="flex flex-col w-full">
 <!-- Page Header -->
 <div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md mb-space-lg">
 <div class="flex flex-col gap-1 max-w-3xl">
 <h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">Mon Profil & Paramètres de Compte</h1>
-<p class="font-body-md text-on-surface-variant">Gérez vos informations personnelles, le statut légal de vos pièces justificatives CEMAC et la sécurité de votre compte.</p>
-</div>
-</div>
-</div>
+<p class="font-body-md text-on-surface-variant">Gérez vos informations personnelles et le statut légal de vos pièces justificatives.</p>
 </div>
 </div>
 <!-- Section 1: Informations Personnelles (Summary Banner) -->
@@ -54,17 +55,17 @@ const HTML = `<div class="flex flex-col w-full">
 <details class="relative shrink-0">
 <summary class="list-none cursor-pointer inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-on-primary font-label-md text-label-md font-bold shadow-sm hover:bg-primary-container transition-all"><span class="material-symbols-outlined text-[18px]">edit</span>Modifier mon profil</summary>
 <div class="absolute right-0 top-full mt-2 w-72 bg-surface-container-lowest rounded-xl shadow-elevation-3 border border-outline-variant/30 py-2 z-50">
-<button class="flex items-center gap-2 px-4 py-2.5 w-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors">Informations personnelles</button>
-<button class="flex items-center gap-2 px-4 py-2.5 w-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors">Pièces d'identité & Documents 1 à renouveler</button>
-<button class="flex items-center gap-2 px-4 py-2.5 w-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors">Sécurité & Authentification (2FA)</button>
-<button class="flex items-center gap-2 px-4 py-2.5 w-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors">Préférences & Notifications</button>
-<button class="flex items-center gap-2 px-4 py-2.5 w-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors">Données personnelles & RGPD/CEMAC</button>
+<button class="flex items-center gap-2 px-4 py-2.5 w-full text-left font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors">Informations personnelles</button>
+<button class="flex items-center gap-2 px-4 py-2.5 w-full text-left font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors">Pièces d'identité & Documents 1 à renouveler</button>
+<button class="flex items-center gap-2 px-4 py-2.5 w-full text-left font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors">Sécurité & Authentification (2FA)</button>
+<button class="flex items-center gap-2 px-4 py-2.5 w-full text-left font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors">Préférences & Notifications</button>
+<button class="flex items-center gap-2 px-4 py-2.5 w-full text-left font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors">Données personnelles & RGPD/CEMAC</button>
 </div>
 </details>
 </div>
 <!-- Section 2: Pièces d'identité & Justificatifs Réglementaires -->
-<div class="flex flex-col gap-space-md mb-space-lg">
-<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs">
+<div class="flex flex-col gap-space-md mb-space-lg mt-space-lg">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs mb-space-md">
 <div>
 <h3 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Pièces d'identité & Documents Requis</h3>
 <p class="font-body-md text-on-surface-variant">Conformité avec les directives des transports terrestres de la république du Cameroun & CEMAC.</p>
@@ -155,10 +156,11 @@ const HTML = `<div class="flex flex-col w-full">
 </div>
 </div>
 <div class="flex flex-col gap-2 pt-2">
-<button class="w-full py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-container text-on-primary transition-all font-label-lg text-label-lg flex items-center justify-center gap-2 shadow-sm">
+<button class="w-full py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-container text-on-primary transition-all font-label-lg text-label-lg flex items-center justify-center gap-2 shadow-sm" id="lic-upload-btn" type="button">
 <span class="material-symbols-outlined text-[20px]">upload_file</span>
             Téléverser le nouveau permis recto/verso
           </button>
+<input accept=".jpg,.jpeg,.png,.webp,.pdf" id="lic-upload-input" style="display:none" type="file"/>
 </div>
 </div>
 <!-- Card 3: Justificatif Domicile -->
@@ -250,133 +252,49 @@ const HTML = `<div class="flex flex-col w-full">
 </div>
 </div>
 </div>
-<!-- Bento Section: Split Security & Preferences -->
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter mb-space-lg">
-<!-- Section 3: Sécurité & Paramètres (Col 7) -->
-<div class="lg:col-span-7 bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col justify-between gap-space-lg">
-<div class="flex flex-col gap-space-md">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center">
-<span class="material-symbols-outlined text-[22px]">security</span>
-</div>
-<div>
-<h3 class="font-headline-md text-headline-md text-on-surface font-bold">Sécurité & Authentification</h3>
-<p class="font-body-sm text-body-sm text-on-surface-variant">Gestion des accès et sessions sécurisées</p>
-</div>
-</div>
-<span class="px-2.5 py-1 rounded-full bg-primary/10 text-primary font-label-sm text-label-sm font-bold">Très Fort</span>
-</div>
-<div class="flex flex-col gap-3">
-<!-- 2FA Item -->
-<div class="flex items-center justify-between p-3.5 rounded-xl bg-surface-container-low">
-<div class="flex items-center gap-3">
-<span class="material-symbols-outlined text-primary text-[24px]">phonelink_lock</span>
-<div class="flex flex-col">
-<span class="font-label-lg text-label-lg text-on-surface font-semibold">Double Facteur (2FA via SMS & WhatsApp)</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Actif sur le +237 670 42 18 90</span>
-</div>
-</div>
-<button class="px-3.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors">
-              Gérer
-            </button>
-</div>
-<!-- Password Item -->
-<div class="flex items-center justify-between p-3.5 rounded-xl bg-surface-container-low">
-<div class="flex items-center gap-3">
-<span class="material-symbols-outlined text-outline text-[24px]">password</span>
-<div class="flex flex-col">
-<span class="font-label-lg text-label-lg text-on-surface font-semibold">Mot de passe du compte</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Dernière modification il y a 3 mois</span>
-</div>
-</div>
-<button class="px-3.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors">
-              Mettre à jour
-            </button>
-</div>
-<!-- Active Sessions -->
-<div class="p-3.5 rounded-xl bg-surface-container-low flex flex-col gap-2">
-<span class="font-label-sm text-label-sm text-outline uppercase font-bold tracking-wider">Session active détectée</span>
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-3">
-<span class="material-symbols-outlined text-primary text-[22px]">laptop_mac</span>
-<div class="flex flex-col">
-<span class="font-label-md text-label-md text-on-surface font-semibold">Chrome sur macOS · Douala, Cameroun</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Adresse IP locale (Camtel WAN) · En ligne</span>
-</div>
-</div>
-<span class="px-2 py-0.5 rounded-md bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm">Session actuelle</span>
-</div>
-</div>
-</div>
-</div>
-<div class="flex items-center justify-between pt-2">
-<span class="font-body-sm text-body-sm text-on-surface-variant">Déconnecter tous les autres appareils connectés</span>
-<button class="text-error font-label-md text-label-md hover:underline font-semibold">Tout déconnecter</button>
-</div>
-</div>
-<!-- Section 4: Préférences & Données Personnelles (Col 5) -->
-<div class="lg:col-span-5 bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col justify-between gap-space-lg">
-<div class="flex flex-col gap-space-md">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center">
-<span class="material-symbols-outlined text-[22px]">tune</span>
-</div>
-<div>
-<h3 class="font-headline-md text-headline-md text-on-surface font-bold">Préférences Régionales</h3>
-<p class="font-body-sm text-body-sm text-on-surface-variant">Affichage et gestion des données</p>
-</div>
-</div>
-<div class="flex flex-col gap-space-sm font-body-sm text-body-sm">
-<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-low">
-<span class="text-on-surface font-medium">Langue de l'interface</span>
-<span class="font-label-md text-label-md text-primary font-bold">Français (Cameroun)</span>
-</div>
-<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-low">
-<span class="text-on-surface font-medium">Devise de transaction</span>
-<span class="font-label-md text-label-md text-on-surface font-bold">FCFA (XAF)</span>
-</div>
-<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-low">
-<div class="flex flex-col">
-<span class="text-on-surface font-medium">Facturation numérique directe</span>
-<span class="text-outline text-[12px]">Reçu envoyé par email après restitution</span>
-</div>
-<div class="w-10 h-6 bg-primary rounded-full relative cursor-pointer">
-<div class="w-4 h-4 bg-surface rounded-full absolute right-1 top-1"></div>
-</div>
-</div>
-</div>
-<div class="flex flex-col gap-2 pt-2">
-<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline font-bold">Exportation de données CEMAC</span>
-<div class="grid grid-cols-2 gap-2">
-<button class="py-2 px-3 rounded-xl bg-surface-container text-on-surface font-label-md text-label-md hover:bg-surface-container-high transition-colors flex items-center justify-center gap-1.5">
-<span class="material-symbols-outlined text-[18px]">download</span>
-              Format PDF
-            </button>
-<button class="py-2 px-3 rounded-xl bg-surface-container text-on-surface font-label-md text-label-md hover:bg-surface-container-high transition-colors flex items-center justify-center gap-1.5">
-<span class="material-symbols-outlined text-[18px]">data_object</span>
-              Format JSON
-            </button>
-</div>
-</div>
-</div>
-<div class="pt-4 border-t-0 flex items-center justify-between">
-<button class="text-error font-label-sm text-label-sm hover:underline font-semibold">
-          Supprimer mon compte définitivement
-        </button>
-
-</div>
-</div>
-</div>
 `;
-const LINKS = {
-  'Mettre à jour': '/settings',
-  'Tout déconnecter': '/login',
-  'Supprimer mon compte définitivement': '/settings',
-};
+const LINKS = {};
 
-export default function c9profiletparamtres({ role = 'client' }) {
-  return <DesignPage html={HTML} links={LINKS} role={role} />;
+export default function C9ProfilEtParametres({ role = 'client' }) {
+  const { data: me } = useApiData(() => authAPI.me(), []);
+  const html = useMemo(() => {
+    if (!me) return HTML;
+    const name = `${me.first_name || ''} ${me.last_name || ''}`.trim() || me.username || '';
+    const init = name.split(' ').map((w) => w[0] || '').join('').slice(0, 2).toUpperCase() || 'U';
+    return HTML
+      .replace(/>\s*EK\s*</, `>${init}<`)
+      .replace('Emmanuel Kouam', name)
+      .replace('emmanuel.k@gmail.com', me.email || '')
+      .replace('+237 670 42 18 90', me.phone || '—')
+      .replace('Identité vérifiée', me.is_verified || me.kyc_status === 'approved' ? 'Identité vérifiée' : 'Identité non vérifiée')
+      // Statuts réels des documents KYC
+      .replace(/>VALIDÉ</, `>${me.id_document_verified ? 'VALIDÉ' : (STATUS_TEXT[me.kyc_status] || 'À FOURNIR')}<`)
+      .replace(/À RENOUVELER \(15j\)/, me.driving_license
+        ? (me.driving_license_expires_at && new Date(me.driving_license_expires_at) < new Date() ? 'À RENOUVELER' : 'VALIDÉ')
+        : (STATUS_TEXT[me.kyc_status] === 'VALIDÉ' ? 'À FOURNIR' : (STATUS_TEXT[me.kyc_status] || 'À FOURNIR')))
+      .replace('12 Novembre 2025', me.driving_license_expires_at || '—')
+      .replace('Numéro :\n            </span>\n            <span class="font-label-md text-label-md font-bold text-on-surface">102938472 (Douala)</span>',
+               me.id_document ? 'Document transmis</span>' : 'Numéro :</span></span><span class="font-label-md text-label-md font-bold text-on-surface">Non fourni</span>');
+  }, [me]);
+
+  useEffect(() => {
+    const click = (e) => {
+      if (e.target.closest('#lic-upload-btn')) document.getElementById('lic-upload-input')?.click();
+    };
+    const change = (e) => {
+      if (e.target.id !== 'lic-upload-input' || !e.target.files?.[0]) return;
+      const fd = new FormData();
+      fd.append('driving_license', e.target.files[0]);
+      kycAPI.upload(fd).then(() => window.location.reload()).catch(() => {
+        // eslint-disable-next-line no-alert
+        alert("Échec de l'envoi du document (format JPG/PNG/PDF, ≤ 8 Mo).");
+      });
+    };
+    document.addEventListener('click', click);
+    document.addEventListener('change', change);
+    return () => { document.removeEventListener('click', click); document.removeEventListener('change', change); };
+  }, []);
+  return <DesignPage html={html} links={LINKS} role={role} />;
 }
 
 export { HTML, LINKS };

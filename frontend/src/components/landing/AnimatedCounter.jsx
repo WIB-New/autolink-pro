@@ -27,5 +27,5 @@ export default function AnimatedCounter({ target, suffix = '', duration = 2000 }
     return () => observer.disconnect();
   }, [target, duration]);
 
-  return <span ref={ref}>{count.toLocaleString('fr-FR')}{suffix}</span>;
+  return <span ref={ref}>{count.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))}{suffix}</span>;
 }

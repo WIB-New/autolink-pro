@@ -9,7 +9,7 @@ import {
   FileText, Wallet, Lock, Send, Loader, Eye, ArrowLeft,
 } from 'lucide-react';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 const initialsOf = name => (name || 'P').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 const VSTATUS = { approved: ['Homologué', 'bg-teal-100 text-teal-700'], pending: ['En attente', 'bg-amber-100 text-amber-700'], suspended: ['Désactivé', 'bg-red-100 text-red-600'], rented: ['En location', 'bg-blue-100 text-blue-700'] };
 
@@ -49,7 +49,7 @@ export default function AdminPartnerDetail() {
 
   const addNote = () => {
     if (!note.trim()) return;
-    setNotes(n => [{ by: 'Super-Admin', at: new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }), txt: note.trim() }, ...n]);
+    setNotes(n => [{ by: 'Super-Admin', at: new Date().toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short' }), txt: note.trim() }, ...n]);
     setNote('');
   };
 
@@ -83,7 +83,7 @@ export default function AdminPartnerDetail() {
                   <span className="bg-teal-600 text-white text-[8px] font-black px-2 py-0.5 rounded-md">Partenaire Certifié</span>
                 </div>
                 <div className="text-[10px] text-slate-400 mt-0.5">
-                  Mobilité SARL · RCCM {o.id}09843 · Partenaire depuis {o.date_joined ? new Date(o.date_joined).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) : 'Fév. 2024'}
+                  Mobilité SARL · RCCM {o.id}09843 · Partenaire depuis {o.date_joined ? new Date(o.date_joined).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { month: 'short', year: 'numeric' }) : 'Fév. 2024'}
                 </div>
               </div>
               <div className="flex gap-2">

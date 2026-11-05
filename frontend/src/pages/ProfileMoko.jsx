@@ -92,7 +92,7 @@ export default function Profile() {
                 <Wallet size={24} className="text-teal-400" />
                 <div>
                   <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Solde AutoLink</div>
-                  <div className="text-2xl font-black">{Number(user.balance).toLocaleString('fr-FR')} <span className="text-sm text-teal-400">FCFA</span></div>
+                  <div className="text-2xl font-black">{Number(user.balance).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} <span className="text-sm text-teal-400">FCFA</span></div>
                 </div>
               </div>
               {user.role === 'CLIENT' && (
@@ -151,7 +151,7 @@ export default function Profile() {
             <Shield size={15} className="text-teal-600" /> Compte
           </h3>
           <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1.5">
-            <div>Membre depuis le <strong className="text-slate-700 dark:text-slate-300">{user?.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR') : '—'}</strong></div>
+            <div>Membre depuis le <strong className="text-slate-700 dark:text-slate-300">{user?.created_at ? new Date(user.created_at).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')) : '—'}</strong></div>
             <div>Identifiant : <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{user?.username || user?.email}</span></div>
           </div>
         </div>

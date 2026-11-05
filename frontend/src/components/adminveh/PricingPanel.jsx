@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Tag, ShieldCheck } from 'lucide-react';
 import { TIERS } from '../../utils/carImages';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 
 /* Gamme & tarification — arbitrage tarifaire et répartition commission. */
 export default function PricingPanel({ vehicle: v, onSave }) {

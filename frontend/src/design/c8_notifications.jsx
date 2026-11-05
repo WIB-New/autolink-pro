@@ -1,38 +1,90 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import DesignPage from './DesignPage';
+import useApiData from '../utils/useApiData';
+import { notificationsAPI } from '../services/api';
 
-const HTML = `<div class="flex flex-col w-full pb-16">
-<!-- Page Header -->
+const KIND_ICON = {
+  booking: 'event_available', payment: 'lock_open', deposit: 'lock',
+  message: 'chat_bubble', security: 'verified_user', general: 'notifications',
+};
+const KIND_LABEL = {
+  booking: 'Réservations', payment: 'Paiements & Caution', deposit: 'Paiements & Caution',
+  message: 'Messagerie', security: 'Sécurité', general: 'Général',
+};
+const KIND_LABEL_DRIVER = {
+  booking: 'Courses', payment: 'Revenus', deposit: 'Revenus',
+  message: 'Messagerie', security: 'Sécurité', general: 'Général',
+};
+const ROLE_TEXT = {
+  driver: {
+    title: 'Notifications Chauffeur',
+    sub: 'Attributions de courses, confirmations de clients, paiements de vos prestations et alertes Hub.',
+    options: '<option selected="" value="">Toutes</option><option value="booking">Courses</option><option value="payment">Revenus</option><option value="message">Messagerie</option><option value="security">Sécurité</option>',
+    search: 'Rechercher une notification (course, paiement, message…)',
+  },
+  client: {
+    title: 'Notifications',
+    sub: 'Suivez en temps réel vos réservations, cautions et échanges AutoLink.',
+    options: '<option selected="" value="">Toutes</option><option value="booking">Réservations</option><option value="payment">Paiements & Caution</option><option value="message">Messagerie</option><option value="security">Sécurité</option>',
+    search: 'Rechercher une notification (caution, réservation, message…)',
+  },
+};
+const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const rel = (iso) => {
+  if (!iso) return '';
+  const m = Math.floor((Date.now() - new Date(iso)) / 60000);
+  if (m < 1) return "À l'instant";
+  if (m < 60) return `Il y a ${m} min`;
+  if (m < 1440) return `Il y a ${Math.floor(m / 60)} h`;
+  return new Date(iso).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: 'numeric', month: 'short' });
+};
+const row = (n, labels = KIND_LABEL) => `<tr class="border-b border-outline-variant/20 ${n.is_read ? '' : 'bg-primary-fixed/10'} hover:bg-surface-container-low/60 transition-colors">
+<td class="px-5 py-4"><div class="flex items-start gap-3">
+<div class="w-10 h-10 rounded-xl ${n.is_read ? 'bg-surface-container-high text-on-surface-variant' : 'bg-primary-fixed text-primary'} flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-[20px]">${KIND_ICON[n.kind] || 'notifications'}</span></div>
+<div class="min-w-0">
+<span class="block font-label-md text-label-md ${n.is_read ? 'font-semibold' : 'font-bold'} text-on-surface">${esc(n.title)}</span>
+<span class="block font-body-sm text-body-sm text-on-surface-variant truncate max-w-md">${esc(n.message)}</span>
+</div></div></td>
+<td class="px-4 py-4 whitespace-nowrap"><span class="font-label-sm text-label-sm text-on-surface-variant">${labels[n.kind] || 'Général'}</span></td>
+<td class="px-4 py-4 whitespace-nowrap font-body-sm text-body-sm text-on-surface-variant">${rel(n.created_at)}</td>
+<td class="px-4 py-4 whitespace-nowrap">${n.is_read
+    ? '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">Lue</span>'
+    : '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-fixed text-primary font-label-sm text-label-sm font-bold"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>Non lue</span>'}</td>
+<td class="px-4 py-4"><div class="flex items-center justify-end gap-1">
+<button class="w-8 h-8 rounded-lg text-primary hover:bg-primary-fixed flex items-center justify-center transition-colors notif-open" data-id="${n.id}" data-link="${esc(n.link || '')}" title="Voir en détail" type="button"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+<button class="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container flex items-center justify-center transition-colors notif-read" data-id="${n.id}" title="Marquer comme lu" type="button"><span class="material-symbols-outlined text-[18px]">done</span></button>
+<button class="w-8 h-8 rounded-lg text-error hover:bg-error-container flex items-center justify-center transition-colors notif-del" data-id="${n.id}" title="Supprimer" type="button"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+</div></td></tr>`;
+
+const buildHtml = (list, unread, role = 'client') => {
+  const T = ROLE_TEXT[role] || ROLE_TEXT.client;
+  const labels = role === 'driver' ? KIND_LABEL_DRIVER : KIND_LABEL;
+  return `<div class="flex flex-col w-full pb-16">
 <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-6">
 <div class="space-y-1">
-<h1 class="font-headline-xl text-headline-xl text-on-surface">Notifications</h1>
+<h1 class="font-headline-xl text-headline-xl text-on-surface">${T.title}</h1>
 <p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">
-        Suivez en temps réel vos réservations, cautions et échanges AutoLink.
+        ${T.sub}
+        ${unread ? `<strong class="text-primary">${unread} non lue${unread > 1 ? 's' : ''}</strong>` : 'Tout est à jour.'}
       </p>
 </div>
-<button class="px-5 py-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors flex items-center gap-2 shadow-sm shrink-0" type="button">
+<button class="px-5 py-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors flex items-center gap-2 shadow-sm shrink-0" id="mark-all-read" type="button">
 <span class="material-symbols-outlined text-[18px]">done_all</span>
     Tout marquer comme lu
   </button>
 </div>
-<!-- Barre : recherche + filtre catégorie -->
 <div class="bg-surface-container-lowest rounded-2xl p-4 mb-8 shadow-sm flex flex-col md:flex-row items-center gap-3">
 <div class="relative w-full md:flex-1">
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
-<input class="w-full pl-9 pr-3 py-2.5 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface placeholder:text-outline outline-none focus:bg-surface-container-lowest transition-colors" placeholder="Rechercher une notification (caution, réservation, message…)" type="text">
+<input class="w-full pl-9 pr-3 py-2.5 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface placeholder:text-outline outline-none focus:bg-surface-container-lowest transition-colors" id="notif-search" placeholder="${T.search}" type="text">
 </div>
 <div class="relative bg-surface-container-low rounded-lg px-3 py-2 min-w-[200px] shrink-0">
-<label class="block font-label-sm text-[10px] text-on-surface-variant">Catégorie</label>
-<select class="w-full bg-transparent font-label-sm text-label-sm text-on-surface outline-none cursor-pointer">
-<option selected="">Toutes (14)</option>
-<option>Non lues (4)</option>
-<option>Réservations</option>
-<option>Paiements & Caution</option>
-<option>Sécurité</option>
+<label class="block font-label-sm text-label-sm text-[10px] text-on-surface-variant">Catégorie</label>
+<select class="w-full bg-transparent font-label-sm text-label-sm text-on-surface outline-none cursor-pointer" id="notif-kind">
+${T.options}
 </select>
 </div>
 </div>
-<!-- Tableau des notifications -->
 <div class="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
 <div class="overflow-x-auto">
 <table class="w-full text-left border-collapse min-w-[860px]">
@@ -45,117 +97,61 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <th class="px-4 py-3.5 font-semibold text-right">Actions</th>
 </tr>
 </thead>
-<tbody class="font-body-md text-body-md">
-<!-- Ligne 1 : Caution débloquée (non lue) -->
-<tr class="border-b border-outline-variant/20 bg-primary-fixed/10 hover:bg-surface-container-low/60 transition-colors">
-<td class="px-5 py-4">
-<div class="flex items-start gap-3">
-<div class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-primary shrink-0"><span class="material-symbols-outlined text-[20px]">lock_open</span></div>
-<div class="min-w-0">
-<span class="block font-label-md text-label-md font-bold text-on-surface">Caution débloquée #ALP-8812 — 150 000 FCFA libérés</span>
-<span class="block font-body-sm text-body-sm text-on-surface-variant truncate max-w-md">État des lieux validé sans dommage. Votre plafond a été restauré.</span>
-</div>
-</div>
-</td>
-<td class="px-4 py-4 whitespace-nowrap"><span class="font-label-sm text-label-sm text-on-surface-variant">Paiements & Caution</span></td>
-<td class="px-4 py-4 whitespace-nowrap font-body-sm text-body-sm text-on-surface-variant">Il y a 25 min</td>
-<td class="px-4 py-4 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-fixed text-primary font-label-sm text-label-sm font-bold"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>Non lue</span></td>
-<td class="px-4 py-4">
-<div class="flex items-center justify-end gap-1">
-<button class="w-8 h-8 rounded-lg text-primary hover:bg-primary-fixed flex items-center justify-center transition-colors" title="Voir en détail" type="button"><span class="material-symbols-outlined text-[18px]">visibility</span><span class="sr-only">Voir le reçu</span></button>
-<button class="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container flex items-center justify-center transition-colors" title="Marquer comme lu" type="button"><span class="material-symbols-outlined text-[18px]">done</span><span class="sr-only">Marquer lu</span></button>
-<button class="w-8 h-8 rounded-lg text-error hover:bg-error-container flex items-center justify-center transition-colors" title="Supprimer" type="button"><span class="material-symbols-outlined text-[18px]">delete</span><span class="sr-only">Supprimer</span></button>
-</div>
-</td>
-</tr>
-<!-- Ligne 2 : Réservation confirmée (non lue) -->
-<tr class="border-b border-outline-variant/20 bg-primary-fixed/10 hover:bg-surface-container-low/60 transition-colors">
-<td class="px-5 py-4">
-<div class="flex items-start gap-3">
-<div class="w-10 h-10 rounded-xl bg-secondary-fixed flex items-center justify-center text-secondary shrink-0"><span class="material-symbols-outlined text-[20px]">key</span></div>
-<div class="min-w-0">
-<span class="block font-label-md text-label-md font-bold text-on-surface">Réservation confirmée #ALP-8924</span>
-<span class="block font-body-sm text-body-sm text-on-surface-variant truncate max-w-md">Départ demain 08h30 au Hub AutoLink d'Akwa (Douala). Contrat prêt pour émargement.</span>
-</div>
-</div>
-</td>
-<td class="px-4 py-4 whitespace-nowrap"><span class="font-label-sm text-label-sm text-on-surface-variant">Réservations</span></td>
-<td class="px-4 py-4 whitespace-nowrap font-body-sm text-body-sm text-on-surface-variant">Il y a 2 heures</td>
-<td class="px-4 py-4 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-fixed text-primary font-label-sm text-label-sm font-bold"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>Non lue</span></td>
-<td class="px-4 py-4">
-<div class="flex items-center justify-end gap-1">
-<button class="w-8 h-8 rounded-lg text-primary hover:bg-primary-fixed flex items-center justify-center transition-colors" title="Voir en détail" type="button"><span class="material-symbols-outlined text-[18px]">visibility</span><span class="sr-only">Détail de la réservation</span></button>
-<button class="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container flex items-center justify-center transition-colors" title="Marquer comme lu" type="button"><span class="material-symbols-outlined text-[18px]">done</span><span class="sr-only">Marquer lu</span></button>
-<button class="w-8 h-8 rounded-lg text-error hover:bg-error-container flex items-center justify-center transition-colors" title="Supprimer" type="button"><span class="material-symbols-outlined text-[18px]">delete</span><span class="sr-only">Supprimer</span></button>
-</div>
-</td>
-</tr>
-<!-- Ligne 3 : Message Samuel Transport -->
-<tr class="border-b border-outline-variant/20 hover:bg-surface-container-low/60 transition-colors">
-<td class="px-5 py-4">
-<div class="flex items-start gap-3">
-<div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-on-surface-variant shrink-0"><span class="material-symbols-outlined text-[20px]">chat_bubble</span></div>
-<div class="min-w-0">
-<span class="block font-label-md text-label-md font-semibold text-on-surface">Nouveau message de Samuel Transport</span>
-<span class="block font-body-sm text-body-sm text-on-surface-variant truncate max-w-md">« Le véhicule a été nettoyé et le plein fait. Je vous attends demain. »</span>
-</div>
-</div>
-</td>
-<td class="px-4 py-4 whitespace-nowrap"><span class="font-label-sm text-label-sm text-on-surface-variant">Messagerie</span></td>
-<td class="px-4 py-4 whitespace-nowrap font-body-sm text-body-sm text-on-surface-variant">Hier à 18:30</td>
-<td class="px-4 py-4 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">Lue</span></td>
-<td class="px-4 py-4">
-<div class="flex items-center justify-end gap-1">
-<button class="w-8 h-8 rounded-lg text-primary hover:bg-primary-fixed flex items-center justify-center transition-colors" title="Répondre" type="button"><span class="material-symbols-outlined text-[18px]">reply</span><span class="sr-only">Répondre via la messagerie</span></button>
-<button class="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container flex items-center justify-center transition-colors" title="Marquer comme lu" type="button"><span class="material-symbols-outlined text-[18px]">done</span><span class="sr-only">Marquer lu</span></button>
-<button class="w-8 h-8 rounded-lg text-error hover:bg-error-container flex items-center justify-center transition-colors" title="Supprimer" type="button"><span class="material-symbols-outlined text-[18px]">delete</span><span class="sr-only">Supprimer</span></button>
-</div>
-</td>
-</tr>
-<!-- Ligne 4 : Inspection programmée -->
-<tr class="hover:bg-surface-container-low/60 transition-colors">
-<td class="px-5 py-4">
-<div class="flex items-start gap-3">
-<div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-800 shrink-0"><span class="material-symbols-outlined text-[20px]">event_available</span></div>
-<div class="min-w-0">
-<span class="block font-label-md text-label-md font-semibold text-on-surface">Inspection de départ programmée</span>
-<span class="block font-body-sm text-body-sm text-on-surface-variant truncate max-w-md">Rendez-vous demain 08h00 au Hub Akwa pour signature et remise des clés.</span>
-</div>
-</div>
-</td>
-<td class="px-4 py-4 whitespace-nowrap"><span class="font-label-sm text-label-sm text-on-surface-variant">Réservations</span></td>
-<td class="px-4 py-4 whitespace-nowrap font-body-sm text-body-sm text-on-surface-variant">Hier à 14:10</td>
-<td class="px-4 py-4 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">Lue</span></td>
-<td class="px-4 py-4">
-<div class="flex items-center justify-end gap-1">
-<button class="w-8 h-8 rounded-lg text-primary hover:bg-primary-fixed flex items-center justify-center transition-colors" title="Consulter" type="button"><span class="material-symbols-outlined text-[18px]">fact_check</span><span class="sr-only">Consulter le guide</span></button>
-<button class="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container flex items-center justify-center transition-colors" title="Marquer comme lu" type="button"><span class="material-symbols-outlined text-[18px]">done</span><span class="sr-only">Marquer lu</span></button>
-<button class="w-8 h-8 rounded-lg text-error hover:bg-error-container flex items-center justify-center transition-colors" title="Supprimer" type="button"><span class="material-symbols-outlined text-[18px]">delete</span><span class="sr-only">Supprimer</span></button>
-</div>
-</td>
-</tr>
+<tbody class="font-body-md text-body-md" id="notif-rows">
+${list.length ? list.map((n) => row(n, labels)).join('') : '<tr><td class="px-5 py-12 text-center text-on-surface-variant" colspan="5">Aucune notification pour le moment.</td></tr>'}
 </tbody>
 </table>
 </div>
 </div>
-<!-- Pagination -->
-<div class="mt-6 flex items-center justify-between text-on-surface-variant">
-<p class="font-body-sm text-body-sm">Affichage de <span class="font-semibold text-on-surface">4 notifications</span> sur un total de 14.</p>
-<div class="flex items-center gap-2">
-<button class="px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface-variant cursor-not-allowed font-label-sm text-label-sm" disabled="" type="button">Précédent</button>
-<button class="w-8 h-8 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm flex items-center justify-center" type="button">1</button>
-<button class="w-8 h-8 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm flex items-center justify-center transition-colors" type="button">2</button>
-<button class="px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm transition-colors" type="button">Suivant</button>
-</div>
-</div>
 </div>`;
-const LINKS = {
-  'Voir le reçu': '/client/wallet',
-  'Détail de la réservation': '/client/bookings/1',
-  'Répondre via la messagerie': '/messages',
-  'Consulter le guide': '/client/bookings/1',
 };
 
-export default function c8notifications({ role = 'client' }) {
-  return <DesignPage html={HTML} links={LINKS} role={role} />;
+export default function C8Notifications({ role = 'client' }) {
+  const { data } = useApiData(() => notificationsAPI.list(), []);
+  const html = useMemo(() => {
+    const items = data?.results || (Array.isArray(data) ? data : []) || [];
+    const unread = data?.unread ?? items.filter((n) => !n.is_read).length;
+    return buildHtml(items, unread, role);
+  }, [data, role]);
+
+  React.useEffect(() => {
+    const reload = () => window.location.reload();
+    const click = (e) => {
+      const read = e.target.closest('.notif-read');
+      const del = e.target.closest('.notif-del');
+      const open = e.target.closest('.notif-open');
+      if (e.target.closest('#mark-all-read')) {
+        notificationsAPI.readAll().then(reload).catch(() => {});
+      } else if (read) {
+        notificationsAPI.read(read.dataset.id).then(reload).catch(() => {});
+      } else if (del) {
+        notificationsAPI.remove(del.dataset.id).then(reload).catch(() => {});
+      } else if (open?.dataset.link) {
+        window.location.href = open.dataset.link;
+      }
+    };
+    document.addEventListener('click', click);
+    return () => document.removeEventListener('click', click);
+  }, []);
+
+  React.useEffect(() => {
+    const q = document.getElementById('notif-search');
+    const k = document.getElementById('notif-kind');
+    if (!q || !k) return undefined;
+    const filter = () => {
+      const needle = q.value.toLowerCase();
+      const kind = k.value;
+      const labels = role === 'driver' ? KIND_LABEL_DRIVER : KIND_LABEL;
+      document.querySelectorAll('#notif-rows tr').forEach((tr) => {
+        const text = tr.textContent.toLowerCase();
+        const cat = tr.querySelector('td:nth-child(2)')?.textContent || '';
+        const okKind = !kind || (labels[kind] && cat.includes(labels[kind]));
+        tr.style.display = text.includes(needle) && okKind ? '' : 'none';
+      });
+    };
+    q.addEventListener('input', filter); k.addEventListener('change', filter);
+    return () => { q.removeEventListener('input', filter); k.removeEventListener('change', filter); };
+  });
+
+  return <DesignPage html={html} links={{}} role={role} />;
 }

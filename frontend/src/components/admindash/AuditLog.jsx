@@ -2,8 +2,8 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScrollText, Wallet, ShieldCheck, Car, ArrowRight, MoreHorizontal } from 'lucide-react';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
-const fmtDate = d => { try { return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }); } catch (_) { return d || '—'; } };
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
+const fmtDate = d => { try { return new Date(d).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short' }); } catch (_) { return d || '—'; } };
 
 const STATUS = {
   pending:   { label: 'En attente', cls: 'bg-amber-100 text-amber-700' },
@@ -14,7 +14,7 @@ const STATUS = {
   disputed:  { label: 'Litige',     cls: 'bg-red-100 text-red-600' },
 };
 
-const timeOf = iso => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+const timeOf = iso => new Date(iso).toLocaleTimeString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { hour: '2-digit', minute: '2-digit' });
 
 /* « Réservations récentes » — tableau style Recent Orders (maquette). */
 export function RecentBookings({ bookings = [] }) {

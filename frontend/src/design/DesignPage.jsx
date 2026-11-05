@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import i18n from '../i18n';
+import translateDom, { observeDom } from '../i18n/translateDom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DesignShell from './DesignShell';
 
@@ -26,6 +28,7 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
     };
     // Texte visible SANS les noms des icônes Material Symbols
     const text = (el) => {
+      if (!el) return '';
       const c = el.cloneNode(true);
       c.querySelectorAll('.material-symbols-outlined').forEach((s) => s.remove());
       return c.textContent.replace(/\s+/g, ' ').trim();
@@ -69,29 +72,49 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
       }
     });
 
-    // 2c) Modale rechargement : "Continuer vers la validation" -> simulation USSD puis succès
-    root.querySelectorAll('button').forEach((el) => {
-      if (text(el).includes('Continuer vers la validation')) {
-        on(el, () => {
-          el.disabled = true;
-          el.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">refresh</span><span>Prompt USSD envoyé au +237 670 •• •• 90...</span>';
-          setTimeout(() => {
-            el.innerHTML = '<span class="material-symbols-outlined text-[18px]">check_circle</span><span>Paiement approuvé par Mobile Money !</span>';
-            setTimeout(() => { setModalOpen(false); }, 1600);
-          }, 1800);
-        });
+    // 2c) Modale rechargement : appel API réel POST /payments/wallet/topup/
+    const doTopup = async (el) => {
+      if (el.disabled) return;
+      el.disabled = true;
+      const orig = el.innerHTML;
+      const fail = (msg) => {
+        el.innerHTML = `<span class="material-symbols-outlined text-[18px]">error</span><span>${msg}</span>`;
+        setTimeout(() => { el.innerHTML = orig; el.disabled = false; }, 2500);
+      };
+      // Montant : première source > 0 parmi champ perso, pilule, cta
+      const num = (v) => parseInt(String(v || '0').replace(/\D/g, ''), 10) || 0;
+      const activePill = root.querySelector('.amount-pill.bg-primary, .amount-pill[data-active="1"]');
+      const amount = num(root.querySelector('#custom-amount-input')?.value)
+        || num(activePill?.textContent)
+        || num(text(root.querySelector('#cta-amount')));
+      const checked = root.querySelector('input[type="radio"]:checked');
+      const methodV = (checked?.value || 'mtn').toLowerCase();
+      if (methodV === 'visa' || methodV === 'card') return fail('Paiement par carte bientôt disponible');
+      if (!amount || amount < 500) return fail('Montant minimum : 500 FCFA');
+      const method = methodV.includes('orange') || methodV === 'om' ? 'orange' : 'mtn';
+      const phone = root.querySelector('#phone-number-field input, input[name*="phone"], input[type="tel"]')?.value || '';
+      if (!phone.replace(/\D/g, '')) return fail('Numéro Mobile Money requis');
+      el.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">refresh</span><span>Envoi de la demande...</span>';
+      try {
+        const { walletAPI } = await import('../services/api');
+        const res = await walletAPI.topup(amount, method, phone.replace(/\D/g, ''));
+        const st = res?.data?.status;
+        if (st === 'completed') {
+          el.innerHTML = '<span class="material-symbols-outlined text-[18px]">check_circle</span><span>Solde rechargé !</span>';
+          setTimeout(() => { setModalOpen(false); window.location.reload(); }, 1200);
+        } else {
+          el.innerHTML = '<span class="material-symbols-outlined text-[18px]">send</span><span>Validez sur votre téléphone (USSD)...</span>';
+          setTimeout(() => { setModalOpen(false); }, 2500);
+        }
+      } catch (err) {
+        const d = err?.response?.data;
+        const msg = d?.detail || (d ? Object.values(d)[0]?.[0] || Object.values(d)[0] : null) || 'Recharge impossible';
+        fail(typeof msg === 'string' ? msg : 'Recharge impossible');
       }
-      // "Recharger maintenant" (C5 inline) -> même simulation puis modale fermée si ouverte
-      if (text(el).includes('Recharger maintenant')) {
-        on(el, () => {
-          el.disabled = true;
-          const orig = el.innerHTML;
-          el.innerHTML = '<span class="material-symbols-outlined text-[20px] animate-spin">refresh</span><span>Demande USSD envoyée...</span>';
-          setTimeout(() => {
-            el.innerHTML = '<span class="material-symbols-outlined text-[20px]">check</span><span>Approuvé par Mobile Money !</span>';
-            setTimeout(() => { el.innerHTML = orig; el.disabled = false; }, 2200);
-          }, 1500);
-        });
+    };
+    root.querySelectorAll('button').forEach((el) => {
+      if (text(el).includes('Continuer vers la validation') || text(el).includes('Recharger maintenant')) {
+        on(el, () => doTopup(el));
       }
     });
 
@@ -302,7 +325,7 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
     });
 
     // 4) Montants de recharge (pastilles + input personnalisé)
-    const fmt = (n) => `${Number(n).toLocaleString('fr-FR')} FCFA`;
+    const fmt = (n) => `${Number(n).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} FCFA`;
     const updateAmount = (val) => {
       const display = root.querySelector('#display-amount'); if (display) display.textContent = val.replace(' FCFA', '');
       const cta = root.querySelector('#cta-amount'); if (cta) cta.textContent = val.replace(' FCFA', '');
@@ -322,6 +345,18 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
         const m = text(pill).match(/([\d\s]+)/);
         if (m) updateAmount(`${m[1].trim()} FCFA`);
         else updateAmount('Autre');
+      });
+    });
+    // Libelle du champ numero selon le moyen choisi (MoMo / OM)
+    root.querySelectorAll('input[name="payment_method"]').forEach((radio) => {
+      on(radio, () => {
+        const lbl = root.querySelector('#phone-number-field label');
+        if (lbl) {
+          const v = (radio.value || '').toLowerCase();
+          lbl.textContent = v.includes('orange') || v === 'om'
+            ? 'Numéro de compte Orange Money à débiter'
+            : 'Numéro de compte Mobile Money à débiter';
+        }
       });
     });
     const customInput = root.querySelector('#custom-amount-input');
@@ -405,7 +440,7 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
     // 9) Boutons d'impression / téléchargement → boîte d'impression navigateur (démo)
     root.querySelectorAll('a, button').forEach((el) => {
       const t = text(el);
-      if (/^(Imprimer|Télécharger|Relevé PDF|Exporter CSV|Format PDF|Factures\b)/.test(t) || t === 'download') {
+      if (/^(Imprimer|Télécharger|Relevé PDF|Exporter CSV|Format PDF)/.test(t) || t === 'download') {
         el.style.cursor = 'pointer';
         on(el, (e) => { e.preventDefault(); window.print(); });
       }
@@ -433,13 +468,24 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
 
   useEffect(() => {
     if (!ref.current) return undefined;
-    return wire(ref.current);
+    const cleanup = wire(ref.current);
+    translateDom(ref.current);
+    const stop = observeDom(ref.current);
+    return () => { cleanup(); stop(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [html]);
 
   useEffect(() => {
+    const onLang = () => { if (ref.current) translateDom(ref.current); if (modalRef.current) translateDom(modalRef.current); };
+    i18n.on('languageChanged', onLang);
+    return () => i18n.off('languageChanged', onLang);
+  }, []);
+
+  useEffect(() => {
     if (!modalOpen || !modalRef.current) return undefined;
-    return wire(modalRef.current);
+    const cleanup = wire(modalRef.current);
+    translateDom(modalRef.current);
+    return cleanup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modalOpen]);
 

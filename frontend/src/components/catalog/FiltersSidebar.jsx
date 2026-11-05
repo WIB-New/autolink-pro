@@ -130,9 +130,9 @@ export default function FiltersSidebar({ vehicles, filters, setFilters, activeCo
           onChange={e => setFilters(f => ({ ...f, priceMax: Number(e.target.value) }))}
           className="w-full accent-teal-600" />
         <div className="flex justify-between text-[11px] font-semibold text-slate-500 mt-1">
-          <span>{PRICE_MIN.toLocaleString('fr-FR')} FCFA</span>
+          <span>{PRICE_MIN.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} FCFA</span>
           <span className="text-teal-700 font-black">
-            {filters.priceMax >= PRICE_MAX ? `${PRICE_MAX.toLocaleString('fr-FR')}+` : filters.priceMax.toLocaleString('fr-FR')} FCFA
+            {filters.priceMax >= PRICE_MAX ? `${PRICE_MAX.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))}+` : filters.priceMax.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} FCFA
           </span>
         </div>
       </FilterGroup>

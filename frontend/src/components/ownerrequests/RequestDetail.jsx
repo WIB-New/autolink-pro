@@ -3,7 +3,7 @@ import { Phone, Mail, MapPin, StickyNote, UserCheck, CheckCircle2, AlertTriangle
 import { STATUS, DRIVER_LABEL } from './RequestCard';
 import { COMMISSION_LABEL, ownerNet } from '../../utils/commission';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 
 const Row = ({ icon: Icon, children }) => (
   <div className="flex items-start gap-2.5 text-[11px] text-slate-600">

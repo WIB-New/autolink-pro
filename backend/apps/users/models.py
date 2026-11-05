@@ -36,6 +36,10 @@ class User(AbstractUser):
     city = models.CharField(max_length=80, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
     address = models.TextField(blank=True)
+    referral_code = models.CharField(max_length=20, blank=True, default='')
+    referred_by = models.ForeignKey(
+        'self', null=True, blank=True, on_delete=models.SET_NULL, related_name='referrals')
+    referral_credits = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -122,6 +126,8 @@ class Notification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     title = models.CharField(max_length=150)
     message = models.TextField()
+    kind = models.CharField(max_length=30, default='general')
+    link = models.CharField(max_length=255, blank=True, default='')
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 

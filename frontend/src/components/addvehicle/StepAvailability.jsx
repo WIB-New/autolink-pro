@@ -6,7 +6,7 @@ import {
 import { fleetImage } from '../ownerfleet/FleetCard';
 import { OWNER_SHARE, COMMISSION_LABEL } from '../../utils/commission';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
 const Toggle = ({ on, onChange }) => (

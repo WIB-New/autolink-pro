@@ -5,7 +5,7 @@ import {
   CheckCircle2, Save, Plus, ShieldCheck, User,
 } from 'lucide-react';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 
 const GAMMES = [
   { tier: 'Économique', name: 'Citadine Agile', ex: 'Toyota Yaris, Kia Picanto, Hyundai i10', min: 20000, max: 35000, caution: 80000 },

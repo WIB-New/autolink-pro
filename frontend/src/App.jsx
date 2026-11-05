@@ -1,7 +1,9 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import i18n from './i18n';
+import translateDom, { observeDom } from './i18n/translateDom';
 
 import Landing from './pages/Landing';
 import Catalog from './pages/Catalog';
@@ -81,6 +83,7 @@ import D6 from './design/c6_favoris';
 import D7 from './design/c7_messagerie';
 import D9 from './design/c9_profil_et_param_tres';
 import D10 from './design/c10_aide';
+import D11 from './design/c11_vehicule_detail';
 import Referrals from './design/Referrals';
 import DesignIndex from './design/DesignIndex';
 
@@ -106,8 +109,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
-      <Route path="/Nos-vehicules" element={<Catalog />} />
-      <Route path="/vehicule/:id" element={<VehicleDetail />} />
+      <Route path="/catalogue" element={<Catalog />} />
+      <Route path="/client/vehicule/:id" element={<Guard roles={['CLIENT']}><D11 /></Guard>} />
       <Route path="/comment-ca-marche" element={<HowItWorks />} />
       <Route path="/tarifs" element={<Pricing />} />
       <Route path="/aide" element={<Help />} />
@@ -178,11 +181,27 @@ function AppRoutes() {
   );
 }
 
+function GlobalTranslate() {
+  const { pathname } = useLocation();
+  React.useEffect(() => {
+    translateDom(document.body);
+    const stop = observeDom(document.body);
+    return stop;
+  }, [pathname]);
+  React.useEffect(() => {
+    const onLang = () => translateDom(document.body);
+    i18n.on('languageChanged', onLang);
+    return () => i18n.off('languageChanged', onLang);
+  }, []);
+  return null;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
         <Router>
+          <GlobalTranslate />
           <AppRoutes />
         </Router>
       </AuthProvider>

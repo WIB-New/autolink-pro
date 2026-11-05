@@ -1,7 +1,7 @@
 import React from 'react';
 import { Wallet, ShieldCheck, Smartphone } from 'lucide-react';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 
 /* Décomposition financière — total client, commission, net bailleur, caution. */
 export default function FinancePanel({ booking: b }) {

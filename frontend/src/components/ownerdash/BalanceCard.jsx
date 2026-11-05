@@ -6,7 +6,7 @@ import { Banknote, ArrowUpRight } from 'lucide-react';
 /* Carte accent « Solde disponible » — sparkline + montant + CTA retrait (maquette). */
 export default function BalanceCard({ available = 0, pending = 0, total = 0, spark = [] }) {
   const navigate = useNavigate();
-  const fmt = n => Math.round(n).toLocaleString('fr-FR');
+  const fmt = n => Math.round(n).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
   return (
     <div className="bg-gradient-to-br from-teal-600 to-teal-800 rounded-2xl shadow-sm p-5 text-white flex flex-col">
       <div className="flex items-center justify-between mb-2">

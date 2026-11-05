@@ -6,8 +6,8 @@ import {
 } from 'lucide-react';
 import { CATALOG_VEHICLES, getVehicleImage } from '../../utils/carImages';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
-const fmtDate = d => { try { return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }); } catch (_) { return '—'; } };
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
+const fmtDate = d => { try { return new Date(d).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short' }); } catch (_) { return '—'; } };
 
 const TIER_BADGE = { gold: 'Prestige Gold VIP', premium: 'Prestige Premium', collection: 'Super Luxe VIP' };
 const QUARTIERS = { Douala: ['Akwa', 'Bonanjo', 'Deïdo', 'Bonapriso'], 'Yaoundé': ['Bastos', 'Centre-ville', 'Nlongkak'] };

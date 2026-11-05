@@ -13,7 +13,7 @@ export default function InternalNotes({ vehicle: v }) {
 
   const add = () => {
     if (!text.trim()) return;
-    setNotes(n => [...n, { by: `${user?.first_name || 'Admin'} — Opérateur`, at: new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }), txt: text.trim() }]);
+    setNotes(n => [...n, { by: `${user?.first_name || 'Admin'} — Opérateur`, at: new Date().toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }), txt: text.trim() }]);
     setText('');
   };
 

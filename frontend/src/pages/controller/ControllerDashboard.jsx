@@ -46,7 +46,7 @@ export default function ControllerDashboard() {
 
         {/* Today's tasks */}
         <div className="card">
-          <h3 className="font-bold text-slate-900 mb-5">Programme du jour — {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+          <h3 className="font-bold text-slate-900 mb-5">Programme du jour — {new Date().toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
           <div className="space-y-4">
             {TODAY_TASKS.sort((a, b) => a.time.localeCompare(b.time)).map(task => (
               <div key={task.id} className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${task.priority === 'high' ? 'border-primary-200 bg-primary-50' : 'border-slate-100 bg-white'}`}>

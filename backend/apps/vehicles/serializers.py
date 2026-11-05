@@ -46,6 +46,13 @@ class VehicleMediaUploadSerializer(serializers.ModelSerializer):
 
 
 class VehicleSerializer(serializers.ModelSerializer):
+    is_favorite = serializers.SerializerMethodField()
+
+    def get_is_favorite(self, obj):
+        user = self.context.get('request').user if self.context.get('request') else None
+        if not user or not user.is_authenticated:
+            return False
+        return obj.favorites.filter(user=user).exists()
     photos = VehiclePhotoSerializer(many=True, read_only=True)
     owner_name = serializers.SerializerMethodField()
     price_min = serializers.ReadOnlyField()
@@ -57,7 +64,7 @@ class VehicleSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['owner', 'tier', 'computed_rate', 'deposit_amount', 'km_included_per_day',
                             'extra_km_rate', 'total_bookings', 'total_earned',
-                            'rating', 'rating_count', 'created_at', 'updated_at']
+                            'rating', 'rating_count', 'is_favorite', 'created_at', 'updated_at']
 
     def get_owner_name(self, obj):
         return obj.owner.get_full_name()

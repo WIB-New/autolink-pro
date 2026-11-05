@@ -320,6 +320,22 @@ class WalletViewSet(viewsets.ViewSet):
         if method in ('mtn', 'orange'):
             configured = providers.mtn_configured() if method == 'mtn' else providers.orange_configured()
             if not configured:
+                # Mode démo : sans credentials provider réels, on crédite directement
+                # (comportement sandbox — à retirer/flaguer en production).
+                if settings.DEBUG:
+                    phone = serializer.validated_data.get('phone') or request.user.phone or ''
+                    tx = WalletTransaction.objects.create(
+                        user=request.user, kind='topup', method=method, amount=amount,
+                        balance_after=(request.user.balance or 0) + amount,
+                        reference=ref, status='completed',
+                        note=f'Recharge {method.upper()} (sandbox) — {phone}',
+                    )
+                    request.user.balance = (request.user.balance or 0) + amount
+                    request.user.save(update_fields=['balance'])
+                    return Response({
+                        'reference': ref, 'status': 'completed', 'sandbox': True,
+                        'transaction': WalletTransactionSerializer(tx).data,
+                    }, status=200)
                 return Response({'detail': 'Moyen de paiement non configuré.'}, status=503)
             phone = serializer.validated_data.get('phone')
             if not phone:

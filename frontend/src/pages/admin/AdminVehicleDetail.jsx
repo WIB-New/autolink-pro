@@ -126,7 +126,7 @@ export default function AdminVehicleDetail() {
           <div>
             <div className="text-sm font-black">Statut : {band.label}</div>
             <div className="text-[10px] opacity-80">
-              Soumis le {v.created_at ? new Date(v.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '24 Oct 2025'} par {v.owner_name || 'le bailleur'} — Partenaire Flotte Certifié
+              Soumis le {v.created_at ? new Date(v.created_at).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short', year: 'numeric' }) : '24 Oct 2025'} par {v.owner_name || 'le bailleur'} — Partenaire Flotte Certifié
             </div>
           </div>
         </div>

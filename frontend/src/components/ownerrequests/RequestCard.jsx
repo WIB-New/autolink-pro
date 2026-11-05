@@ -3,8 +3,8 @@ import { MapPin, Phone, UserCheck } from 'lucide-react';
 import { fleetImage } from '../ownerfleet/FleetCard';
 import { ownerNet } from '../../utils/commission';
 
-const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
-const fmtDate = d => { try { return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }); } catch (_) { return '—'; } };
+const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
+const fmtDate = d => { try { return new Date(d).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short', year: 'numeric' }); } catch (_) { return '—'; } };
 
 export const STATUS = {
   pending:   { label: 'En attente de paiement', cls: 'bg-amber-50 text-amber-700' },
