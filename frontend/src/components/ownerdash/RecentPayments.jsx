@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wallet, ArrowDownLeft, Clock, ArrowRight } from 'lucide-react';
+import { ownerNet } from '../../utils/commission';
 
 const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
 const timeOf = iso => { try { return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }); } catch (_) { return '—'; } };
@@ -16,7 +17,7 @@ export default function RecentPayments({ bookings = [] }) {
       done: b.status === 'completed',
       title: `BK-${String(b.id).padStart(4, '0')} · ${b.client_name || 'Client'}`,
       sub: timeOf(b.end_date || b.created_at),
-      amount: Number(b.owner_amount || b.total_price || 0) * 0.85,
+      amount: ownerNet(b),
     })), [bookings]);
 
   return (

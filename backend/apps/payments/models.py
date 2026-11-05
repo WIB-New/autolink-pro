@@ -62,7 +62,7 @@ class Payment(models.Model):
         return f'PAY-{self.pk:04d} — {self.amount} FCFA ({self.status})'
 
     def release_escrow(self):
-        """Fin de location sans litige : verse les 50% au propriétaire."""
+        """Fin de location sans litige : verse sa part (85 %) au propriétaire."""
         from django.utils import timezone
         from django.db import transaction as db_transaction
         if self.escrow_status != self.Escrow.HELD:

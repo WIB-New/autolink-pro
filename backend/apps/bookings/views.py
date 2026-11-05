@@ -309,7 +309,7 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     def _pay(self, booking, method):
         """Encaisse le client : location + caution de garantie.
-        Séquestre 50 % proprio + caution client bloqués jusqu'à la fin."""
+        Séquestre part proprio (85 %) + caution client bloqués jusqu'à la fin."""
         from apps.payments.models import Payment, WalletTransaction
         import uuid
         deposit = booking.deposit_amount or 0

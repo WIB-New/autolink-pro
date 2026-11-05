@@ -27,8 +27,6 @@ INSTALLED_APPS = [
     'apps.payments',
     'apps.drivers',
     'apps.inspections',
-    'apps.affiliates',
-    'apps.messaging',
 ]
 
 MIDDLEWARE = [
@@ -48,7 +46,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'apps' / 'users' / 'templates'],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -115,9 +113,6 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
     ],
     'DEFAULT_PAGINATION_CLASS': 'config.pagination.StandardPagination',
-    'DEFAULT_THROTTLE_RATES': {
-        'contact': '5/min',
-    },
 }
 
 from datetime import timedelta
@@ -129,14 +124,12 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000').split(',')
 CORS_ALLOW_CREDENTIALS = True
 
-COMMISSION_RATE = config('COMMISSION_RATE', default=0.50, cast=float)
-DRIVER_SHARE_RATE = config('DRIVER_SHARE_RATE', default=0.10, cast=float)
+COMMISSION_RATE = config('COMMISSION_RATE', default=0.15, cast=float)
 
 # ─── Paiements externes (LIVE) ────────────────────────────────────────────────
 # Les secrets ne sont JAMAIS commités : ils viennent des variables d'env (.env
 # local non versionné / variables Dokploy en production).
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
-CONTACT_EMAIL = config('CONTACT_EMAIL', default='wibchallenge@gmail.com')
 FCFA_PER_USD = config('FCFA_PER_USD', default=600, cast=int)  # conversion PayPal
 
 STRIPE_API_KEY = config('STRIPE_API_KEY', default='')
@@ -146,22 +139,6 @@ PAYPAL_CLIENT_ID = config('PAYPAL_CLIENT_ID', default='')
 PAYPAL_CLIENT_SECRET = config('PAYPAL_CLIENT_SECRET', default='')
 PAYPAL_MODE = config('PAYPAL_MODE', default='sandbox')  # 'live' | 'sandbox'
 PAYPAL_PAYOUTS_ENABLED = config('PAYPAL_PAYOUTS_ENABLED', default=False, cast=bool)
-
-MTN_MOMO_SUBSCRIPTION_KEY = config('MTN_MOMO_SUBSCRIPTION_KEY', default='')
-MTN_MOMO_API_USER = config('MTN_MOMO_API_USER', default='')
-MTN_MOMO_API_KEY = config('MTN_MOMO_API_KEY', default='')
-MTN_MOMO_TARGET_ENV = config('MTN_MOMO_TARGET_ENV', default='sandbox')
-MTN_MOMO_BASE_URL = config('MTN_MOMO_BASE_URL', default='https://sandbox.momodeveloper.mtn.com')
-MTN_MOMO_CURRENCY = config('MTN_MOMO_CURRENCY', default='EUR')
-
-ORANGE_CLIENT_ID = config('ORANGE_CLIENT_ID', default='')
-ORANGE_CLIENT_SECRET = config('ORANGE_CLIENT_SECRET', default='')
-ORANGE_MERCHANT_KEY = config('ORANGE_MERCHANT_KEY', default='')
-ORANGE_OM_BASE_URL = config('ORANGE_OM_BASE_URL', default='https://api.orange.com/orange-money-webpay/dev/v1')
-ORANGE_OM_CURRENCY = config('ORANGE_OM_CURRENCY', default='OUV')
-
-# ─── Site URL (for email templates and links) ───────────────────────────────────
-SITE_URL = config('SITE_URL', default='https://autolink-pro.worldwide-international.business')
 
 # ─── Email (codes de connexion OTP, notifications) ────────────────────────────
 # Dev : console (le code s'affiche dans les logs). Prod : configurez le SMTP
@@ -177,45 +154,3 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config(
     'DEFAULT_FROM_EMAIL',
     default='AutoLink Pro <no-reply@autolink-pro.worldwide-international.business>')
-
-
-# ─── Logs ────────────────────────────────────────────────────────────────────
-# Tout part sur stdout/stderr : visible dans les logs du conteneur (Dokploy).
-# Les erreurs 500 (django.request) remontent avec leur traceback complet.
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {name} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': 'WARNING',
-    },
-    'loggers': {
-        'django.request': {
-            'handlers': ['console'],
-            'level': 'ERROR',
-            'propagate': False,
-        },
-        'django.db.backends': {
-            'handlers': ['console'],
-            'level': 'WARNING',
-            'propagate': False,
-        },
-        'apps': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-    },
-}

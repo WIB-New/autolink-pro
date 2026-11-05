@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import {
   PublicNavbar, Hero, Standings, Fleet, Formules, Steps,
-  Why, StatsBand, Testimonials, PartnerCta, Faq, Footer,
+  Why, StatsBand, Testimonials, PartnerCta, DriverCta, Faq, Footer,
 } from '../components/landing';
 import PromoPopup from '../components/PromoPopup';
 
@@ -30,6 +30,7 @@ export default function Landing() {
       <StatsBand />
       <Testimonials />
       <PartnerCta />
+      <DriverCta />
       <Faq />
       <Footer />
       <PromoPopup />

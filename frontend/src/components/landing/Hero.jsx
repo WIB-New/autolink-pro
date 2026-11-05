@@ -21,7 +21,7 @@ export default function Hero() {
   }, []);
 
   return (
-    <section id="accueil" className="relative pt-28 lg:pt-36 pb-20">
+    <section id="accueil" className="relative pt-24 lg:pt-36 pb-8 lg:pb-24">
       {/* Carrousel plein écran — couvre toute la hauteur et largeur de la section */}
       <div className="absolute inset-0">
         {SLIDES.map((src, i) => (
@@ -42,29 +42,29 @@ export default function Hero() {
       </div>
 
       {/* Contenu du hero centré */}
-      <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center min-h-[60vh] justify-center">
+      <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center min-h-[42vh] lg:min-h-[60vh] justify-center">
         <div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white leading-tight mb-6">
+          <h1 className="text-3xl sm:text-4xl lg:text-6xl font-black text-white leading-tight mb-5 lg:mb-6">
             Louez un véhicule <span className="text-teal-400">vérifié</span>{' '}
-            à Douala &amp; Yaoundé
+            àu cameroun
           </h1>
-          <p className="text-lg text-slate-200 leading-relaxed mb-8 max-w-2xl mx-auto">
+          <p className="text-base lg:text-lg text-slate-200 leading-relaxed mb-6 lg:mb-8 max-w-2xl mx-auto">
             Fini les mauvaises surprises : chaque véhicule est inspecté avant votre
             départ et chaque chauffeur est certifié. Du trajet professionnel au
             week-end en famille, roulez l'esprit tranquille, avec une équipe à votre écoute à toute heure.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-200">
-            {['Annulation gratuite 24h avant', 'Chauffeurs certifiés', 'Assurance incluse'].map(t => (
-              <span key={t} className="flex items-center gap-2">
-                <CheckCircle size={16} className="text-teal-400" />
+          <div className="flex flex-wrap items-center justify-center gap-3 lg:gap-6 text-xs lg:text-sm text-slate-200">
+            {['Chauffeurs certifiés', 'Assurance incluse'].map(t => (
+              <span key={t} className="flex items-center gap-1.5 lg:gap-2">
+                <CheckCircle size={14} className="text-teal-400" />
                 {t}
               </span>
             ))}
           </div>
         </div>
 
-        {/* Indicateurs du carrousel positionnés discrètement en bas */}
-        <div className="absolute bottom-16 flex items-center gap-2">
+        {/* Indicateurs du carrousel — desktop uniquement (le widget est dans le flux sur mobile) */}
+        <div className="absolute bottom-16 hidden lg:flex items-center gap-2">
           {SLIDES.map((_, i) => (
             <button
               key={i}
@@ -76,8 +76,9 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Barre de recherche : centrée sur le bord inférieur du hero */}
-      <div className="absolute inset-x-0 bottom-0 z-20 translate-y-1/2 px-4">
+      {/* Barre de recherche : dans le flux sur mobile (sous le contenu),
+          chevauchement élégant du bord inférieur sur desktop */}
+      <div className="relative lg:absolute lg:inset-x-0 lg:bottom-0 z-20 lg:translate-y-1/2 px-4 mt-10 lg:mt-0">
         <div className="max-w-6xl mx-auto">
           <SearchWidget />
         </div>

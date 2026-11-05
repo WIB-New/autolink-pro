@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import ContactMessage, NewsletterCampaign, PlatformSettings, User
+from .models import User, Agent
 
 
 @admin.register(User)
@@ -9,24 +9,13 @@ class UserAdmin(BaseUserAdmin):
     list_filter = ['role', 'is_verified', 'is_active']
     search_fields = ['username', 'email', 'first_name', 'last_name', 'phone']
     fieldsets = BaseUserAdmin.fieldsets + (
-        ('AutoLink Info', {'fields': ('role', 'phone', 'avatar', 'is_verified', 'newsletter_opt_in', 'id_document', 'id_document_verified', 'driving_license', 'driving_license_expires_at', 'kyc_status', 'kyc_note', 'city', 'date_of_birth', 'address')}),
+        ('AutoLink Info', {'fields': ('role', 'phone', 'avatar', 'is_verified', 'id_document', 'id_document_verified', 'date_of_birth', 'address')}),
     )
 
 
-@admin.register(ContactMessage)
-class ContactMessageAdmin(admin.ModelAdmin):
-    list_display = ['last_name', 'first_name', 'phone', 'email', 'rental_type', 'created_at', 'is_handled']
-    list_filter = ['is_handled', 'rental_type', 'created_at']
-    search_fields = ['last_name', 'first_name', 'phone', 'email', 'message']
-
-
-@admin.register(NewsletterCampaign)
-class NewsletterCampaignAdmin(admin.ModelAdmin):
-    list_display = ['subject', 'sent_at', 'recipients_count', 'sent_by']
-    search_fields = ['subject', 'body']
-    ordering = ['-sent_at']
-
-
-@admin.register(PlatformSettings)
-class PlatformSettingsAdmin(admin.ModelAdmin):
-    list_display = ['__str__', 'commission_rate', 'min_withdrawal_amount', 'maintenance_mode', 'updated_at']
+@admin.register(Agent)
+class AgentAdmin(admin.ModelAdmin):
+    list_display = ('code', 'name', 'type', 'phone', 'rate', 'active', 'conversions', 'commission')
+    list_filter = ('type', 'active')
+    search_fields = ('code', 'name', 'phone')
+    readonly_fields = ('code', 'conversions', 'total_amount', 'commission')

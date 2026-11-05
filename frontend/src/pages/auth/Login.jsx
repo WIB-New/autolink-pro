@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import {
   Lock, Eye, EyeOff, AlertCircle, ArrowRight,
@@ -20,6 +20,13 @@ export default function Login() {
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Session expirée → message explicite avant reconnexion
+  useEffect(() => {
+    if (params.get('session') === 'expired') {
+      setError('Votre session a expiré — veuillez vous reconnecter.');
+    }
+  }, [params]);
 
   // Méthode : 'password' | 'code' (connexion par code email/SMS) — ?otp=1
   const [method, setMethod] = useState(params.get('otp') === '1' ? 'code' : 'password');

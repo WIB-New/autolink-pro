@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import AdminLayout from '../../components/admindash/AdminLayout';
 import { usersAPI, vehiclesAPI, bookingsAPI } from '../../services/api';
 import { getVehicleImage } from '../../utils/carImages';
+import { vehicleCover } from '../../utils/media';
 import {
   Phone, MessageCircle, CheckCircle2, ShieldCheck,
   FileText, Wallet, Lock, Send, Loader, Eye, ArrowLeft,
@@ -172,7 +173,7 @@ export default function AdminPartnerDetail() {
                     <tr key={v.id} className="hover:bg-slate-50/60">
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2.5">
-                          <img src={v.image_url || getVehicleImage(v.category)} alt="" className="w-12 h-9 rounded-lg object-cover bg-slate-100" />
+                          <img src={vehicleCover(v) || v.image_url || getVehicleImage(v.category)} alt="" className="w-12 h-9 rounded-lg object-cover bg-slate-100" />
                           <div className="text-[11px] font-bold text-slate-800">{v.brand} {v.model} {v.year}</div>
                         </div>
                       </td>

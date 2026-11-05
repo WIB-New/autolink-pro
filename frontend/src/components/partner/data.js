@@ -18,7 +18,7 @@ export const SIM_GAMMES = [
   { id: 'premium',  label: 'SUV — Premium',       dayPrice: 55000 },
   { id: 'gold',     label: 'Prestige — Gold',     dayPrice: 95000 },
 ];
-export const OWNER_SHARE = 0.85; // 85 % pour le propriétaire
+export { OWNER_SHARE } from '../../utils/commission';
 
 /* ── 4 étapes partenaire ─────────────────────────────── */
 export const PARTNER_STEPS = [

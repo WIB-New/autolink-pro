@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import AutoLinkLogo from '../AutoLinkLogo';
+import { NotificationsBell } from '../DashboardLayout';
 import {
-  LayoutDashboard, Car, FileText, Wallet, MessageSquare, Bell,
+  LayoutDashboard, Car, FileText, Wallet,
   Settings, LogOut, Menu, X, ArrowRightLeft, PlusSquare,
   ChevronDown, User,
 } from 'lucide-react';
@@ -12,10 +13,8 @@ const NAV = [
   { icon: LayoutDashboard, label: 'Tableau de bord',      path: '/owner/dashboard' },
   { icon: Car,             label: 'Mes véhicules',        path: '/owner/vehicles' },
   { icon: PlusSquare,      label: 'Ajouter un véhicule',  path: '/owner/add-vehicle' },
-  { icon: FileText,        label: 'Demandes de location', path: '/owner/requests', badge: 'demandes' },
+  { icon: FileText,        label: 'Réservations',         path: '/owner/requests', badge: 'demandes' },
   { icon: Wallet,          label: 'Revenus & Finances',   path: '/owner/revenue' },
-  { icon: MessageSquare,   label: 'Messagerie',           path: '/owner/dashboard', badge: 'messages', passive: true },
-  { icon: Bell,            label: 'Notifications',        path: '/owner/dashboard', passive: true },
   { icon: Settings,        label: 'Profil & Paramètres',  path: '/settings' },
 ];
 
@@ -46,9 +45,9 @@ export default function OwnerLayout({ children, badges = {}, balance = null }) {
       {mini && <div className="pt-3" />}
 
       <nav className={`flex-1 space-y-3 overflow-y-auto ${mini ? 'px-2' : 'px-3'}`}>
-        {NAV.map(({ icon: Icon, label, path, badge, passive }) => {
+        {NAV.map(({ icon: Icon, label, path, badge }) => {
           const count = badge ? badges[badge] || 0 : 0;
-          const active = !passive && (pathname === path || (path !== '/owner/dashboard' && pathname.startsWith(path + '/')));
+          const active = pathname === path || (path !== '/owner/dashboard' && pathname.startsWith(path + '/'));
           return (
             <Link key={label} to={path} onClick={() => { setOpen(false); setCollapsed(true); }} title={mini ? label : undefined}
               className={`relative flex items-center rounded-xl text-sm font-semibold transition-all ${mini ? 'justify-center px-0 py-3' : 'gap-3 px-3.5 py-2.5'} ${active ? 'bg-teal-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
@@ -101,10 +100,7 @@ export default function OwnerLayout({ children, badges = {}, balance = null }) {
             <button onClick={() => setOpen(true)} className="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100"><Menu size={20} /></button>
           </div>
           <div className="flex items-center gap-3 mr-1 sm:mr-3">
-            <button className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors">
-              <Bell size={18} />
-              {badges.demandes > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />}
-            </button>
+            <NotificationsBell />
 
             {/* Avatar + dropdown profil */}
             <div className="relative">
@@ -123,7 +119,7 @@ export default function OwnerLayout({ children, badges = {}, balance = null }) {
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
                   <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-100 rounded-2xl shadow-lg py-2 z-20">
-                    <button onClick={() => { navigate('/catalogue'); setMenuOpen(false); }}
+                    <button onClick={() => { navigate('/Nos-vehicules'); setMenuOpen(false); }}
                       className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
                       <ArrowRightLeft size={14} className="text-teal-600" /> Mode Client
                     </button>

@@ -57,7 +57,7 @@ export default function PromoPopup() {
 
           {/* Connexion express */}
           <div className="mt-5 space-y-2.5">
-            <button onClick={() => go('/catalogue')}
+            <button onClick={() => go('/Nos-vehicules')}
               className="w-full btn-primary py-3.5 flex items-center justify-center gap-1 font-bold">
               Réserver vers vehicule <ChevronRight size={18} />
             </button>

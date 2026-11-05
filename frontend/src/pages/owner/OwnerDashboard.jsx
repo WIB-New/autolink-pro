@@ -7,22 +7,36 @@ import {
 import { PlusCircle, Wifi, WifiOff } from 'lucide-react';
 import { bookingsAPI, vehiclesAPI, walletAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { ownerNet } from '../../utils/commission';
 
 const POLL = 15000;
 const MONTHS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sept', 'Oct', 'Nov', 'Déc'];
+const DAY = 86400000;
+const BOOKED = ['completed', 'active', 'confirmed'];
 
-/* Revenus nets (85 %) + nombre de locations agrégés par mois. */
+/* Jours loués sur les 30 derniers jours (chevauchement de chaque location avec la fenêtre). */
+const bookedDaysLast30 = (bookings) => {
+  const end = Date.now();
+  const start = end - 30 * DAY;
+  return bookings.filter(b => BOOKED.includes(b.status)).reduce((s, b) => {
+    const from = Math.max(new Date(b.start_date).getTime(), start);
+    const to = Math.min(new Date(b.end_date).getTime() + DAY, end);
+    return s + Math.max(0, (to - from) / DAY);
+  }, 0);
+};
+
+/* Revenus nets propriétaire + nombre de locations agrégés par mois. */
 const revenueSeries = (bookings) => {
   const now = new Date();
   const months = [];
   for (let i = 5; i >= 0; i--) months.push(new Date(now.getFullYear(), now.getMonth() - i, 1));
   return months.map(m => {
     const monthBookings = bookings
-      .filter(b => ['completed', 'active', 'confirmed'].includes(b.status))
+      .filter(b => BOOKED.includes(b.status))
       .filter(b => { const d = new Date(b.start_date || b.created_at); return d.getMonth() === m.getMonth() && d.getFullYear() === m.getFullYear(); });
     return {
       month: MONTHS[m.getMonth()],
-      revenue: monthBookings.reduce((s, b) => s + Number(b.owner_amount || b.total_price || 0) * 0.85, 0),
+      revenue: monthBookings.reduce((s, b) => s + ownerNet(b), 0),
       count: monthBookings.length,
     };
   });
@@ -60,19 +74,23 @@ export default function OwnerDashboard() {
 
   const pendingCount = bookings.filter(b => b.status === 'pending').length;
   const activeVehicles = vehicles.filter(v => v.status === 'approved' || v.status === 'rented').length;
-  const totalEarned = bookings.filter(b => b.status === 'completed')
-    .reduce((s, b) => s + Number(b.owner_amount || b.total_price || 0) * 0.85, 0);
-  const inProgress = bookings.filter(b => ['confirmed', 'active'].includes(b.status)).length;
-  const occupancy = vehicles.length ? Math.min(100, (inProgress / Math.max(vehicles.length, 1)) * 100 + 40) : 0;
-  const revenuePerDay = totalEarned / 30 || 0;
-  const pendingPayout = bookings.filter(b => ['confirmed', 'active'].includes(b.status))
-    .reduce((s, b) => s + Number(b.owner_amount || b.total_price || 0) * 0.85, 0);
+  const totalEarned = bookings.filter(b => b.status === 'completed').reduce((s, b) => s + ownerNet(b), 0);
+  const occupancy = activeVehicles ? Math.min(100, bookedDaysLast30(bookings) / (activeVehicles * 30) * 100) : 0;
+  const last30 = Date.now() - 30 * DAY;
+  const revenuePerDay = bookings
+    .filter(b => BOOKED.includes(b.status) && new Date(b.start_date).getTime() >= last30)
+    .reduce((s, b) => s + ownerNet(b), 0) / 30;
+  const pendingPayout = bookings.filter(b => ['confirmed', 'active'].includes(b.status)).reduce((s, b) => s + ownerNet(b), 0);
+  const rated = vehicles.filter(v => Number(v.rating_count) > 0);
+  const rating = rated.length
+    ? (rated.reduce((s, v) => s + Number(v.rating) * v.rating_count, 0) / rated.reduce((s, v) => s + v.rating_count, 0)).toFixed(1)
+    : '—';
 
   const series = revenueSeries(bookings);
   const spark = series.map((m, i) => ({ i, v: m.revenue / 1000 }));
 
   return (
-    <OwnerLayout badges={{ demandes: pendingCount, messages: 0 }} balance={balance}>
+    <OwnerLayout badges={{ demandes: pendingCount }} balance={balance}>
       <div className="max-w-7xl mx-auto space-y-6">
 
         {/* En-tête compact */}
@@ -90,13 +108,13 @@ export default function OwnerDashboard() {
           </button>
         </div>
 
-        {/* Demandes urgentes */}
-        <PriorityRequests bookings={bookings} onChanged={load} />
+        {/* Réservations en attente de paiement client */}
+        <PriorityRequests bookings={bookings} />
 
         {/* KPIs */}
         <StatsRow
           occupancy={occupancy}
-          rating={4.92}
+          rating={rating}
           activeVehicles={activeVehicles}
           revenuePerDay={revenuePerDay}
         />

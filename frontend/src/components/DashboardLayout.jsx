@@ -92,7 +92,7 @@ const ROLE_COLORS = {
 const ROLE_LABELS = { CLIENT: 'Client', OWNER: 'Gestionnaire', DRIVER: 'Chauffeur', ADMIN: 'Administrateur', CONTROLLER: 'Contrôleur' };
 
 // ─── Panneau de notifications (données réelles de l'API) ───────────────────────
-function NotificationsBell() {
+export function NotificationsBell() {
   const [open, setOpen] = useState(false);
   const [notifs, setNotifs] = useState([]);
   const [unread, setUnread] = useState(0);

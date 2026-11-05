@@ -4,10 +4,10 @@ import {
   Calculator, TrendingUp, Smartphone, Building2, Check,
 } from 'lucide-react';
 import { fleetImage } from '../ownerfleet/FleetCard';
+import { OWNER_SHARE, COMMISSION_LABEL } from '../../utils/commission';
 
 const fmt = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
 const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-const OWNER_SHARE = 0.5; // part propriétaire définie par le backend (COMMISSION_RATE)
 
 const Toggle = ({ on, onChange }) => (
   <button type="button" onClick={() => onChange(!on)}
@@ -219,7 +219,7 @@ export default function StepAvailability({ form, set, v }) {
           <h4 className="font-black text-slate-900 text-sm mb-4">Calculateur de Revenus Nets</h4>
           <div className="space-y-2.5 text-[11px] mb-4">
             <div className="flex justify-between text-slate-600"><span>Tarif public facturé</span><strong>{fmt(rate)} FCFA/j</strong></div>
-            <div className="flex justify-between text-slate-600"><span>Commission AutoLink Pro (50 %)</span><strong className="text-red-500">− {fmt(rate - net)} FCFA</strong></div>
+            <div className="flex justify-between text-slate-600"><span>Commission AutoLink Pro ({COMMISSION_LABEL})</span><strong className="text-red-500">− {fmt(rate - net)} FCFA</strong></div>
             <div className="flex justify-between pt-2 border-t border-slate-100 font-black"><span className="text-slate-700">Votre gain net garanti<br /><span className="text-[9px] font-semibold text-slate-400">Viré chaque lundi sur MTN MoMo</span></span><span className="text-teal-600 text-lg">{fmt(net)}<br /><span className="text-[9px] text-slate-400 font-semibold">FCFA / jour</span></span></div>
           </div>
           <div className="bg-slate-900 rounded-2xl p-4 text-white mb-3">

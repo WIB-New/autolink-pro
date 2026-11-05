@@ -6,7 +6,7 @@ import { STANDINGS } from './data';
 /* « Choisissez selon votre standing » — 4 gammes tarifaires */
 export default function Standings() {
   return (
-    <section id="tarifs" className="py-36 bg-white">
+    <section id="tarifs" className="pt-10 pb-16 lg:py-36 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-end justify-between mb-10">
           <div>
@@ -18,7 +18,7 @@ export default function Standings() {
               sécurité et ponctualité garanties.
             </p>
           </div>
-          <Link to="/catalogue"
+          <Link to="/Nos-vehicules"
             className="hidden md:inline-flex items-center gap-2 text-teal-600 font-bold text-sm hover:text-teal-700 shrink-0">
             Voir tous les véhicules <ArrowRight size={16} />
           </Link>
@@ -26,7 +26,7 @@ export default function Standings() {
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {STANDINGS.map(s => (
-            <Link key={s.name} to={`/catalogue?gamme=${s.name.toLowerCase()}`}
+            <Link key={s.name} to={`/Nos-vehicules?gamme=${s.name.toLowerCase()}`}
               className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
               <div className="h-44 overflow-hidden">
                 <img src={s.img} alt={s.name}

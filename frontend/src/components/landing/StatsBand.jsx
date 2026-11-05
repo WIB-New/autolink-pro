@@ -26,7 +26,7 @@ export default function StatsBand() {
             <div className="text-teal-100 text-sm font-medium">Satisfaction client</div>
           </div>
           <div>
-            <div className="text-4xl md:text-5xl font-black text-white mb-1">2</div>
+            <div className="text-4xl md:text-5xl font-black text-white mb-1">10+</div>
             <div className="text-teal-100 text-sm font-medium">Villes couvertes</div>
           </div>
         </div>

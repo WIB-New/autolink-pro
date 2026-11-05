@@ -1,8 +1,8 @@
 import React from 'react';
 import { Car, Info } from 'lucide-react';
+import { CAMEROON_CITIES as CITIES } from '../../utils/cities';
 
 const CATEGORIES = ['Berline', 'SUV', 'Van', 'Minibus', 'Pick-up', 'Citadine'];
-const CITIES = ['Douala', 'Yaoundé', 'Bafoussam', 'Bamenda', 'Buéa', 'Limbé', 'Kribi', 'Garoua', 'Ngaoundéré', 'Maroua'];
 
 const F = ({ label, children }) => (
   <div>

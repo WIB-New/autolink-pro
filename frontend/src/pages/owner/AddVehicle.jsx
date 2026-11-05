@@ -7,6 +7,9 @@ import {
   StepDocuments, StepAvailability, StepRecap, CONDITION_ITEMS,
 } from '../../components/addvehicle';
 import { vehiclesAPI } from '../../services/api';
+import { SLOTS as PHOTO_SLOTS } from '../../components/addvehicle/StepPhotos';
+
+const PHOTO_SLOT_IDS = PHOTO_SLOTS.map(s => s.id);
 
 const EMPTY = {
   name: '', brand: '', model: '', year: '', plate: '', category: '', gear: '',
@@ -38,7 +41,9 @@ export default function AddVehicle() {
     setBusy(true);
     setApiError(null);
     try {
-      const res = await vehiclesAPI.create({
+      // FormData obligatoire — transporte les fichiers (docs étape 4 + photos étape 3)
+      const fd = new FormData();
+      const fields = {
         brand: form.brand,
         model: form.model,
         year: Number(form.year),
@@ -52,13 +57,27 @@ export default function AddVehicle() {
         driver_available: form.driverAvailable,
         daily_rate: Number(form.dailyRate) || 0,
         mileage: Number(form.mileage) || 0,
-        market_value: Number(form.marketValue) || null,
+        market_value: Number(form.marketValue) || '',
         city: form.city,
         insurance_type: form.insurance,
-        insurance_expiry: form.insuranceExpiry || null,
-        technical_control_date: form.technicalControl || null,
+        insurance_expiry: form.insuranceExpiry || '',
+        technical_control_date: form.technicalControl || '',
         condition_score: Math.round((form.conditionChecks.length / CONDITION_ITEMS.length) * 100),
+      };
+      // N'envoie pas les champs vides — '' est rejeté par les Decimal/Date côté backend
+      Object.entries(fields).forEach(([k, v]) => { if (v !== '' && v !== null && v !== undefined) fd.append(k, v); });
+      // Documents légaux (FileFields du modèle Vehicle)
+      if (form.doc_registration) fd.append('registration_doc', form.doc_registration);
+      if (form.doc_insurance) fd.append('insurance_doc', form.doc_insurance);
+      if (form.doc_technical) fd.append('technical_control_doc', form.doc_technical);
+      // Photos dans l'ORDRE des slots (extérieur d'abord) + ids de slot en parallèle
+      // → le backend tague chaque photo avec son slot (cover = front34)
+      PHOTO_SLOT_IDS.forEach(slotId => {
+        const p = (photos || {})[slotId];
+        if (p?.file) { fd.append('photos', p.file); fd.append('photo_slots', slotId); }
       });
+
+      const res = await vehiclesAPI.create(fd);
       setCreated(res.data);
       setSubmitted(true);
     } catch (err) {

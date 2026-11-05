@@ -3,13 +3,11 @@ from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 from django.test import override_settings
-from django.utils import timezone
 from rest_framework.test import APITestCase
 from apps.users.models import User
 from apps.vehicles.tests import make_user, make_vehicle
 from apps.bookings.models import Booking
-from apps.drivers.models import DriverEarning
-from .models import Payment, Payout, WalletTransaction
+from .models import Payment, WalletTransaction
 
 
 class WalletTopupTests(APITestCase):
@@ -17,66 +15,20 @@ class WalletTopupTests(APITestCase):
         self.user = make_user('u1', 'CLIENT')
         self.client.force_authenticate(self.user)
 
-    @override_settings(MTN_MOMO_SUBSCRIPTION_KEY='', MTN_MOMO_API_USER='', MTN_MOMO_API_KEY='')
-    def test_unconfigured_mtn_topup_returns_503(self):
+    def test_mtn_topup_credits_instantly(self):
         r = self.client.post('/api/payments/wallet/topup/',
                              {'amount': 50000, 'method': 'mtn', 'phone': '237690000000'},
                              format='json')
-        self.assertEqual(r.status_code, 503, r.data)
+        self.assertEqual(r.status_code, 201, r.data)
         self.user.refresh_from_db()
-        self.assertEqual(self.user.balance, Decimal('0'))
+        self.assertEqual(self.user.balance, Decimal('50000'))
 
-    @override_settings(MTN_MOMO_SUBSCRIPTION_KEY='sub', MTN_MOMO_API_USER='user', MTN_MOMO_API_KEY='key')
-    @patch('apps.payments.views.providers.mtn_status')
-    @patch('apps.payments.views.providers.mtn_request_to_pay')
-    def test_mtn_success_credits_once_when_polled_twice(self, mock_request, mock_status):
-        mock_request.return_value = {'provider_ref': 'provider-1', 'status': 'PENDING'}
-        mock_status.return_value = {'status': 'SUCCESSFUL'}
-        response = self.client.post('/api/payments/wallet/topup/',
-            {'amount': 10000, 'method': 'mtn', 'phone': '237690000000'}, format='json')
-        self.assertEqual(response.status_code, 202, response.data)
-        ref = response.data['reference']
-        self.client.get(f'/api/payments/wallet/transactions/{ref}/status/')
-        self.client.get(f'/api/payments/wallet/transactions/{ref}/status/')
+    def test_orange_senbid_paybid_credit(self):
+        for m in ('orange', 'senbid', 'paybid'):
+            r = self.client.post('/api/payments/wallet/topup/', {'amount': 10000, 'method': m}, format='json')
+            self.assertEqual(r.status_code, 201, m)
         self.user.refresh_from_db()
-        self.assertEqual(self.user.balance, Decimal('10000'))
-
-    @override_settings(MTN_MOMO_SUBSCRIPTION_KEY='sub', MTN_MOMO_API_USER='user', MTN_MOMO_API_KEY='key')
-    @patch('apps.payments.views.providers.mtn_status', return_value={'status': 'FAILED'})
-    @patch('apps.payments.views.providers.mtn_request_to_pay', return_value={'provider_ref': 'provider-2', 'status': 'PENDING'})
-    def test_mtn_failed_does_not_credit(self, *_):
-        response = self.client.post('/api/payments/wallet/topup/',
-            {'amount': 10000, 'method': 'mtn', 'phone': '237690000000'}, format='json')
-        self.client.get(f"/api/payments/wallet/transactions/{response.data['reference']}/status/")
-        self.user.refresh_from_db()
-        self.assertEqual(self.user.balance, Decimal('0'))
-
-    def test_orange_notification_bad_token_is_forbidden(self):
-        WalletTransaction.objects.create(
-            user=self.user, kind='topup', method='orange', amount=10000, balance_after=0,
-            reference='TOP-ORANGE', status='pending', provider_ref='ORANGE-1', provider_token='valid')
-        response = self.client.post('/api/payments/orange-notification/',
-            {'order_id': 'ORANGE-1', 'notif_token': 'invalid'}, format='json')
-        self.assertEqual(response.status_code, 403)
-
-    @patch('apps.payments.views.providers.orange_status', return_value={'status': 'SUCCESSFUL'})
-    def test_orange_success_notification_credits_wallet(self, _):
-        WalletTransaction.objects.create(
-            user=self.user, kind='topup', method='orange', amount=10000, balance_after=0,
-            reference='TOP-ORANGE', status='pending', provider_ref='ORANGE-1',
-            provider_token='valid', provider_pay_token='pay-token')
-        response = self.client.post('/api/payments/orange-notification/',
-            {'order_id': 'ORANGE-1', 'notif_token': 'valid'}, format='json')
-        self.assertEqual(response.status_code, 200, response.data)
-        self.user.refresh_from_db()
-        self.assertEqual(self.user.balance, Decimal('10000'))
-
-    @override_settings(MTN_MOMO_SUBSCRIPTION_KEY='sub', MTN_MOMO_API_USER='user', MTN_MOMO_API_KEY='key',
-                       ORANGE_CLIENT_ID='id', ORANGE_CLIENT_SECRET='secret', ORANGE_MERCHANT_KEY='merchant')
-    def test_methods_endpoint_reflects_configuration(self):
-        response = self.client.get('/api/payments/methods/')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['methods'], ['mtn', 'orange'])
+        self.assertEqual(self.user.balance, Decimal('30000'))
 
     @patch('apps.payments.views.providers.paypal_create_order')
     def test_paypal_topup_stays_pending(self, mock_create):
@@ -102,66 +54,6 @@ class WalletTopupTests(APITestCase):
         self.client.force_authenticate(user=None)
         r = self.client.post('/api/payments/wallet/topup/', {'amount': 1, 'method': 'mtn'}, format='json')
         self.assertIn(r.status_code, (401, 403))
-
-
-class PaymentMethodConfigurationTests(APITestCase):
-    @override_settings(
-        STRIPE_API_KEY='sk_test',
-        PAYPAL_CLIENT_ID='paypal-client',
-        PAYPAL_CLIENT_SECRET='paypal-secret',
-    )
-    def test_methods_use_provider_configuration(self):
-        response = self.client.get('/api/payments/methods/')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['methods'], ['stripe', 'paypal'])
-        self.assertEqual(response.data['booking_methods'], ['wallet', 'stripe', 'paypal'])
-
-
-class ProviderStatusPollingTests(APITestCase):
-    def setUp(self):
-        self.user = make_user('payment-client', 'CLIENT')
-        self.client.force_authenticate(self.user)
-
-    @patch('apps.payments.views.providers.orange_status')
-    @patch('apps.payments.views.providers.mtn_status')
-    def test_wallet_status_does_not_poll_non_mobile_methods(self, mtn_status, orange_status):
-        tx = WalletTransaction.objects.create(
-            user=self.user, kind='topup', method='stripe', amount=10000,
-            balance_after=0, reference='TOP-STRIPE-PENDING', status='pending',
-            provider_ref='cs_pending',
-        )
-
-        response = self.client.get(f'/api/payments/wallet/transactions/{tx.reference}/status/')
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['status'], 'pending')
-        mtn_status.assert_not_called()
-        orange_status.assert_not_called()
-
-    @patch('apps.payments.views.providers.orange_status')
-    @patch('apps.payments.views.providers.mtn_status')
-    def test_booking_status_does_not_poll_non_mobile_methods(self, mtn_status, orange_status):
-        owner = make_user('payment-owner', 'OWNER')
-        vehicle = make_vehicle(owner, 'LT-955-PP')
-        booking = Booking.objects.create(
-            client=self.user, vehicle=vehicle,
-            start_date=date.today() + timedelta(days=30),
-            end_date=date.today() + timedelta(days=31),
-            daily_rate=Decimal('25000'), days=1, subtotal=Decimal('25000'),
-            commission_amount=Decimal('12500'), owner_amount=Decimal('12500'),
-        )
-        Payment.objects.create(
-            booking=booking, payer=self.user, method='paypal', status='pending',
-            amount=Decimal('25000'), commission=Decimal('12500'),
-            owner_payout=Decimal('12500'), provider_ref='paypal-pending',
-        )
-
-        response = self.client.get(f'/api/payments/bookings/{booking.pk}/status/')
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['status'], 'pending')
-        mtn_status.assert_not_called()
-        orange_status.assert_not_called()
 
 
 class ExternalReturnTests(APITestCase):
@@ -282,62 +174,64 @@ class BookingExternalPaymentTests(APITestCase):
         self.assertEqual(booking.payment.status, 'completed')
 
 
-class FinanceReportingTests(APITestCase):
+class WithdrawalTests(APITestCase):
     def setUp(self):
-        self.admin = make_user('finance-admin', 'ADMIN')
-        self.client_user = make_user('finance-client', 'CLIENT')
-        self.owner = make_user('finance-owner', 'OWNER')
-        self.vehicle = make_vehicle(self.owner, 'FN-001-AA')
-        self.client.force_authenticate(self.client_user)
+        self.owner = make_user('own', 'OWNER')
+        self.owner.balance = Decimal('100000')
+        self.owner.save()
+        self.admin = make_user('adm', 'ADMIN')
+        self.client.force_authenticate(self.owner)
 
-    def make_payment(self, ref, amount, commission, method='wallet'):
-        start = date.today() + timedelta(days=40)
-        booking = Booking.objects.create(
-            client=self.client_user, vehicle=self.vehicle,
-            start_date=start, end_date=start + timedelta(days=1),
-            daily_rate=Decimal('1000'), days=1, subtotal=Decimal('1000'),
-            commission_amount=Decimal('500'), owner_amount=Decimal('500'),
-        )
-        return Payment.objects.create(
-            booking=booking, payer=self.client_user, method=method,
-            status='completed', amount=Decimal(amount), commission=Decimal(commission),
-            owner_payout=Decimal(amount) - Decimal(commission), transaction_ref=ref,
-            paid_at=timezone.now(),
-        )
+    def _request(self, amount=40000, method='mtn', phone='237670000000'):
+        return self.client.post('/api/payments/wallet/withdraw/',
+                                {'amount': amount, 'method': method, 'phone': phone}, format='json')
 
-    def test_finance_endpoints_are_admin_only(self):
-        self.assertEqual(self.client.get('/api/payments/finance/stats/').status_code, 403)
-        self.assertEqual(self.client.get('/api/payments/finance/transactions/').status_code, 403)
-        self.assertEqual(self.client.get('/api/payments/finance/transactions/export/').status_code, 403)
+    def test_withdraw_locks_funds_and_stays_pending(self):
+        r = self._request()
+        self.assertEqual(r.status_code, 201, r.data)
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.balance, Decimal('60000'))
+        tx = WalletTransaction.objects.get(pk=r.data['transaction']['id'])
+        self.assertEqual((tx.kind, tx.status), ('withdraw', 'pending'))
 
-    def test_finance_month_stats_sum_payments_and_payouts(self):
-        first = self.make_payment('FIN-001', '1000', '250')
-        self.make_payment('FIN-002', '500', '100')
-        driver = make_user('finance-driver', 'DRIVER')
-        DriverEarning.objects.create(
-            driver=driver, booking=first.booking, amount=Decimal('125'))
-        Payout.objects.create(
-            payment=first, recipient=self.owner, amount=Decimal('700'),
-            method='wallet', status='completed', processed_at=timezone.now(),
-        )
+    def test_withdraw_over_balance_rejected(self):
+        r = self._request(amount=150000)
+        self.assertEqual(r.status_code, 400)
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.balance, Decimal('100000'))
+
+    def test_withdraw_requires_phone(self):
+        self.assertEqual(self._request(phone='').status_code, 400)
+
+    def test_admin_marks_paid(self):
+        tx_id = self._request().data['transaction']['id']
         self.client.force_authenticate(self.admin)
-        response = self.client.get('/api/payments/finance/stats/')
-        self.assertEqual(response.status_code, 200, response.data)
-        self.assertEqual(Decimal(response.data['revenue']), Decimal('1500'))
-        self.assertEqual(Decimal(response.data['commission']), Decimal('350'))
-        self.assertEqual(Decimal(response.data['driver_earnings']), Decimal('125'))
-        self.assertEqual(Decimal(response.data['platform_net']), Decimal('225'))
-        self.assertEqual(Decimal(response.data['owner_payouts']), Decimal('700'))
-        self.assertEqual(response.data['transaction_count'], 2)
+        pending = self.client.get('/api/payments/wallet/withdrawals/').data
+        self.assertEqual([w['id'] for w in pending], [tx_id])
+        r = self.client.post(f'/api/payments/wallet/withdrawals/{tx_id}/process/',
+                             {'decision': 'paid', 'reference': 'MP2611.1234'}, format='json')
+        self.assertEqual(r.status_code, 200, r.data)
+        tx = WalletTransaction.objects.get(pk=tx_id)
+        self.assertEqual((tx.status, tx.provider_ref), ('completed', 'MP2611.1234'))
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.balance, Decimal('60000'))
 
-    def test_finance_csv_has_content_type_and_header(self):
-        self.make_payment('FIN-CSV', '1500', '500')
+    def test_admin_rejects_refunds_owner(self):
+        tx_id = self._request().data['transaction']['id']
         self.client.force_authenticate(self.admin)
-        response = self.client.get('/api/payments/finance/transactions/export/?method=wallet')
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response['Content-Type'].startswith('text/csv'))
-        header = response.content.decode('utf-8').splitlines()[0]
-        self.assertIn('Référence', header)
-        self.assertIn('Client', header)
-        self.assertIn('Véhicule', header)
-        self.assertIn('Part propriétaire', header)
+        r = self.client.post(f'/api/payments/wallet/withdrawals/{tx_id}/process/',
+                             {'decision': 'rejected'}, format='json')
+        self.assertEqual(r.status_code, 200, r.data)
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.balance, Decimal('100000'))
+        # déjà traité : seconde décision refusée
+        r = self.client.post(f'/api/payments/wallet/withdrawals/{tx_id}/process/',
+                             {'decision': 'paid'}, format='json')
+        self.assertEqual(r.status_code, 400)
+
+    def test_withdrawals_admin_only(self):
+        tx_id = self._request().data['transaction']['id']
+        self.assertEqual(self.client.get('/api/payments/wallet/withdrawals/').status_code, 403)
+        r = self.client.post(f'/api/payments/wallet/withdrawals/{tx_id}/process/',
+                             {'decision': 'paid'}, format='json')
+        self.assertEqual(r.status_code, 403)

@@ -59,8 +59,9 @@ class BookingFlowTests(APITestCase):
         self.client_user.refresh_from_db()
         total = booking.subtotal + booking.deposit_amount
         self.assertEqual(self.client_user.balance, Decimal('5000000') - total)
-        # commission 50 %
+        # commission 15 % — le propriétaire touche 85 %
         self.assertEqual(pay.commission + pay.owner_payout, pay.amount)
+        self.assertEqual(booking.commission_amount, (booking.subtotal * Decimal('0.15')).quantize(Decimal('0.01')))
 
     def test_client_stats_sum_non_cancelled_subtotals(self):
         first = self._confirmed_booking()

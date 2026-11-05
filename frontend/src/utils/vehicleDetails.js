@@ -12,8 +12,10 @@ const EXTRA_SHOTS = [
   `${BASE}/photo-1553440569-bcc63803a83d?auto=format&fit=crop&w=700&q=80`,     // détail
 ];
 
-/* Galerie : photo principale du véhicule + 5 clichés détaillés */
+/* Galerie : photos réelles uploadées (wizard étape 3) si dispo,
+   sinon photo principale du véhicule + 5 clichés génériques. */
 export const galleryFor = (v) => {
+  if (v.gallery?.length) return v.gallery;
   const shots = [...EXTRA_SHOTS.slice(v.id % EXTRA_SHOTS.length), ...EXTRA_SHOTS.slice(0, v.id % EXTRA_SHOTS.length)];
   return [v.image, ...shots.slice(0, 5)];
 };

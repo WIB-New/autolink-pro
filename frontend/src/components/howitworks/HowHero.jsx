@@ -21,7 +21,7 @@ export default function HowHero() {
             sécurise chaque étape de votre location — sans paperasse ni mauvaise surprise.
           </p>
           <div className="flex flex-wrap gap-4 mb-9">
-            <button onClick={() => navigate('/catalogue')}
+            <button onClick={() => navigate('/Nos-vehicules')}
               className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold px-6 py-3.5 rounded-xl transition-colors shadow-md">
               Réserver un véhicule <ArrowRight size={17} />
             </button>

@@ -29,20 +29,23 @@ const loadGsi = () => {
   return gsiPromise;
 };
 
-/* Bouton officiel « Continuer avec Google » — Google Identity Services.
-   Le jeton ID retourné par Google est envoyé au backend (/users/google/)
-   qui le vérifie puis émet le JWT de session. */
+/* Bouton « Continuer avec Google » stylisé maison.
+   Le clic déclenche google.accounts.id.prompt() (même flux credential que
+   le bouton officiel). Si le prompt est bloqué (cooldown après refus),
+   on bascule sur le bouton officiel Google en secours. */
 export default function GoogleAuthButton({ label = 'Continuer avec Google' }) {
   const { googleLogin, getDashboardPath } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const next = params.get('next');
   const btnRef = useRef(null);
+  const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [official, setOfficial] = useState(false); // fallback bouton Google
 
   useEffect(() => {
-    if (!CLIENT_ID || !btnRef.current) return;
+    if (!CLIENT_ID) return;
     let cancelled = false;
     loadGsi().then(() => {
       if (cancelled || !window.google) return;
@@ -56,14 +59,30 @@ export default function GoogleAuthButton({ label = 'Continuer avec Google' }) {
           else setError(res.error || 'Connexion Google impossible.');
         },
       });
-      window.google.accounts.id.renderButton(btnRef.current, {
-        theme: 'outline', size: 'large', shape: 'rectangular',
-        text: 'continue_with', locale: 'fr', width: 320,
-      });
+      setReady(true);
     }).catch(() => setError('Impossible de charger Google Sign-In.'));
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Rendu du bouton officiel en cas de besoin (prompt bloqué par Google)
+  useEffect(() => {
+    if (!official || !window.google || !btnRef.current) return;
+    window.google.accounts.id.renderButton(btnRef.current, {
+      theme: 'outline', size: 'large', shape: 'rectangular',
+      text: 'continue_with', locale: 'fr', width: 550,
+    });
+  }, [official]);
+
+  const handleClick = () => {
+    if (!ready || !window.google || busy) return;
+    setError('');
+    window.google.accounts.id.prompt((notification) => {
+      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+        setOfficial(true); // prompt refusé → bouton officiel en secours
+      }
+    });
+  };
 
   if (!CLIENT_ID) {
     return (
@@ -77,11 +96,21 @@ export default function GoogleAuthButton({ label = 'Continuer avec Google' }) {
   return (
     <div className="w-full">
       {busy ? (
-        <div className="w-full flex items-center justify-center gap-2 border-2 border-slate-200 rounded-xl py-3 text-sm font-semibold text-slate-500">
+        <div className="w-full flex items-center justify-center gap-2 bg-white border-2 border-slate-200 rounded-xl py-3.5 text-sm font-bold text-slate-500 shadow-sm">
           <Loader size={16} className="animate-spin text-teal-600" /> Connexion Google…
         </div>
-      ) : (
+      ) : official ? (
         <div ref={btnRef} className="w-full flex justify-center [&>div]:!w-full" />
+      ) : (
+        <button type="button" onClick={handleClick} disabled={!ready}
+          className="group w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-200 hover:border-slate-300 rounded-xl py-3.5 px-5 shadow-sm hover:shadow-md transition-all duration-200 active:scale-[0.985] disabled:opacity-60 disabled:cursor-not-allowed">
+          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white ring-1 ring-slate-200 group-hover:ring-slate-300 transition-all">
+            <GoogleIcon />
+          </span>
+          <span className="text-sm font-bold text-slate-700 group-hover:text-slate-900 transition-colors">
+            {ready ? label : 'Chargement…'}
+          </span>
+        </button>
       )}
       {error && <p className="text-xs text-red-600 text-center mt-2">{error}</p>}
     </div>

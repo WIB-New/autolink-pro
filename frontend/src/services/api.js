@@ -40,9 +40,13 @@ api.interceptors.response.use(
         err.config.headers.Authorization = `Bearer ${data.access}`;
         return api.request(err.config);
       } catch (_) {
+        // Refresh échoué → session réellement expirée : nettoyage + redirection
         localStorage.removeItem('autolink_access');
         localStorage.removeItem('autolink_refresh');
         localStorage.removeItem('autolink_user');
+        if (!window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login?session=expired';
+        }
       }
     }
     return Promise.reject(err);
@@ -62,7 +66,8 @@ export const vehiclesAPI = {
   list: (params) => api.get('/vehicles/', { params }),
   getAll: (params) => api.get('/vehicles/', { params }),
   detail: (id) => api.get(`/vehicles/${id}/`),
-  create: (payload) => api.post('/vehicles/', payload),
+  create: (payload) => api.post('/vehicles/', payload,
+    payload instanceof FormData ? { headers: { 'Content-Type': undefined } } : {}),
   update: (id, payload) => api.patch(`/vehicles/${id}/`, payload),
   delete: (id) => api.delete(`/vehicles/${id}/`),
   uploadMedia: (id, payload) => api.post(`/vehicles/${id}/media/`, payload, {
@@ -172,6 +177,28 @@ export const usersAPI = {
   delete: (id) => api.delete(`/users/${id}/`),
   me: () => api.get('/users/me/'),
   updateMe: (payload) => api.patch('/users/me/', payload),
+};
+
+// Agents / parrainage — admin uniquement
+export const agentsAPI = {
+  list: (params) => api.get('/users/agents/', { params }),
+  create: (payload) => api.post('/users/agents/', payload),
+  update: (id, payload) => api.patch(`/users/agents/${id}/`, payload),
+};
+
+export const driversAPI = {
+  // Candidatures chauffeur — POST public (landing), GET réservé admin/candidat
+  // Content-Type undefined → le navigateur pose multipart/form-data + boundary
+  // (sinon axios sérialise le FormData en JSON et l'upload fichier échoue)
+  apply: (payload) => api.post('/drivers/applications/', payload, {
+    headers: { 'Content-Type': undefined },
+  }),
+  list: (params) => api.get('/drivers/applications/', { params }),
+  detail: (id) => api.get(`/drivers/applications/${id}/`),
+  update: (id, payload) => api.patch(`/drivers/applications/${id}/`, payload),
+  // 'status' est read-only dans le serializer — l'approbation passe par ces actions
+  approve: (id) => api.post(`/drivers/applications/${id}/approve/`),
+  reject: (id) => api.post(`/drivers/applications/${id}/reject/`),
 };
 
 export const walletAPI = {

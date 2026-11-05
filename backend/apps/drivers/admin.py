@@ -4,10 +4,14 @@ from .models import DriverApplication, DriverEarning, DriverProfile
 
 @admin.register(DriverApplication)
 class DriverApplicationAdmin(admin.ModelAdmin):
-    list_display = ['applicant', 'status', 'experience_years', 'compliance_score', 'applied_at', 'reviewed_at']
-    list_filter = ['status']
-    search_fields = ['applicant__username', 'applicant__first_name', 'applicant__last_name']
+    list_display = ['display_name', 'status', 'city', 'experience_years', 'compliance_score', 'applied_at', 'reviewed_at']
+    list_filter = ['status', 'availability', 'city']
+    search_fields = ['full_name', 'email', 'phone', 'city', 'applicant__username', 'applicant__first_name', 'applicant__last_name']
     readonly_fields = ['compliance_score', 'applied_at', 'reviewed_at']
+
+    @admin.display(description='Candidat')
+    def display_name(self, obj):
+        return obj.applicant.get_full_name() if obj.applicant else obj.full_name
 
 
 @admin.register(DriverProfile)

@@ -1,7 +1,10 @@
-import React, { useState, useRef, useMemo } from 'react';
-import { Upload, Trash2, Edit3, Plus, Image, CheckCircle, X, Car, Save, ChevronLeft, ChevronRight, Search, Wrench, CheckCircle2, Wallet, Filter } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Trash2, Edit3, Image, Car, ChevronLeft, ChevronRight, Search, Wrench, CheckCircle2, Wallet, Filter, Loader, Plus, X, Save } from 'lucide-react';
 import AdminLayout from '../../components/admindash/AdminLayout';
-import { CATALOG_VEHICLES } from '../../utils/carImages';
+import { getVehicleImage } from '../../utils/carImages';
+import { vehiclesAPI } from '../../services/api';
+import { mediaUrl, vehicleCover } from '../../utils/media';
 import StatCard from '../../components/StatCard';
 import FilterField from '../../components/FilterField';
 
@@ -47,116 +50,87 @@ function ImageCard({ vehicle, onEdit, onDelete }) {
   );
 }
 
-function EditModal({ vehicle, onSave, onClose }) {
-  const [form, setForm] = useState({
-    name: vehicle?.name || '',
-    category: vehicle?.category || 'Berline',
-    price: vehicle?.price || 25000,
-    image: vehicle?.image || '',
-    available: vehicle?.available ?? true,
+const inputCls = 'w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all';
+const labelCls = 'block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1.5';
+const FUELS = ['essence', 'diesel', 'hybrid', 'electric'];
+const INSURANCES = [
+  { value: 'standard', label: 'Standard' },
+  { value: 'premium', label: 'Premium' },
+  { value: 'all_risk', label: 'Tous risques' },
+];
+
+/* Création réelle via l'API — le véhicule naît en statut 'pending',
+   owner = compte admin (visible immédiatement dans le catalogue admin). */
+function AddVehicleModal({ onClose, onCreated }) {
+  const [f, setF] = useState({
+    brand: '', model: '', year: '', plate: '', category: 'Berline', fuel: 'essence',
+    seats: 5, color: '', mode: 'platform', daily_rate: '', city: 'Douala',
+    insurance_type: 'standard', insurance_expiry: '', mileage: 0, description: '',
   });
-  const [preview, setPreview] = useState(vehicle?.image || '');
-  const [previewError, setPreviewError] = useState(false);
-  const fileRef = useRef();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const set = (k, v) => setF(s => ({ ...s, [k]: v }));
+  const valid = f.brand && f.model && f.year && f.plate && f.daily_rate && f.insurance_type && f.insurance_expiry;
 
-  const handleUrlChange = (url) => {
-    setForm(f => ({ ...f, image: url }));
-    setPreviewError(false);
-    setPreview(url);
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!valid) return;
+    setBusy(true); setError('');
+    try {
+      const fd = new FormData();
+      Object.entries({ ...f, plate: f.plate.toUpperCase(), seats: Number(f.seats), year: Number(f.year), daily_rate: Number(f.daily_rate), mileage: Number(f.mileage) || 0 })
+        .forEach(([k, v]) => { if (v !== '') fd.append(k, v); });
+      const res = await vehiclesAPI.create(fd);
+      onCreated(res.data);
+    } catch (err) {
+      const d = err.response?.data;
+      const first = d && typeof d === 'object' ? Object.values(d)[0] : null;
+      setError(Array.isArray(first) ? first[0] : (first || 'Erreur — vérifiez les champs.'));
+      setBusy(false);
+    }
   };
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      handleUrlChange(ev.target.result);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const isNew = !vehicle?.id;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
-          <h3 className="font-bold text-slate-900 dark:text-white">{isNew ? 'Ajouter un véhicule au catalogue' : 'Modifier les images'}</h3>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500">
-            <X size={18} />
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/60" onClick={onClose} />
+      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[88vh] flex flex-col overflow-hidden">
+        <div className="relative px-6 py-4 border-b border-slate-100 shrink-0 text-center">
+          <h3 className="font-black text-slate-900 text-sm">Ajouter un véhicule</h3>
+          <p className="text-[10px] text-slate-400 mt-0.5">Enregistrement direct — statut « En attente » par défaut.</p>
+          <button onClick={onClose} className="absolute right-5 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:bg-slate-100 rounded-lg"><X size={16} /></button>
         </div>
-        <div className="p-5 space-y-4">
-          {/* Preview */}
-          <div className="h-44 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-700 relative">
-            {preview && !previewError ? (
-              <img src={preview} alt="Aperçu" onError={() => setPreviewError(true)} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-2">
-                <Car size={36} />
-                <span className="text-sm">Aperçu de l'image</span>
-              </div>
-            )}
-            {preview && !previewError && (
-              <div className="absolute bottom-2 right-2 bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded-lg flex items-center gap-1">
-                <CheckCircle size={11} /> Image valide
-              </div>
-            )}
+        <form onSubmit={submit} className="overflow-y-auto px-6 py-5 flex-1">
+          <div className="grid sm:grid-cols-2 gap-3.5">
+            <div><label className={labelCls}>Marque *</label><input className={inputCls} value={f.brand} onChange={e => set('brand', e.target.value)} placeholder="Toyota" /></div>
+            <div><label className={labelCls}>Modèle *</label><input className={inputCls} value={f.model} onChange={e => set('model', e.target.value)} placeholder="Corolla" /></div>
+            <div><label className={labelCls}>Année *</label><input type="number" className={inputCls} value={f.year} onChange={e => set('year', e.target.value)} placeholder="2021" /></div>
+            <div><label className={labelCls}>Immatriculation *</label><input className={inputCls} value={f.plate} onChange={e => set('plate', e.target.value)} placeholder="LT-123-AB" /></div>
+            <div><label className={labelCls}>Catégorie</label><input className={inputCls} value={f.category} onChange={e => set('category', e.target.value)} /></div>
+            <div><label className={labelCls}>Carburant</label>
+              <select className={inputCls} value={f.fuel} onChange={e => set('fuel', e.target.value)}>{FUELS.map(x => <option key={x} value={x}>{x}</option>)}</select></div>
+            <div><label className={labelCls}>Places</label><input type="number" min="2" max="15" className={inputCls} value={f.seats} onChange={e => set('seats', e.target.value)} /></div>
+            <div><label className={labelCls}>Couleur</label><input className={inputCls} value={f.color} onChange={e => set('color', e.target.value)} placeholder="Blanc" /></div>
+            <div><label className={labelCls}>Mode</label>
+              <select className={inputCls} value={f.mode} onChange={e => set('mode', e.target.value)}>
+                <option value="platform">Plateforme (géré AutoLink)</option><option value="home">Domicile (libre-service)</option>
+              </select></div>
+            <div><label className={labelCls}>Tarif journalier (FCFA) *</label><input type="number" className={inputCls} value={f.daily_rate} onChange={e => set('daily_rate', e.target.value)} placeholder="25000" /></div>
+            <div><label className={labelCls}>Ville</label><input className={inputCls} value={f.city} onChange={e => set('city', e.target.value)} /></div>
+            <div><label className={labelCls}>Kilométrage</label><input type="number" className={inputCls} value={f.mileage} onChange={e => set('mileage', e.target.value)} /></div>
+            <div><label className={labelCls}>Type d'assurance *</label>
+              <select className={inputCls} value={f.insurance_type} onChange={e => set('insurance_type', e.target.value)}>{INSURANCES.map(i => <option key={i.value} value={i.value}>{i.label}</option>)}</select></div>
+            <div><label className={labelCls}>Expiration assurance *</label><input type="date" className={inputCls} value={f.insurance_expiry} onChange={e => set('insurance_expiry', e.target.value)} /></div>
+            <div className="sm:col-span-2"><label className={labelCls}>Description</label>
+              <textarea rows={2} className={`${inputCls} resize-none`} value={f.description} onChange={e => set('description', e.target.value)} placeholder="État, équipements…" /></div>
           </div>
-
-          {/* URL input */}
-          <div>
-            <label className="label">URL de l'image</label>
-            <input type="url" className="input-field" placeholder="https://images.unsplash.com/photo-..." value={form.image} onChange={e => handleUrlChange(e.target.value)} />
-          </div>
-
-          {/* Or upload */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-600" />
-            <span className="text-xs text-slate-400 font-medium">ou</span>
-            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-600" />
-          </div>
-          <div>
-            <input type="file" accept="image/*" ref={fileRef} onChange={handleFileUpload} className="hidden" />
-            <button onClick={() => fileRef.current.click()} className="w-full border-2 border-dashed border-slate-200 dark:border-slate-600 rounded-xl py-4 flex flex-col items-center gap-2 hover:border-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all text-slate-500 dark:text-slate-400">
-              <Upload size={22} />
-              <span className="text-sm font-medium">Téléverser depuis l'appareil</span>
-              <span className="text-xs text-slate-400">JPG, PNG, WEBP — Max 5 MB</span>
-            </button>
-          </div>
-
-          {/* Vehicle info */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Nom du véhicule</label>
-              <input type="text" className="input-field" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-            </div>
-            <div>
-              <label className="label">Catégorie</label>
-              <select className="input-field" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Tarif journalier (FCFA)</label>
-              <input type="number" className="input-field" value={form.price} onChange={e => setForm(f => ({ ...f, price: Number(e.target.value) }))} />
-            </div>
-            <div className="flex items-end pb-1">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <div onClick={() => setForm(f => ({ ...f, available: !f.available }))} className={`w-11 h-6 rounded-full transition-colors relative ${form.available ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}>
-                  <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all shadow ${form.available ? 'left-6' : 'left-1'}`} />
-                </div>
-                <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">Disponible</span>
-              </label>
-            </div>
-          </div>
-        </div>
-        <div className="p-5 border-t border-slate-100 dark:border-slate-700 flex gap-3">
-          <button onClick={onClose} className="btn-outline flex-1 py-3 text-sm">Annuler</button>
-          <button onClick={() => onSave({ ...vehicle, ...form, image: preview })} className="btn-primary flex-1 py-3 text-sm flex items-center justify-center gap-2">
-            <Save size={16} /> {isNew ? 'Ajouter au catalogue' : 'Enregistrer'}
+          {error && <div className="mt-4 bg-red-50 border border-red-200 text-red-600 text-xs font-bold px-4 py-3 rounded-xl text-center">{error}</div>}
+        </form>
+        <div className="px-6 py-4 border-t border-slate-100 flex items-center gap-3 shrink-0">
+          <button type="button" onClick={onClose} className="w-32 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-50 transition-colors">Annuler</button>
+          <div className="flex-1" />
+          <button onClick={submit} disabled={busy || !valid}
+            className="w-32 bg-teal-600 hover:bg-teal-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-xs py-3 rounded-xl transition-colors flex items-center justify-center gap-1.5">
+            {busy ? <Loader size={14} className="animate-spin" /> : <Save size={14} />} Ajouter
           </button>
         </div>
       </div>
@@ -165,20 +139,42 @@ function EditModal({ vehicle, onSave, onClose }) {
 }
 
 export default function CatalogManager() {
-  const [vehicles, setVehicles] = useState(CATALOG_VEHICLES);
-  const [editing, setEditing] = useState(null);
-  const [showAdd, setShowAdd] = useState(false);
+  const navigate = useNavigate();
+  const [vehicles, setVehicles] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filterCat, setFilterCat] = useState('ALL');
-  const [saved, setSaved] = useState(false);
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState('');
   const [avail, setAvail] = useState('all');
+  const [showAdd, setShowAdd] = useState(false);
+
+  /* Vrais véhicules de la DB — l'admin voit TOUS les statuts (pending, approved…). */
+  const load = () => {
+    setLoading(true);
+    vehiclesAPI.list({ page_size: 100 })
+      .then(res => {
+        const list = res.data.results || res.data;
+        setVehicles(list.map(v => ({
+          id: v.id,
+          name: `${v.brand} ${v.model} ${v.year}`,
+          category: v.category,
+          price: Number(v.daily_rate) || 0,
+          image: vehicleCover(v) || v.image_url || getVehicleImage(v.category),
+          available: v.status === 'approved',
+          status: v.status,
+          owner: v.owner_name,
+        })));
+      })
+      .catch(() => setVehicles([]))
+      .finally(() => setLoading(false));
+  };
+  useEffect(load, []);
 
   /* KPIs flotte */
   const stats = useMemo(() => ({
     total: vehicles.length,
     dispo: vehicles.filter(v => v.available).length,
-    maintenance: vehicles.filter(v => !v.available).length,
+    maintenance: vehicles.filter(v => v.status === 'pending').length,
     categories: new Set(vehicles.map(v => v.category)).size,
     avgPrice: Math.round(vehicles.reduce((s, v) => s + Number(v.price || 0), 0) / Math.max(vehicles.length, 1)),
   }), [vehicles]);
@@ -193,23 +189,7 @@ export default function CatalogManager() {
   const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
   const goTo = (p) => { setPage(Math.min(Math.max(1, p), totalPages)); document.getElementById('catalog-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
 
-  const handleSave = (updated) => {
-    if (updated.id) {
-      setVehicles(vs => vs.map(v => v.id === updated.id ? updated : v));
-    } else {
-      setVehicles(vs => [...vs, { ...updated, id: Date.now(), rating: 5.0 }]);
-    }
-    setEditing(null);
-    setShowAdd(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  };
-
-  const handleDelete = (id) => {
-    if (window.confirm('Supprimer ce véhicule du catalogue ?')) {
-      setVehicles(vs => vs.filter(v => v.id !== id));
-    }
-  };
+  // Édition/validation des véhicules → page détail dédiée (/admin/vehicles/:id)
 
   return (
     <AdminLayout title="Catalogue et Flotte" subtitle="Parc publié & gammes tarifaires">
@@ -221,12 +201,6 @@ export default function CatalogManager() {
           <StatCard icon={Wrench} iconCls="bg-amber-50 text-amber-600" value={stats.maintenance} label="En maintenance / indispo" />
           <StatCard icon={Wallet} iconCls="bg-violet-50 text-violet-600" value={stats.avgPrice.toLocaleString('fr-FR')} unit="F/jour" label="Tarif moyen" />
         </div>
-
-        {saved && (
-          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-4 py-3 text-xs font-bold">
-            <CheckCircle size={14} /> Catalogue mis à jour avec succès.
-          </div>
-        )}
 
         {/* Filtres — carte unique style pro */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
@@ -242,29 +216,23 @@ export default function CatalogManager() {
               </button>
             ))}
             <button onClick={() => setShowAdd(true)}
-              className="ml-auto my-1.5 flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-black px-3.5 py-2 rounded-xl transition-colors shrink-0">
+              className="ml-auto my-1.5 flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-black px-4 py-2 rounded-xl transition-colors shrink-0">
               <Plus size={13} /> Ajouter un véhicule
             </button>
           </div>
           <div className="p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             <FilterField label="Recherche" icon={Search} value={query} onChange={v => { setQuery(v); setPage(1); }} placeholder="Nom du véhicule…" />
             <FilterField label="Disponibilité" icon={Filter} type="select" value={avail} onChange={v => { setAvail(v); setPage(1); }}
-              options={[{ value: 'all', label: 'Tous statuts' }, { value: 'dispo', label: 'Disponibles' }, { value: 'indispo', label: 'En maintenance / indispo' }]} />
+              options={[{ value: 'all', label: 'Tous statuts' }, { value: 'dispo', label: 'Approuvés' }, { value: 'indispo', label: 'En attente / autres' }]} />
           </div>
         </div>
 
         {/* Grid */}
+        {loading && <div className="text-center py-14 text-xs text-slate-400"><Loader size={18} className="animate-spin mx-auto mb-2" />Chargement des véhicules…</div>}
         <div id="catalog-grid" className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 scroll-mt-24">
-          {pageItems.map(v => (
-            <ImageCard key={v.id} vehicle={v} onEdit={setEditing} onDelete={handleDelete} />
+          {!loading && pageItems.map(v => (
+            <ImageCard key={v.id} vehicle={v} onEdit={() => navigate(`/admin/vehicles/${v.id}`)} onDelete={() => navigate(`/admin/vehicles/${v.id}`)} />
           ))}
-          {/* Add placeholder */}
-          <button onClick={() => setShowAdd(true)} className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl h-64 flex flex-col items-center justify-center gap-3 text-slate-400 dark:text-slate-500 hover:border-primary-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all">
-            <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
-              <Plus size={24} />
-            </div>
-            <span className="text-sm font-medium">Ajouter un véhicule</span>
-          </button>
         </div>
 
         {/* Pagination */}
@@ -309,15 +277,9 @@ export default function CatalogManager() {
             ))}
           </div>
         </div> */}
-      </div>
 
-      {(editing || showAdd) && (
-        <EditModal
-          vehicle={editing || null}
-          onSave={handleSave}
-          onClose={() => { setEditing(null); setShowAdd(false); }}
-        />
-      )}
+        {showAdd && <AddVehicleModal onClose={() => setShowAdd(false)} onCreated={() => { setShowAdd(false); load(); }} />}
+      </div>
     </AdminLayout>
   );
 }

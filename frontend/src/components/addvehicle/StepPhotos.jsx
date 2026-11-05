@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Camera, CheckCircle2, Eye, Trash2, Plus, ImagePlus, Lightbulb, ShieldCheck, UserCheck } from 'lucide-react';
 
-const SLOTS = [
+export const SLOTS = [
   { id: 'front34',   label: 'Vue 3/4 avant gauche',              sub: 'Photo de couverture — angle valorisant', required: true,  cover: true },
   { id: 'front',     label: 'Vue avant directe (Calandre)',      sub: 'Face avant — phares et calandre',       required: true },
   { id: 'side',      label: 'Profil latéral droit',              sub: 'Vue complète du côté passager',         required: true },

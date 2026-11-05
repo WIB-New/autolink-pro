@@ -25,7 +25,9 @@ export const vehicleCity = (v) => v.city || (v.id % 2 ? 'Douala' : 'Yaoundé');
 
 export const vehicleArea = (v) => {
   const city = vehicleCity(v);
-  return QUARTIERS[city][v.id % QUARTIERS[city].length];
+  const qs = QUARTIERS[city];
+  if (!qs || !qs.length) return city; // ville hors table → on affiche la ville elle-même
+  return qs[v.id % qs.length];
 };
 
 export const vehicleInspection = (v) => `Inspecté le ${String((v.id % 28) + 1).padStart(2, '0')}/10`;
