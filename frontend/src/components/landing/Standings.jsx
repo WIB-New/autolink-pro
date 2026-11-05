@@ -26,7 +26,7 @@ export default function Standings() {
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {STANDINGS.map(s => (
-            <Link key={s.name} to={`/Nos-vehicules?gamme=${s.name.toLowerCase()}`}
+            <Link key={s.id} to={`/Nos-vehicules?gamme=${s.id}`}
               className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
               <div className="h-44 overflow-hidden">
                 <img src={s.img} alt={s.name}

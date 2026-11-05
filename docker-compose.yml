@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
       args:
         REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:8000/api}
+        REACT_APP_GOOGLE_CLIENT_ID: ${REACT_APP_GOOGLE_CLIENT_ID:-}
     container_name: autolink-web
     restart: unless-stopped
     ports:
@@ -36,6 +37,7 @@ services:
       PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}
       PAYPAL_MODE: ${PAYPAL_MODE:-sandbox}
       PAYPAL_PAYOUTS_ENABLED: ${PAYPAL_PAYOUTS_ENABLED:-false}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     volumes:
       - autolink-db:/app/data
 

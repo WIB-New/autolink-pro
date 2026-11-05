@@ -73,7 +73,7 @@ export default function VehicleDetail() {
           <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-5 flex-wrap">
             <Link to="/" className="hover:text-teal-600 transition-colors">Accueil</Link>
             <ChevronRight size={12} />
-            <Link to="/Nos-vehicules" className="hover:text-teal-600 transition-colors">Catalogue</Link>
+            <Link to="/Nos-vehicules" className="hover:text-teal-600 transition-colors">Nos vehicules</Link>
             <ChevronRight size={12} />
             <span className="hover:text-teal-600 transition-colors">Véhicules disponibles</span>
             <ChevronRight size={12} />
