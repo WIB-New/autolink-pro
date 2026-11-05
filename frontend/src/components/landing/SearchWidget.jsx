@@ -31,7 +31,7 @@ export default function SearchWidget({ compact = false, initialValues = {}, onSe
     if (onSearch) {
       onSearch(form);
     } else {
-      navigate(`/Nos-vehicules?${q.toString()}`);
+      navigate(`/catalogue?${q.toString()}`);
     }
   };
 

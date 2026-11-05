@@ -105,7 +105,7 @@ export default function InvoiceExample() {
                 </table>
               </div>
 
-              <button onClick={() => navigate('/Nos-vehicules')}
+              <button onClick={() => navigate('/catalogue')}
                 className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3.5 rounded-xl transition-colors">
                 Réserver à ce tarif <ArrowRight size={16} />
               </button>

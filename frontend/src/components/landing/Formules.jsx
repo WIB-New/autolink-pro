@@ -45,7 +45,7 @@ export default function Formules() {
                   </li>
                 ))}
               </ul>
-              <button onClick={() => navigate('/Nos-vehicules')}
+              <button onClick={() => navigate('/catalogue')}
                 className={`w-full font-bold py-2.5 rounded-xl text-sm transition-colors ${
                   f.popular
                     ? 'bg-teal-600 hover:bg-teal-700 text-white'

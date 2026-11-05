@@ -54,7 +54,7 @@ export default function Fleet() {
         )}
 
         <div className="text-center mt-10">
-          <Link to="/Nos-vehicules"
+          <Link to="/catalogue"
             className="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-600 text-white font-bold py-3.5 px-8 rounded-xl transition-colors shadow-md text-sm">
             Voir tout le catalogue <ArrowRight size={16} />
           </Link>

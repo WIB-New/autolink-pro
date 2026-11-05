@@ -168,7 +168,7 @@ export default function AdminLayout({ title, subtitle, children, badges = {} }) 
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
                     <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-100 rounded-2xl shadow-lg py-2 z-20">
-                      <button onClick={() => { navigate('/Nos-vehicules'); setMenuOpen(false); }}
+                      <button onClick={() => { navigate('/catalogue'); setMenuOpen(false); }}
                         className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
                         <ArrowRightLeft size={14} className="text-teal-600" /> Mode Client
                       </button>

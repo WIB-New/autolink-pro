@@ -60,7 +60,7 @@ export default function GammesGrid() {
                     </li>
                   ))}
                 </ul>
-                <button onClick={() => navigate(`/Nos-vehicules?tier=${g.id}`)}
+                <button onClick={() => navigate(`/catalogue?tier=${g.id}`)}
                   className={`w-full flex items-center justify-center gap-2 font-bold text-sm py-3 rounded-xl transition-colors ${active ? 'bg-teal-600 hover:bg-teal-700 text-white' : 'border-2 border-slate-200 hover:border-teal-500 hover:text-teal-700 text-slate-700'}`}>
                   Choisir la gamme {g.tier} <ArrowRight size={15} />
                 </button>

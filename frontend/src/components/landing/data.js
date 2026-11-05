@@ -21,7 +21,7 @@ export const IMG = {
 ──────────────────────────────────────────────── */
 export const NAV_LINKS = [
   { label: 'Accueil',             href: '/' },
-  { label: 'Nos véhicules',           href: '/Nos-vehicules' },
+  { label: 'Nos véhicules',           href: '/catalogue' },
   { label: 'Comment ça marche',   href: '/comment-ca-marche' },
   { label: 'Tarifs',              href: '/tarifs' },
   // { label: 'Devenir propriétaire',href: '/devenir-proprietaire' },

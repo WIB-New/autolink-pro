@@ -73,7 +73,7 @@ export default function VehicleDetail() {
           <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-5 flex-wrap">
             <Link to="/" className="hover:text-teal-600 transition-colors">Accueil</Link>
             <ChevronRight size={12} />
-            <Link to="/Nos-vehicules" className="hover:text-teal-600 transition-colors">Catalogue</Link>
+            <Link to="/catalogue" className="hover:text-teal-600 transition-colors">Catalogue</Link>
             <ChevronRight size={12} />
             <span className="hover:text-teal-600 transition-colors">Véhicules disponibles</span>
             <ChevronRight size={12} />
@@ -91,7 +91,7 @@ export default function VehicleDetail() {
               </div>
               <h3 className="font-bold text-slate-900 mb-2">Véhicule introuvable</h3>
               <p className="text-slate-500 text-sm mb-5">Ce véhicule n'est plus dans notre catalogue.</p>
-              <Link to="/Nos-vehicules" className="text-sm font-bold text-teal-600 hover:text-teal-700">
+              <Link to="/catalogue" className="text-sm font-bold text-teal-600 hover:text-teal-700">
                 ← Retour au catalogue
               </Link>
             </div>
