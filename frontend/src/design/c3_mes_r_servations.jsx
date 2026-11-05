@@ -36,7 +36,7 @@ const row = (b) => {
 ${['pending', 'confirmed', 'active'].includes(b.status) ? `<button class="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container flex items-center justify-center transition-colors booking-edit" data-id="${b.id}" title="Modifier" type="button"><span class="material-symbols-outlined text-[18px]">edit_calendar</span></button>` : ''}
 ${['pending', 'confirmed'].includes(b.status) ? `<button class="w-8 h-8 rounded-lg text-error hover:bg-error-container flex items-center justify-center transition-colors booking-cancel" data-id="${b.id}" title="Annuler" type="button"><span class="material-symbols-outlined text-[18px]">cancel</span></button>` : ''}
 ${b.status === 'active' ? `<button class="w-8 h-8 rounded-lg text-error hover:bg-error-container flex items-center justify-center transition-colors booking-open" data-id="${b.id}" title="Signaler un litige" type="button"><span class="material-symbols-outlined text-[18px]">flag</span></button>` : ''}
-${b.status === 'completed' && !b.client_rating ? `<button class="w-8 h-8 rounded-lg text-amber-500 hover:bg-amber-50 flex items-center justify-center transition-colors booking-open" data-id="${b.id}" title="Laisser un avis" type="button"><span class="material-symbols-outlined text-[18px]">star</span></button>` : ''}
+${b.status === 'completed' && !b.client_rating ? `<button class="w-8 h-8 rounded-lg text-amber-500 hover:bg-amber-50 flex items-center justify-center transition-colors booking-open" data-id="${b.id}" data-anchor="avis" title="Laisser un avis" type="button"><span class="material-symbols-outlined text-[18px]">star</span></button>` : ''}
 ${b.status === 'completed' && b.client_rating ? `<button class="w-8 h-8 rounded-lg text-green-600 hover:bg-green-50 flex items-center justify-center transition-colors" title="Noté ${b.client_rating}/5" type="button"><span class="material-symbols-outlined text-[18px]">check_circle</span></button>` : ''}
 ${['completed', 'cancelled'].includes(b.status) ? `<button class="w-8 h-8 rounded-lg text-secondary hover:bg-secondary-container flex items-center justify-center transition-colors booking-rebook" data-vehicle="${b.vehicle || b.vehicle_id || ''}" title="Réserver à nouveau" type="button"><span class="material-symbols-outlined text-[18px]">event_repeat</span></button>` : ''}
 ${b.status === 'disputed' ? `<button class="w-8 h-8 rounded-lg text-error hover:bg-error-container flex items-center justify-center transition-colors booking-open" data-id="${b.id}" title="Voir le litige" type="button"><span class="material-symbols-outlined text-[18px]">gavel</span></button>` : ''}
@@ -402,9 +402,9 @@ export default function C3MesReservations() {
       const edit = e.target.closest('.booking-edit');
       const cancel = e.target.closest('.booking-cancel');
       const rebook = e.target.closest('.booking-rebook');
-      if (open) window.location.href = `/client/bookings/${open.dataset.id}`;
+      if (open) window.location.href = `/client/bookings/${open.dataset.id}${open.dataset.anchor ? `#${open.dataset.anchor}` : ''}`;
       else if (edit) window.location.href = `/client/bookings/${edit.dataset.id}/modifier`;
-      else if (rebook) window.location.href = rebook.dataset.vehicle ? `/client/vehicle/${rebook.dataset.vehicle}` : '/client/search';
+      else if (rebook) window.location.href = rebook.dataset.vehicle ? `/client/vehicule/${rebook.dataset.vehicle}` : '/client/search';
       else if (cancel && window.confirm('Annuler cette réservation ?')) {
         bookingsAPI.updateStatus(cancel.dataset.id, 'cancelled').then(() => window.location.reload()).catch(() => {});
       }

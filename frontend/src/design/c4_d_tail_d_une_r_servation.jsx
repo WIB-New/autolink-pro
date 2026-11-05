@@ -368,7 +368,7 @@ const HTML = `<div class="flex flex-col w-full pb-16">
         </button>
 </section>
 <!-- Bloc Avis & Évaluation (Inactif / Protégé) -->
-<section class="bg-surface-container-lowest rounded-xl p-5 shadow-sm flex flex-col gap-3 opacity-75">
+<section id="avis" class="bg-surface-container-lowest rounded-xl p-5 shadow-sm flex flex-col gap-3">
 <div class="flex items-center justify-between">
 <div class="flex items-center gap-2">
 <span class="material-symbols-outlined text-on-surface-variant text-[20px]">star_rate</span>
@@ -402,7 +402,6 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 
 const LINKS = {
   'Mes réservations': '/client/bookings',
-  'Ouvrir une médiation / Signaler un litige': '/messages',
   'Assistance WhatsApp': '/messages',
 };
 
@@ -413,6 +412,20 @@ export default function C4DetailReservation() {
 
   useEffect(() => {
     const click = (e) => {
+      // Etoiles : clic direct sur un <span> (avant le filtre button,a)
+      const star = e.target.closest('.rate-star');
+      if (star) {
+        e.preventDefault();
+        window._rating = Number(star.dataset.r);
+        document.querySelectorAll('.rate-star').forEach((s) => {
+          const on = Number(s.dataset.r) <= window._rating;
+          s.classList.toggle('text-yellow-500', on);
+          s.classList.toggle('text-surface-dim', !on);
+        });
+        const form = document.getElementById('review-form');
+        if (form) form.style.display = '';
+        return;
+      }
       const el = e.target.closest('button, a');
       if (!el) return;
       const t = el.textContent || '';
@@ -423,17 +436,38 @@ export default function C4DetailReservation() {
         }
       } else if (t.includes('médiation') || t.includes('Signaler un litige')) {
         e.preventDefault();
-        const reason = window.prompt('Décrivez le problème rencontré :');
-        if (reason !== null) {
-          bookingsAPI.dispute(id, reason || 'Problème signalé par le client')
-            .then(() => window.location.reload())
-            .catch((err) => alert(err?.response?.data?.status || err?.response?.data?.detail || "Impossible d'ouvrir un litige sur cette réservation."));
-        }
+        import('../services/api').then(({ messagingAPI }) => {
+          // Litige enregistre cote reservation + conversation client <-> admins
+          bookingsAPI.dispute(id, 'Litige ouvert via la page de réservation').catch(() => {});
+          messagingAPI.open({ support: true, subject: `Litige BK-${String(id).padStart(4, '0')} — ${b?.vehicle_name || ''}` })
+            .then(({ data: conv }) => {
+              const info = `Litige ouvert sur la réservation BK-${String(id).padStart(4, '0')}\nVéhicule : ${b?.vehicle_name || ''} (${b?.vehicle_plate || ''})\nStatut : ${b?.status || ''}\nPériode : ${b?.start_date || ''} → ${b?.end_date || ''}\nMontant : ${b?.subtotal || 0} FCFA\nCaution : ${b?.deposit_amount || 0} FCFA`;
+              messagingAPI.send(conv.id, { content: info }).finally(() => { window.location.href = `/messages?conv=${conv.id}`; });
+            }).catch(() => { window.location.href = '/messages'; });
+        });
+        return;
+      }
+      if (el.closest('#review-submit')) {
+        e.preventDefault();
+        if (!window._rating) { alert('Choisissez d\'abord une note en cliquant sur une étoile.'); return; }
+        const review = document.getElementById('review-text')?.value || '';
+        bookingsAPI.rate(id, window._rating, review)
+          .then(() => window.location.reload())
+          .catch((err) => alert(err?.response?.data?.detail || 'Impossible d\'enregistrer l\'avis.'));
       }
     };
     document.addEventListener('click', click);
     return () => document.removeEventListener('click', click);
-  }, [id]);
+  }, [id, b]);
+
+  // Ancre #avis : scroll vers la section Avis & Évaluation (depuis "Laisser un avis")
+  useEffect(() => {
+    if (b && window.location.hash === '#avis') {
+      const t = setTimeout(() => document.getElementById('avis')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 400);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [b]);
 
   const html = useMemo(() => {
     if (!b) return HTML;
@@ -448,6 +482,36 @@ export default function C4DetailReservation() {
     const stepIdx = STEP[b.status] ?? 2;
     const stepTxt = b.status === 'cancelled' ? 'Réservation annulée' : `Étape ${stepIdx} sur 5 complétée avec succès`;
     const hoursLeft = Math.max(0, Math.round((new Date(`${b.start_date}T${sTime}`) - Date.now()) / 36e5));
+    // Cycle de vie dynamique : chaque etape passe au vert selon dates/statut reel
+    const nowTs = Date.now();
+    const startTs = new Date(`${b.start_date}T${sTime}`).getTime();
+    const endTs = new Date(`${b.end_date}T${eTime}`).getTime();
+    const cancelled = b.status === 'cancelled';
+    const depDone = cancelled || b.status === 'completed' || b.deposit_status === 'released';
+    const step3Done = cancelled || ['active', 'completed'].includes(b.status) || nowTs >= startTs;
+    const step4Done = cancelled || b.status === 'completed' || nowTs >= endTs;
+    const step5Done = depDone;
+    const stepsDone = 2 + (step3Done ? 1 : 0) + (step4Done ? 1 : 0) + (step5Done ? 1 : 0);
+    const markStep = (html, from, to, doneLabel) => {
+      const i = html.indexOf(from); const j = html.indexOf(to, i);
+      if (i < 0 || j < 0) return html;
+      const seg = html.slice(i, j)
+        .replace('opacity-60', '')
+        .replace('bg-secondary-container text-on-secondary-container', 'bg-primary text-on-primary')
+        .replace('bg-surface-container text-on-surface-variant', 'bg-primary text-on-primary')
+        .replace('ring-primary/20 animate-pulse', 'ring-surface-container-lowest')
+        .replace('text-secondary font-semibold uppercase', 'text-primary font-semibold uppercase')
+        .replace(/Étape \d+ • [^<]*/, doneLabel);
+      return html.slice(0, i) + seg + html.slice(j);
+    };
+    // Politique d'annulation reelle (identique a _refund_if_paid cote serveur)
+    const beforeStart = nowTs < startTs;
+    const depPct = Math.round(Number(b.deposit_refund_percent ?? 90));
+    const remainingDays = Math.max(0, Math.round((endTs - nowTs) / 864e5));
+    const dailyPart = (Number(b.subtotal || 0) - Number(b.delivery_fee || 0)) / days;
+    const refundRes = beforeStart ? Number(b.subtotal || 0) : dailyPart * remainingDays;
+    const refundDep = beforeStart ? Number(b.deposit_amount || 0) * depPct / 100 : Number(b.deposit_amount || 0);
+    const resPct = beforeStart ? 100 : Math.round(100 * remainingDays / days);
     const pickup = b.pickup_address || (b.vehicle_city ? `${b.vehicle_city} - Prise en charge à convenir` : '');
     const drvName = b.driver_name || null;
     const drvPhone = b.driver_phone || '';
@@ -467,11 +531,12 @@ export default function C4DetailReservation() {
       .replace('Inspection certifiée 9.8 / 10', `Inspection certifiée ${esc(veh?.last_inspection_score ?? veh?.condition_score ?? '—')} / 10`)
       .replace(/data-alt="[^"]*" src="[^"]+">/, b.vehicle_image ? `src="${esc(b.vehicle_image)}">` : (m) => m)
       .replace('MAT-LT-4921-CM • Châssis vérifié CEMAC', `${esc(b.vehicle_plate || '')} • ${esc(b.vehicle_city || '')}`)
-      .replace(/55 000 FCFA\/j/g, `${fmt(b.daily_rate)} FCFA/j`)
-      .replace(/55 000 FCFA/g, `${fmt(b.subtotal)} FCFA`)
+      .replace('55 000 FCFA<span', `${fmt(b.daily_rate)} FCFA<span`)
+      .replace(/55 000 FCFA/g, `${fmt(Number(b.subtotal || 0) - Number(b.driver_fee || 0) - Number(b.delivery_fee || 0))} FCFA`)
+      .replace('73 500 FCFA (100%)', `${fmt(refundRes)} FCFA (${resPct}%)`)
       .replace(/73 500 FCFA/g, `${fmt(b.subtotal)} FCFA`)
       .replace(/150 000 FCFA/g, `${fmt(b.deposit_amount)} FCFA`)
-      .replace('Déblocage caution :</span>\n</div>', `Déblocage caution :</span>\n<span class="font-bold text-primary">${fmt(b.deposit_amount)} FCFA</span>\n</div>`)
+      .replace('Déblocage caution :</span>\n</div>', `Déblocage caution :</span>\n<span class="font-bold text-primary">${fmt(refundDep)} FCFA (${beforeStart ? depPct : 100}%)</span>\n</div>`)
       .replace('Mercredi 29 Octobre 2025 • 08:30', `${dmy(b.start_date)} • ${sTime}`)
       .replace('Jeudi 30 Octobre 2025 • 08:30', `${dmy(b.end_date)} • ${eTime}`)
       .replace('Hub Central Akwa, Douala (Face Direction MTN)', esc(pickup))
@@ -487,10 +552,30 @@ export default function C4DetailReservation() {
       .replace(/\+237 670 42 18 90|\+237 699 12 34 56/g, esc(drvPhone || b.owner_phone || ''))
       .replace(/tel:\+237670421890/g, `tel:+${phoneDigits}`)
       .replace(/wa\.me\/237670421890/g, `wa.me/${phoneDigits}`)
-      .replace('18h restantes', hoursLeft > 0 ? `${hoursLeft}h restantes` : 'Échue')
-      .replace('Jusqu\'au 28 Oct à 08:30', `Jusqu'au ${dmy(b.start_date)} à ${sTime}`)
-      .replace('Véhicule de remplacement garanti sous 45 min en cas de panne technique à Douala.',
-        'Assistance AutoLink disponible 24/7 pendant toute la durée de votre location.');
+      .replace('Annulation 100% gratuite', beforeStart ? 'Annulation avant le départ' : 'Annulation en cours de location')
+      .replace('18h restantes', beforeStart ? `${hoursLeft}h restantes` : 'En cours')
+      .replace('Jusqu\'au 28 Oct à 08:30', beforeStart ? `Jusqu'au ${dmy(b.start_date)} à ${sTime}` : `${remainingDays} jour(s) restants remboursés`)
+      .replace('<p class="font-body-sm text-body-sm text-on-surface-variant leading-snug">\n          </p>',
+        `<p class="font-body-sm text-body-sm text-on-surface-variant leading-snug">${beforeStart
+          ? `Annulation avant le départ : location remboursée à 100 %, caution remboursée à ${depPct} % (AutoLink conserve ${100 - depPct} %).`
+          : 'Annulation pendant la location : caution remboursée à 100 %, seuls les jours restants sont remboursés (le jour d\u2019annulation est dû).'}</p>`)
+      .replace('width: 32%;', `width: ${Math.min(100, stepsDone * 20)}%;`)
+      .replace(/<div class="p-4 rounded-xl bg-surface-container-low flex items-center gap-3 text-on-surface-variant">[\s\S]*?verified_user[\s\S]*?<\/div>\n<\/div>/, '');
+    // Avis : etoiles cliquables a tout statut, ou avis deja donne
+    const stars = [1, 2, 3, 4, 5].map((n) => {
+      const filled = Number(b.client_rating || 0) >= n;
+      return `<span class="material-symbols-outlined text-[22px] ${filled ? 'text-yellow-500' : 'text-surface-dim'} rate-star cursor-pointer hover:text-yellow-500 transition-colors" data-r="${n}">${filled ? 'star' : 'star'}</span>`;
+    }).join('');
+    h = h.replace(/<div class="flex items-center gap-2 text-on-surface-variant">(\s*<span class="material-symbols-outlined text-\[22px\] text-surface-dim">star<\/span>)+\s*<\/div>/,
+      `<div class="flex items-center gap-2 text-on-surface-variant">${stars}</div>
+<div id="review-form" class="flex flex-col gap-2" style="display:none">
+  <textarea id="review-text" rows="3" placeholder="Votre commentaire sur la location (optionnel)…" class="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface border border-outline-variant/30 font-body-sm"></textarea>
+  <button id="review-submit" type="button" class="self-start px-4 py-2 rounded-lg bg-primary text-on-primary font-label-md font-bold">Publier mon avis</button>
+</div>`)
+      .replace('Verrouillé', b.client_rating ? 'Votre avis' : 'Disponible')
+      .replace(/L'évaluation du véhicule et du chauffeur [^<]* sera déverrouillée[^<]*\./,
+        b.client_rating ? `Votre évaluation : ${b.client_rating}/5${b.client_review ? ` — ${esc(b.client_review)}` : ''}`
+          : `Cliquez sur une étoile pour évaluer ${drvName ? `le véhicule et ${esc(drvName)}` : 'ce véhicule'}.`);
     if (veh) {
       h = h
         .replace('250 km inclus', `${fmt(veh.km_included_per_day)} km inclus`)
@@ -518,6 +603,17 @@ export default function C4DetailReservation() {
     if (!['pending', 'confirmed'].includes(b.status)) {
       h = h.replace(/<button[^>]*>\s*<span class="material-symbols-outlined text-\[18px\]">cancel<\/span>\s*Demander l'annulation[\s\S]*?<\/button>/, '');
     }
+    // Bandeau modification en attente de validation proprietaire
+    if (b.modification) {
+      const md = Number(b.modification.delta || 0);
+      h = h.replace('<!-- Parcours & Cycle de Vie du Contrat -->',
+        `<div class="mb-4 p-4 rounded-xl bg-yellow-100/60 border border-yellow-300 flex items-center gap-3"><span class="material-symbols-outlined text-yellow-700">pending_actions</span><div class="font-body-sm text-body-sm text-on-surface"><strong>Modification en attente de validation par le propriétaire</strong> — ${md > 0 ? '+' : ''}${fmt(md)} FCFA. Les détails affichés ci-dessous restent ceux de la réservation actuelle.</div></div><!-- Parcours & Cycle de Vie du Contrat -->`);
+    }
+    // Etapes qui passent au vert selon la progression reelle
+    if (step3Done) h = markStep(h, '<!-- Step 3', '<!-- Step 4 -->', 'Étape 3 • Réglée');
+    if (step4Done) h = markStep(h, '<!-- Step 4 -->', '<!-- Step 5 -->', 'Étape 4 • Réglée');
+    if (step5Done) h = markStep(h, '<!-- Step 5 -->', '</section>', 'Étape 5 • Réglée')
+        .replace('Sous 15 min après retour', 'Caution débloquée sur le portefeuille');
     return h;
   }, [b, veh]);
 

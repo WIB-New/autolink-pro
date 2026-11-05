@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import DesignPage from './DesignPage';
 import useApiData from '../utils/useApiData';
-import api from '../services/api';
+import api, { withdrawalsAPI } from '../services/api';
 
 const fmt = (n) => new Intl.NumberFormat((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')).format(Math.round(Number(n) || 0));
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -41,6 +41,10 @@ const HTML = `<div class="flex flex-col w-full">
 <button class="inline-flex items-center gap-2.5 px-5 py-3 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg shadow-md hover:shadow-lg transition-all active:scale-[0.98]" onclick="document.getElementById('quick-reload-panel').scrollIntoView({ behavior: 'smooth' })" type="button">
 <span class="material-symbols-outlined text-[20px]">add_circle</span>
 <span class="">Recharger mon portefeuille</span>
+</button>
+<button id="btn-withdraw" class="inline-flex items-center gap-2.5 px-5 py-3 rounded-lg bg-surface-container-high hover:bg-surface-container text-on-surface font-label-lg text-label-lg shadow-md hover:shadow-lg transition-all active:scale-[0.98]" type="button">
+<span class="material-symbols-outlined text-[20px] text-secondary">payments</span>
+<span class="">Retirer des fonds</span>
 </button>
 </div>
 </div>
@@ -737,6 +741,23 @@ const LINKS = {
 
 export default function C5PortefeuilleEtCaution() {
   const { data } = useApiData(() => api.get('/payments/wallet/'), []);
+  const [wdOpen, setWdOpen] = useState(false);
+  const [wdMethod, setWdMethod] = useState('mtn');
+  const [wdAmount, setWdAmount] = useState('');
+  const [wdPhone, setWdPhone] = useState('');
+  const [wdBusy, setWdBusy] = useState(false);
+  const [wdErr, setWdErr] = useState('');
+  const [wdOk, setWdOk] = useState('');
+  const doWithdraw = () => {
+    const amt = Number(wdAmount);
+    if (!amt || amt < 500) { setWdErr('Montant minimum : 500 FCFA.'); return; }
+    if (!wdPhone.trim()) { setWdErr(wdMethod === 'card' ? 'Indiquez le numéro de carte ou de compte.' : 'Indiquez le numéro à créditer.'); return; }
+    setWdBusy(true); setWdErr('');
+    withdrawalsAPI.create({ amount: amt, method: wdMethod, phone: wdPhone.trim() })
+      .then(() => { setWdOpen(false); setWdOk(`${fmt(amt)} FCFA — demande de retrait enregistrée, en attente de traitement.`); setTimeout(() => window.location.reload(), 1200); })
+      .catch((e) => { const d = e?.response?.data || {}; setWdErr([d.amount, d.phone, d.detail].flat().filter(Boolean)[0] || 'Impossible de traiter la demande.'); })
+      .finally(() => setWdBusy(false));
+  };
   const html = useMemo(() => {
     if (!data) return HTML;
     let h = HTML;
@@ -746,11 +767,10 @@ export default function C5PortefeuilleEtCaution() {
     };
     patch(data.balance, 'Solde disponible');
     patch(data.held_deposit, 'Caution bloquée');
+    patch(data.released_deposits, 'Cautions restituées');
     const txs = data.transactions || [];
-    const reloaded = txs.filter((t) => t.kind === 'topup').reduce((a, t) => a + Number(t.amount || 0), 0);
-    const released = txs.filter((t) => t.kind === 'refund').reduce((a, t) => a + Number(t.amount || 0), 0);
+    const reloaded = data.recharged_month ?? txs.filter((t) => t.kind === 'topup').reduce((a, t) => a + Number(t.amount || 0), 0);
     patch(reloaded, 'Rechargé');
-    patch(released, 'Caution restituée');
     const rows = txs.length ? txs.map(txRow).join('')
       : '<tr><td class="py-10 px-4 text-center text-on-surface-variant" colspan="8">Aucune transaction pour le moment.</td></tr>';
     return h.replace(/<tbody[^>]*>[\s\S]*?<\/tbody>/, `<tbody>${rows}</tbody>`);
@@ -797,6 +817,7 @@ export default function C5PortefeuilleEtCaution() {
     const click = (e) => {
       const el = e.target.closest('button, a');
       if (!el) return;
+      if (el.closest('#btn-withdraw')) { e.preventDefault(); setWdOpen(true); return; }
       const t = el.textContent.replace(/\s+/g, ' ').trim();
       if (t === 'Précédent' || t === 'Suivant' || /^\d+$/.test(t)) {
         const rows = [...document.querySelectorAll('.tx-row[data-match="1"]')];
@@ -838,5 +859,41 @@ export default function C5PortefeuilleEtCaution() {
     };
   }, [data]);
 
-  return <DesignPage html={html} links={LINKS} modalHtml={MODAL} />;
+  return (
+    <>
+      <DesignPage html={html} links={LINKS} modalHtml={MODAL} />
+      {wdOk && <div role="status" className="fixed bottom-4 right-4 z-[95] px-4 py-3 rounded-xl bg-primary text-on-primary font-label-md shadow-lg">{wdOk}</div>}
+      {wdOpen && (
+        <div className="fixed inset-0 z-[90] bg-black/50 p-4 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="wd-title" onClick={(e) => { if (e.target === e.currentTarget) setWdOpen(false); }}>
+          <div className="bg-surface-container-lowest rounded-xl p-6 w-full max-w-md flex flex-col gap-4 shadow-2xl">
+            <h2 id="wd-title" className="font-headline-md text-headline-md text-on-surface font-bold">Retirer des fonds</h2>
+            <p className="font-body-sm text-body-sm text-on-surface-variant">Solde disponible : <strong>{fmt(data?.balance)} FCFA</strong> — le montant sera transféré après validation par l'équipe AutoLink.</p>
+            <div className="flex flex-col gap-2">
+              {[['mtn', 'MTN MoMo'], ['orange', 'Orange Money'], ['card', 'Carte bancaire / Compte bancaire']].map(([k, label]) => (
+                <button key={k} type="button" onClick={() => setWdMethod(k)}
+                  className={`flex items-center gap-3 p-3 rounded-lg text-left transition-all ${wdMethod === k ? 'bg-primary/10 ring-2 ring-primary' : 'bg-surface-container-low hover:bg-surface-container'}`}>
+                  <span className="material-symbols-outlined text-primary text-[20px]">{k === 'card' ? 'credit_card' : 'phone_iphone'}</span>
+                  <span className="font-label-md text-label-md text-on-surface">{label}</span>
+                  {wdMethod === k && <span className="material-symbols-outlined text-primary text-[18px] ml-auto">check_circle</span>}
+                </button>
+              ))}
+            </div>
+            <label className="flex flex-col gap-1 font-label-sm text-label-sm text-on-surface-variant">Montant (FCFA)
+              <input type="number" min="500" step="1" value={wdAmount} onChange={(e) => setWdAmount(e.target.value)} placeholder="Ex : 25 000"
+                className="px-3 py-2.5 rounded-lg bg-surface-container-low font-body-md text-body-md text-on-surface outline-none focus:ring-2 focus:ring-primary" />
+            </label>
+            <label className="flex flex-col gap-1 font-label-sm text-label-sm text-on-surface-variant">{wdMethod === 'card' ? 'Numéro de carte ou de compte' : 'Numéro à créditer'}
+              <input type="text" value={wdPhone} onChange={(e) => setWdPhone(e.target.value)} placeholder={wdMethod === 'card' ? 'Ex : 4021 76•• •••• 9010' : '+237 6XX XX XX XX'}
+                className="px-3 py-2.5 rounded-lg bg-surface-container-low font-body-md text-body-md text-on-surface outline-none focus:ring-2 focus:ring-primary" />
+            </label>
+            {wdErr && <p role="alert" className="p-3 rounded-lg bg-error-container text-on-error-container font-label-md">{wdErr}</p>}
+            <div className="flex gap-3 pt-1">
+              <button type="button" onClick={() => setWdOpen(false)} className="flex-1 py-2.5 rounded-lg bg-surface-container-high text-on-surface font-label-md font-bold">Annuler</button>
+              <button type="button" onClick={doWithdraw} disabled={wdBusy} className="flex-1 py-2.5 rounded-lg bg-primary text-on-primary font-label-md font-bold disabled:opacity-60">{wdBusy ? 'Envoi…' : 'Confirmer le retrait'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }

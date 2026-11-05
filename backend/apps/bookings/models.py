@@ -64,6 +64,10 @@ class Booking(models.Model):
     pickup_address = models.TextField(blank=True)
     dropoff_address = models.TextField(blank=True)
     notes = models.TextField(blank=True)
+    modification = models.JSONField(
+        null=True, blank=True,
+        help_text='Modification proposée en attente de validation propriétaire '
+                  '({patch, delta, subtotal, delta_paid})')
 
     daily_rate = models.DecimalField(max_digits=10, decimal_places=2)
     days = models.IntegerField(validators=[MinValueValidator(1)])

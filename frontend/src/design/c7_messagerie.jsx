@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import DesignPage from './DesignPage';
 import useApiData from '../utils/useApiData';
 import { messagingAPI } from '../services/api';
@@ -374,13 +375,16 @@ export default function C7Messagerie({ role = 'client' }) {
   const [active, setActive] = useState(null);
   const [activeName, setActiveName] = useState('');
   const [msgs, setMsgs] = useState([]);
+  const [searchParams] = useSearchParams();
   const { data } = useApiData(() => messagingAPI.conversations(), []);
   const convs = useMemo(() => data?.results || (Array.isArray(data) ? data : []) || [], [data]);
   const unread = convs.reduce((a, c) => a + (c.unread_count || 0), 0);
 
   useEffect(() => {
+    const wanted = Number(searchParams.get('conv') || 0);
+    if (wanted && convs.some((c) => c.id === wanted)) { setActive(wanted); return; }
     if (!active && convs.length) { setActive(convs[0].id); }
-  }, [convs, active]);
+  }, [convs, active, searchParams]);
 
   useEffect(() => {
     if (!active) return;

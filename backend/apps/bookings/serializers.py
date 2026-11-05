@@ -25,6 +25,7 @@ class BookingSerializer(serializers.ModelSerializer):
     escrow_status = serializers.CharField(source='payment.escrow_status', read_only=True)
     deposit_status = serializers.CharField(source='payment.deposit_status', read_only=True)
     inspections = VehicleInspectionSerializer(many=True, read_only=True)
+    deposit_refund_percent = serializers.SerializerMethodField()
 
     class Meta:
         model = Booking
@@ -36,6 +37,10 @@ class BookingSerializer(serializers.ModelSerializer):
                             'dispute_reason', 'dispute_opened_at', 'driver_response',
                             'owner_response', 'owner_responded_at',
                             'created_at', 'updated_at']
+
+    def get_deposit_refund_percent(self, obj):
+        from apps.users.models import PlatformSettings
+        return 100 - float(PlatformSettings.current().cancel_deposit_keep_percent or 0)
 
     def get_client_name(self, obj): return obj.client.get_full_name()
     def get_vehicle_name(self, obj): return str(obj.vehicle)

@@ -125,8 +125,6 @@ class BookingViewSet(viewsets.ModelViewSet):
         booking = self.get_object()
         if booking.client_id != request.user.id:
             raise PermissionDenied('Cette réservation ne vous appartient pas.')
-        if booking.status != 'completed':
-            raise ValidationError({'detail': 'Seule une location terminée peut être évaluée.'})
         if booking.client_rating:
             raise ValidationError({'detail': 'Vous avez déjà évalué cette location.'})
         try:
@@ -161,9 +159,12 @@ class BookingViewSet(viewsets.ModelViewSet):
     def owner_accept(self, request, pk=None):
         booking = self.get_object()
         self._owner_booking(request.user, booking)
-        booking.owner_response = 'accepted'
-        booking.owner_responded_at = timezone.now()
-        booking.save(update_fields=['owner_response', 'owner_responded_at', 'updated_at'])
+        with db_transaction.atomic():
+            if booking.modification:
+                self._apply_modification(booking)
+            booking.owner_response = 'accepted'
+            booking.owner_responded_at = timezone.now()
+            booking.save(update_fields=['owner_response', 'owner_responded_at', 'updated_at'])
         _notify(booking.client, 'Réservation acceptée',
                 f'Le propriétaire a accepté votre réservation {booking}. '
                 f'Le véhicule sera prêt le {booking.start_date}.')
@@ -174,17 +175,72 @@ class BookingViewSet(viewsets.ModelViewSet):
         booking = self.get_object()
         self._owner_booking(request.user, booking)
         reason = (request.data.get('reason') or '').strip()
+        if booking.modification:
+            # Refus de la modification : l'ancienne réservation reste d'actualité,
+            # le supplément déjà réglé est recrédité.
+            with db_transaction.atomic():
+                delta = Decimal(str(booking.modification.get('delta', '0')))
+                if booking.modification.get('delta_paid') and delta > 0:
+                    from apps.payments.models import WalletTransaction
+                    cl = booking.client
+                    cl.balance = (cl.balance or 0) + delta
+                    cl.save(update_fields=['balance', 'updated_at'])
+                    WalletTransaction.objects.create(
+                        user=cl, kind='refund', method='wallet', amount=delta,
+                        balance_after=cl.balance, reference=f'BK-{booking.pk:04d}-MODREF',
+                        note=f'Remboursement supplément — modification refusée {booking.vehicle}')
+                booking.modification = None
+                booking.save(update_fields=['modification', 'updated_at'])
+            _notify(booking.client, 'Modification refusée',
+                    f'Le propriétaire a refusé votre modification sur {booking}. '
+                    f'Votre réservation initiale reste inchangée.')
+            return Response(self.get_serializer(booking).data)
         with db_transaction.atomic():
             booking.owner_response = 'refused'
             booking.owner_responded_at = timezone.now()
             booking.status = Booking.Status.CANCELLED
             booking.save(update_fields=['owner_response', 'owner_responded_at', 'status', 'updated_at'])
             booking.sync_vehicle_status()
-            self._refund_if_paid(booking)
+            self._refund_full(booking)
         _notify(booking.client, 'Réservation refusée',
                 f'Le propriétaire n’a pas pu accepter votre réservation {booking}. '
                 f'{reason + " " if reason else ""}Tout paiement effectué vous a été remboursé.')
         return Response(self.get_serializer(booking).data)
+
+    @staticmethod
+    def _apply_modification(booking):
+        """Le propriétaire valide la modification : application + remboursement
+        d'un éventuel surcroît payé en trop par le client."""
+        mod = booking.modification or {}
+        patch = mod.get('patch') or {}
+        from datetime import date as d_, time as t_
+        for f, v in patch.items():
+            if f in ('start_date', 'end_date'):
+                setattr(booking, f, d_.fromisoformat(v))
+            elif f in ('start_time', 'end_time'):
+                setattr(booking, f, t_.fromisoformat(v) if v else None)
+            else:
+                setattr(booking, f, v)
+        delta = Decimal(str(mod.get('delta', '0')))
+        # Recalcule jours/prix depuis les nouvelles dates-heures
+        from datetime import datetime as dtc, time as tz
+        start = dtc.combine(booking.start_date, booking.start_time or tz(0, 0))
+        end = dtc.combine(booking.end_date, booking.end_time or tz(0, 0))
+        hours = max(1, (end - start).total_seconds() / 3600)
+        booking.days = max(1, -(-int(hours * 60) // (24 * 60)))
+        booking.driver_fee = (Decimal('10000') * booking.days) if booking.driver_type == 'internal' else Decimal('0')
+        if delta < 0:
+            from apps.payments.models import WalletTransaction
+            cl = booking.client
+            refund = -delta
+            cl.balance = (cl.balance or 0) + refund
+            cl.save(update_fields=['balance', 'updated_at'])
+            WalletTransaction.objects.create(
+                user=cl, kind='refund', method='wallet', amount=refund,
+                balance_after=cl.balance, reference=f'BK-{booking.pk:04d}-MODREF',
+                note=f'Remboursement modification {booking.vehicle}')
+        booking.modification = None
+        booking.save()
 
     @action(detail=False, methods=['get'], url_path='owner-stats')
     def owner_stats(self, request):
@@ -338,6 +394,18 @@ class BookingViewSet(viewsets.ModelViewSet):
                     f'Votre véhicule {vehicle} a été réservé par {booking.client.get_full_name()} '
                     f'du {start} au {end}.{suffix} '
                     f'Merci de le mettre à disposition à la date prévue.')
+            # Admin + proprio : infos client + documents KYC du dossier
+            cl = booking.client
+            docs = ' | '.join(filter(None, [
+                'CNI' if cl.id_document else '', 'Permis' if cl.driving_license else ''])) or 'aucun'
+            detail = (f'{cl.get_full_name()} ({cl.email}, {cl.phone}) a réservé '
+                      f'{vehicle} du {start} au {end} ({booking.days} j) — '
+                      f'{booking.subtotal} FCFA + caution {booking.deposit_amount} FCFA. '
+                      f'Documents : {docs}.')
+            from apps.users.models import User as U
+            for admin in U.objects.filter(role='ADMIN', is_active=True):
+                _notify(admin, f'Réservation BK-{booking.pk:04d}', detail)
+            _notify(vehicle.owner, 'Dossier client', detail)
 
             booking.sync_vehicle_status()
 
@@ -468,7 +536,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 raise ValidationError({'status': 'Cette réservation ne peut plus être annulée.'})
             serializer.save(status='cancelled')
             serializer.instance.sync_vehicle_status()
-            self._refund_if_paid(serializer.instance)
+            self._refund_client_cancel(serializer.instance)
             return
 
         if user.role == 'DRIVER':
@@ -504,8 +572,8 @@ class BookingViewSet(viewsets.ModelViewSet):
     def _edit_client_booking(self, serializer, booking, user):
         if booking.status not in ('pending', 'confirmed') or booking.start_date <= timezone.localdate():
             raise ValidationError({'detail': 'Cette réservation ne peut plus être modifiée.'})
-        changes = set(serializer.validated_data)
-        allowed = {'start_date', 'end_date', 'pickup_address', 'dropoff_address', 'notes', 'driver_type'}
+        changes = {f for f, v in serializer.validated_data.items() if getattr(booking, f) != v}
+        allowed = {'start_date', 'end_date', 'start_time', 'end_time', 'pickup_address', 'dropoff_address', 'notes', 'driver_type'}
         if not changes <= allowed:
             raise PermissionDenied('Seules les dates, les lieux, les notes et le chauffeur sont modifiables.')
         try:
@@ -514,8 +582,6 @@ class BookingViewSet(viewsets.ModelViewSet):
             payment = None
         paid_wallet = bool(payment and payment.method == 'wallet' and payment.status == 'completed')
         price_fields = {'start_date', 'end_date', 'driver_type'}
-        if not paid_wallet and changes & price_fields:
-            raise ValidationError({'detail': 'Pour modifier les dates ou le chauffeur, annulez puis effectuez une nouvelle réservation.'})
 
         start = serializer.validated_data.get('start_date', booking.start_date)
         end = serializer.validated_data.get('end_date', booking.end_date)
@@ -531,32 +597,74 @@ class BookingViewSet(viewsets.ModelViewSet):
             if conflict:
                 raise ValidationError({'start_date': 'Le véhicule est déjà réservé sur cette période.'})
 
-        old_subtotal = booking.subtotal
+        # Proposition en attente de validation proprietaire : la reservation
+        # actuelle reste d'actualite tant que le proprio ne valide pas.
+        vd = serializer.validated_data
+        merged = {
+            f: vd.get(f, getattr(booking, f))
+            for f in ('start_date', 'end_date', 'start_time', 'end_time',
+                      'driver_type', 'pickup_address', 'dropoff_address', 'notes')
+        }
+        probe = Booking(
+            vehicle=booking.vehicle, client=booking.client,
+            start_date=merged['start_date'], end_date=merged['end_date'],
+            start_time=merged['start_time'], end_time=merged['end_time'],
+            driver_type=merged['driver_type'],
+            delivery_requested=booking.delivery_requested,
+            daily_rate=booking.daily_rate, deposit_amount=booking.deposit_amount,
+        )
+        from datetime import datetime as dtc, time as tz
+        _s = dtc.combine(merged['start_date'], merged['start_time'] or tz(0, 0))
+        _e = dtc.combine(merged['end_date'], merged['end_time'] or tz(0, 0))
+        probe.days = max(1, -(-int((_e - _s).total_seconds() / 60) // 1440))
+        probe.driver_fee = (Decimal('10000') * probe.days) if merged['driver_type'] != Booking.DriverType.NONE else Decimal('0')
+        probe.delivery_fee = Decimal('5000') if booking.delivery_requested else Decimal('0')
+        gross = probe.daily_rate * probe.days * Decimal(100 - (booking.discount_percent or 0)) / 100
+        new_subtotal = (gross + probe.driver_fee + probe.delivery_fee).quantize(Decimal('0.01'))
+        delta = new_subtotal - booking.subtotal
+        from apps.payments.models import WalletTransaction
+        from apps.users.models import User
         with db_transaction.atomic():
-            if paid_wallet:
-                from apps.users.models import User
-                wallet_user = User.objects.select_for_update().get(pk=user.pk)
-            serializer.save()
-            difference = booking.subtotal - old_subtotal if paid_wallet else Decimal('0')
-            if difference:
-                if difference > 0 and wallet_user.balance < difference:
-                    raise ValidationError({'balance': 'Solde insuffisant pour cette modification.'})
-                wallet_user.balance = wallet_user.balance - difference
-                wallet_user.save(update_fields=['balance', 'updated_at'])
-                from apps.payments.models import WalletTransaction
+            # Net : on ne retient que l'extra total voulu, en compensant
+            # l'extra déjà prélevé sur une précédente proposition.
+            prev = booking.modification or {}
+            prev_extra = Decimal(str(prev.get('delta', '0'))) if prev.get('delta_paid') else Decimal('0')
+            want_extra = delta if delta > 0 else Decimal('0')
+            net = want_extra - prev_extra
+            wuser = User.objects.select_for_update().get(pk=user.pk)
+            if net > 0:
+                if (wuser.balance or 0) < net:
+                    raise ValidationError(
+                        {'detail': f'Solde insuffisant — supplément de {net:.0f} FCFA requis. '
+                                   f'Rechargez votre portefeuille AutoLink.'})
+                wuser.balance -= net
+                wuser.save(update_fields=['balance', 'updated_at'])
                 WalletTransaction.objects.create(
-                    user=wallet_user,
-                    kind='debit' if difference > 0 else 'refund',
-                    method='wallet',
-                    amount=abs(difference),
-                    balance_after=wallet_user.balance,
-                    reference=f'BK-EDIT-{booking.pk}',
-                    note=f'Ajustement de prix {booking}',
-                )
-                payment.amount = booking.subtotal
-                payment.commission = booking.commission_amount
-                payment.owner_payout = booking.owner_amount
-                payment.save(update_fields=['amount', 'commission', 'owner_payout'])
+                    user=wuser, kind='debit', method='wallet', amount=net,
+                    balance_after=wuser.balance, reference=f'BK-{booking.pk:04d}-EXTRA',
+                    note=f'Supplément modification {booking.vehicle}')
+            elif net < 0:
+                wuser.balance += -net
+                wuser.save(update_fields=['balance', 'updated_at'])
+                WalletTransaction.objects.create(
+                    user=wuser, kind='refund', method='wallet', amount=-net,
+                    balance_after=wuser.balance, reference=f'BK-{booking.pk:04d}-MODREF',
+                    note=f'Réajustement modification {booking.vehicle}')
+            booking.modification = {
+                'patch': {k: str(v) for k, v in merged.items() if k in changes},
+                'delta': str(delta), 'subtotal': str(new_subtotal),
+                'delta_paid': want_extra > 0,
+            }
+            booking.save(update_fields=['modification', 'updated_at'])
+        _notify(booking.vehicle.owner, 'Modification à valider',
+                f'{user.get_full_name()} propose : {merged["start_date"]} {merged["start_time"] or ""} '
+                f'→ {merged["end_date"]} {merged["end_time"] or ""}, '
+                f'prise en charge {merged["pickup_address"]}, restitution {merged["dropoff_address"]}. '
+                f'Delta : {delta:+.0f} FCFA{", supplément réglé" if want_extra > 0 else ""}. '
+                f'Validez ou refusez pour conserver l\u2019ancienne réservation.')
+        _notify(user, 'Modification envoyée',
+                f'Votre demande de modification ({delta:+.0f} FCFA) attend la validation '
+                f'du propriétaire. L\u2019ancienne réservation reste d\u2019actualité.')
 
     def _receipt_pdf(self, booking):
         from reportlab.lib.pagesizes import A4
@@ -724,17 +832,74 @@ class BookingViewSet(viewsets.ModelViewSet):
         })
 
     @staticmethod
-    def _refund_if_paid(booking):
-        """Annulation client avant le début : remboursement intégral sur le solde."""
+    def _refund_full(booking):
+        """Annulation PROPRIETAIRE : remboursement integral location + caution."""
         try:
             payment = booking.payment
         except Exception:
             return
         if payment.escrow_status == 'held':
             payment.refund_client()
-            _notify(booking.client, 'Réservation annulée',
-                    f'Votre réservation {booking} a été annulée. '
-                    f'{payment.amount} FCFA ont été recrédités sur votre solde.')
+
+    @staticmethod
+    def _refund_client_cancel(booking):
+        """Annulation client : remboursement selon la politique avant/après le début.
+        - Avant le début : réservation 100 % remboursée + caution remboursée
+          partiellement (AutoLink conserve cancel_deposit_keep_percent %).
+        - À/after le début : caution 100 % remboursée + seuls les jours restants
+          de location sont remboursés (le jour d'annulation inclus est dû)."""
+        from apps.payments.models import WalletTransaction
+        from apps.users.models import PlatformSettings, User
+        try:
+            payment = booking.payment
+        except Exception:
+            return
+        if payment.escrow_status != 'held':
+            return
+        now = timezone.now()
+        from datetime import datetime as dt_cls, time as dtime
+        start_dt = timezone.make_aware(dt_cls.combine(
+            booking.start_date, booking.start_time or dtime(0, 0)))
+        deposit = Decimal(str(payment.deposit_amount or 0))
+        client = User.objects.select_for_update().get(pk=booking.client_id)
+        if now < start_dt:
+            keep_pct = Decimal(str(PlatformSettings.current().cancel_deposit_keep_percent or 0))
+            refund_res = booking.subtotal
+            refund_dep = (deposit * (100 - keep_pct) / 100).quantize(Decimal('0.01'))
+            kept = deposit - refund_dep
+            detail = (f'{refund_res:.0f} FCFA de location (100 %) et {refund_dep:.0f} FCFA '
+                      f'de caution ({100 - keep_pct:.0f} %) ont été recrédités.')
+            if kept > 0:
+                admin = User.objects.filter(role='ADMIN', is_active=True).order_by('id').first()
+                if admin:
+                    admin.balance = (admin.balance or 0) + kept
+                    admin.save(update_fields=['balance'])
+                    WalletTransaction.objects.create(
+                        user=admin, kind='topup', method='wallet', amount=kept,
+                        balance_after=admin.balance, reference=f'BK-{booking.pk:04d}-KEEP',
+                        note=f'Part de caution conservée — annulation {booking}')
+        else:
+            remaining = max(0, (booking.end_date - now.date()).days)
+            daily_part = (booking.subtotal - (booking.delivery_fee or 0)) / max(1, booking.days)
+            refund_res = (daily_part * remaining).quantize(Decimal('0.01'))
+            refund_dep = deposit
+            detail = (f'la caution de {refund_dep:.0f} FCFA (100 %) et {refund_res:.0f} FCFA '
+                      f'pour les {remaining} jour(s) restants ont été recrédités.')
+        total = refund_res + refund_dep
+        with db_transaction.atomic():
+            client.balance = (client.balance or 0) + total
+            client.save(update_fields=['balance', 'updated_at'])
+            if total > 0:
+                WalletTransaction.objects.create(
+                    user=client, kind='refund', method='wallet', amount=total,
+                    balance_after=client.balance, reference=f'BK-{booking.pk:04d}-REF',
+                    note=f'Remboursement annulation {booking.vehicle}')
+            payment.escrow_status = 'refunded'
+            payment.deposit_status = 'released'
+            payment.status = 'refunded'
+            payment.save(update_fields=['escrow_status', 'deposit_status', 'status'])
+        _notify(client, 'Réservation annulée',
+                f'Votre réservation {booking} a été annulée : {detail}')
 
     @action(detail=True, methods=['post'])
     def dispute(self, request, pk=None):
