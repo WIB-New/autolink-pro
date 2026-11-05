@@ -17,11 +17,15 @@ html::-webkit-scrollbar, .app-scroll::-webkit-scrollbar { display: none; }
 @layer base {
   * { box-sizing: border-box; }
   body {
-    @apply font-sans text-slate-800 bg-slate-50 dark:bg-slate-950 dark:text-slate-100;
+    @apply font-sans text-slate-800 bg-slate-50;
     margin: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  /* Forcer le mode clair même si la classe dark est présente */
+  .dark body {
+    @apply bg-slate-50 text-slate-800;
   }
   h1, h2, h3, h4, h5, h6 { @apply font-semibold; }
 }
