@@ -7,7 +7,7 @@
 
 // const PUBLIC_LINKS = [
 //   { label: 'Accuiel',           href: '/' },
-//   { label: 'Catalogue',           href: '/catalogue' },
+//   { label: 'Catalogue',           href: '/Nos-vehicules' },
 //   { label: 'Comment ça marche',   href: '/comment-ca-marche' },
 //   { label: 'Tarifs',              href: '/tarifs' },
 //   { label: 'Devenir propriétaire',href: '/devenir-proprietaire' },
@@ -148,7 +148,7 @@ import { NAV_LINKS } from './data';
 /* « Devenir propriétaire » n'est plus un lien : c'est un bouton (voir plus bas) */
 const PUBLIC_LINKS = [
   { label: 'Accueil', href: '/' },
-  { label: 'Nos véhicules', href: '/catalogue' },
+  { label: 'Nos véhicules', href: '/Nos-vehicules' },
   { label: 'Comment ça marche', href: '/comment-ca-marche' },
   { label: 'Tarifs', href: '/tarifs' },
   { label: 'Aide', href: '/aide' },

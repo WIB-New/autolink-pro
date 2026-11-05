@@ -42,7 +42,7 @@ export default function Steps() {
             Modification gratuite jusqu'à 15 minutes avant le départ.
           </p>
           <button
-            onClick={() => navigate('/catalogue')}
+            onClick={() => navigate('/Nos-vehicules')}
             className="bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-8 rounded-xl transition-colors text-sm md:text-base shadow-lg shadow-teal-900/30"
           >
             Réserver maintenant

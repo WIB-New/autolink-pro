@@ -18,7 +18,7 @@ export default function SimilarVehicles({ vehicle }) {
     <section className="mt-14">
       <div className="flex items-end justify-between mb-6">
         <h2 className="text-2xl font-black text-slate-900">Véhicules similaires recommandés</h2>
-        <Link to="/catalogue" className="text-sm font-bold text-teal-600 hover:text-teal-700 flex items-center gap-1.5">
+        <Link to="/Nos-vehicules" className="text-sm font-bold text-teal-600 hover:text-teal-700 flex items-center gap-1.5">
           Voir tout le catalogue <ArrowRight size={15} />
         </Link>
       </div>
