@@ -29,10 +29,10 @@ export const NAV_LINKS = [
 ];
 
 export const STANDINGS = [
-  { img: IMG.standConfort,  name: 'Confort',  price: '25 000', desc: 'Berlines et citadines fiables pour vos trajets quotidiens.' },
-  { img: IMG.standBusiness, name: 'Business', price: '35 000', desc: 'Véhicules récents et élégants pour vos rendez-vous pro.' },
-  { img: IMG.standPremium,  name: 'Premium',  price: '55 000', desc: 'SUV et berlines haut de gamme, confort supérieur.' },
-  { img: IMG.standLuxe,     name: 'Luxe',     price: '75 000', desc: 'Véhicules d\'exception pour vos événements marquants.' },
+  { id: 'basic',    img: IMG.standConfort,  name: 'Citadines Agiles',    price: '25 000', desc: 'Économiques et maniables — parfaites pour vos trajets en ville.' },
+  { id: 'standard', img: IMG.standBusiness, name: 'Berlines Spacieuses', price: '35 000', desc: 'Confort et espace au juste prix pour vos déplacements pro et familiaux.' },
+  { id: 'premium',  img: IMG.standPremium,  name: 'SUV & 4x4 Confort',   price: '55 000', desc: 'Puissance et tenue de route pour l\'interurbain et les pistes.' },
+  { id: 'gold',     img: IMG.standLuxe,     name: 'Prestige & Cortège',  price: '95 000', desc: 'Véhicules d\'exception avec chauffeur pour vos événements marquants.' },
 ];
 
 // Sélection mise en avant sur l'accueil (ids issus de CATALOG_VEHICLES)

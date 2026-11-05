@@ -188,7 +188,7 @@ export default function PublicNavbar() {
               <Phone size={12} className="text-teal-400" /> +237 656 789 000
             </a>
             <span className="flex items-center gap-1.5">
-              <MapPin size={12} className="text-teal-400" /> Douala &amp; Yaoundé, Cameroun
+              <MapPin size={12} className="text-teal-400" />Cameroun
             </span>
           </div>
           <div className="flex items-center gap-5">

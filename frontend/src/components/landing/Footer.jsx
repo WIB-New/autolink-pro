@@ -65,7 +65,7 @@ export default function Footer() {
               </div>
               <div className="flex items-start gap-2.5">
                 <Clock size={15} className="text-teal-500 mt-0.5 shrink-0" />
-                <span>Lun–Sam : 6h–22h · Dim : sur réservation</span>
+                <span>Lun–Sam : 6h–22h</span>
               </div>
             </div>
           </div>
@@ -103,7 +103,7 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
-          <p>© 2026 AutoLink Pro. Tous droits réservés — Douala &amp; Yaoundé, Cameroun.</p>
+          <p>© 2026 AutoLink Pro. Tous droits réservés — Cameroun.</p>
           {/* <div className="flex gap-6">
             {['Politique de confidentialité', 'CGU', 'Cookies'].map(l => (
               <Link key={l} to="/" className="hover:text-teal-400 transition-colors">{l}</Link>
