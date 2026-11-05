@@ -21,8 +21,11 @@ export default function Hero() {
   }, []);
 
   return (
-    <section id="accueil" className="relative pt-24 lg:pt-36 pb-8 lg:pb-24">
-      {/* Carrousel plein écran — couvre toute la hauteur et largeur de la section */}
+    <section
+      id="accueil"
+      className="relative flex flex-col justify-center min-h-[100svh] lg:min-h-[85vh] pt-28 lg:pt-36 pb-16 lg:pb-20"
+    >
+      {/* Carrousel plein écran */}
       <div className="absolute inset-0">
         {SLIDES.map((src, i) => (
           <img
@@ -36,24 +39,23 @@ export default function Hero() {
             }}
           />
         ))}
-        {/* Dégradé sombre unifié pour tout l'écran */}
         <div className="absolute inset-0 bg-slate-950/70" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-900/70 to-transparent" />
       </div>
 
-      {/* Contenu du hero centré */}
-      <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center min-h-[42vh] lg:min-h-[60vh] justify-center">
-        <div>
+      {/* Contenu : texte à gauche (centré verticalement) + barre de recherche dans le hero */}
+      <div className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-8 lg:gap-12">
+        <div className="max-w-2xl text-left">
           <h1 className="text-3xl sm:text-4xl lg:text-6xl font-black text-white leading-tight mb-5 lg:mb-6">
             Louez un véhicule <span className="text-teal-400">vérifié</span>{' '}
-            àu cameroun
+            au Cameroun
           </h1>
-          <p className="text-base lg:text-lg text-slate-200 leading-relaxed mb-6 lg:mb-8 max-w-2xl mx-auto">
+          <p className="text-base lg:text-lg text-slate-200 leading-relaxed mb-6 lg:mb-8">
             Fini les mauvaises surprises : chaque véhicule est inspecté avant votre
             départ et chaque chauffeur est certifié. Du trajet professionnel au
             week-end en famille, roulez l'esprit tranquille, avec une équipe à votre écoute à toute heure.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-3 lg:gap-6 text-xs lg:text-sm text-slate-200">
+          <div className="flex flex-wrap items-center gap-3 lg:gap-6 text-xs lg:text-sm text-slate-200">
             {['Chauffeurs certifiés', 'Assurance incluse'].map(t => (
               <span key={t} className="flex items-center gap-1.5 lg:gap-2">
                 <CheckCircle size={14} className="text-teal-400" />
@@ -63,25 +65,20 @@ export default function Hero() {
           </div>
         </div>
 
-        {/* Indicateurs du carrousel — desktop uniquement (le widget est dans le flux sur mobile) */}
-        <div className="absolute bottom-16 hidden lg:flex items-center gap-2">
-          {SLIDES.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setIdx(i)}
-              aria-label={`Visuel ${i + 1}`}
-              className={`rounded-full transition-all duration-300 ${i === idx ? 'w-6 h-2 bg-teal-400' : 'w-2 h-2 bg-white/50 hover:bg-white'}`}
-            />
-          ))}
-        </div>
+        {/* Barre de recherche dans le hero */}
+        <SearchWidget />
       </div>
 
-      {/* Barre de recherche : dans le flux sur mobile (sous le contenu),
-          chevauchement élégant du bord inférieur sur desktop */}
-      <div className="relative lg:absolute lg:inset-x-0 lg:bottom-0 z-20 lg:translate-y-1/2 px-4 mt-10 lg:mt-0">
-        <div className="max-w-6xl mx-auto">
-          <SearchWidget />
-        </div>
+      {/* Indicateurs du carrousel — desktop uniquement */}
+      <div className="absolute bottom-5 inset-x-0 z-10 hidden lg:flex items-center justify-center gap-2">
+        {SLIDES.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setIdx(i)}
+            aria-label={`Visuel ${i + 1}`}
+            className={`rounded-full transition-all duration-300 ${i === idx ? 'w-6 h-2 bg-teal-400' : 'w-2 h-2 bg-white/50 hover:bg-white'}`}
+          />
+        ))}
       </div>
     </section>
   );
