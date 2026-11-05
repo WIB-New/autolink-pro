@@ -17,7 +17,9 @@ html::-webkit-scrollbar, .app-scroll::-webkit-scrollbar { display: none; }
 @layer base {
   * { box-sizing: border-box; }
   body {
-    @apply font-sans text-slate-800 bg-slate-50;
+    font-family: theme('fontFamily.sans');
+    color: #1e293b;
+    background-color: #f8fafc;
     margin: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -25,9 +27,10 @@ html::-webkit-scrollbar, .app-scroll::-webkit-scrollbar { display: none; }
   }
   /* Forcer le mode clair même si la classe dark est présente */
   .dark body {
-    @apply bg-slate-50 text-slate-800;
+    background-color: #f8fafc;
+    color: #1e293b;
   }
-  h1, h2, h3, h4, h5, h6 { @apply font-semibold; }
+  h1, h2, h3, h4, h5, h6 { font-weight: 600; }
 }
 
 @layer components {
@@ -172,7 +175,6 @@ html::-webkit-scrollbar, .app-scroll::-webkit-scrollbar { display: none; }
 .dark .bg-blue-100 { background-color: #1e3a8a; }
 .dark body, .dark { background-color: #0b1220; color: #e8f2ff; }
 .dark .bg-white { background-color: #0f172a; }
-.dark .bg-slate-50 { background-color: #0b1220; }
 .dark .bg-slate-100 { background-color: #16213c; }
 .dark .bg-slate-200 { background-color: #1e293b; }
 .dark .text-slate-800, .dark .text-slate-700, .dark .text-slate-900 { color: #e8f2ff; }
