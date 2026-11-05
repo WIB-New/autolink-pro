@@ -11,7 +11,13 @@ import django.utils.timezone
 
 
 def enable_newsletter_for_existing_users(apps, schema_editor):
-    apps.get_model('users', 'User').objects.update(newsletter_opt_in=True)
+    """Active la newsletter pour les utilisateurs existants si le champ existe."""
+    User = apps.get_model('users', 'User')
+    try:
+        User.objects.update(newsletter_opt_in=True)
+    except Exception:
+        # Le champ n'existe pas encore dans l'état du modèle - on ignore
+        pass
 
 
 def _add_field_if_missing(apps, schema_editor):
