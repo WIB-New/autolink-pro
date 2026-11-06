@@ -142,6 +142,7 @@ class Booking(models.Model):
                 booking.save(update_fields=['status', 'updated_at'])
                 booking.sync_vehicle_status()
                 booking._release_escrow()
+                booking._credit_referral()
                 booking._release_deposit()
                 booking._notify_end()
             booking._record_driver_earning()
@@ -195,6 +196,29 @@ class Booking(models.Model):
             title='Location terminée',
             message=f'Votre location du véhicule {self.vehicle} est terminée. Merci d\'avoir utilisé AutoLink.',
         )
+
+    @classmethod
+    def _credit_referral(self):
+        """Parrainage : le filleul termine sa 1re location → parrain crédité de 5 000 FCFA
+        de crédits parrainage + bonus de bienvenue de 2 000 FCFA pour le filleul."""
+        from apps.users.models import Notification
+        parrain = self.client.referred_by
+        if not parrain:
+            return
+        already_done = (Booking.objects.filter(client=self.client, status='completed')
+                        .exclude(pk=self.pk).exists())
+        if already_done:
+            return
+        from apps.users.notif_utils import notif_allowed, notify_user
+        parrain.referral_credits += Decimal('5000')
+        parrain.save(update_fields=['referral_credits'])
+        notify_user(parrain, 'Bonus parrainage',
+                    f'{self.client.get_full_name() or self.client.username} a terminé sa première location — 5 000 FCFA de crédits parrainage.')
+        if not self.client.referral_credits and notif_allowed(self.client, 'push'):
+            self.client.referral_credits = Decimal('2000')
+            self.client.save(update_fields=['referral_credits'])
+            notify_user(self.client, 'Bonus de bienvenue',
+                        '2 000 FCFA de bonus de bienvenue crédités grâce au parrainage.')
 
     @classmethod
     def auto_complete_expired(cls):

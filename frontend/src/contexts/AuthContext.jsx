@@ -115,6 +115,7 @@ export const AuthProvider = ({ children }) => {
         role: userData.role || 'CLIENT',
         password: userData.password,
         password2: userData.password,
+        ...(userData.ref_code ? { ref_code: userData.ref_code } : {}),
       });
       const safeUser = normalizeUser(data.user);
       localStorage.setItem('autolink_user', JSON.stringify(safeUser));

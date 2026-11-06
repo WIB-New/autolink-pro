@@ -56,6 +56,8 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
             e.stopPropagation();
             if (target === 'modal') setModalOpen(true);
             else if (target === 'close-modal') setModalOpen(false);
+            else if (/^https?:\/\//.test(target)) window.open(target, '_blank', 'noopener');
+            else if (/^(tel:|mailto:|sms:)/.test(target)) window.location.href = target;
             else navigate(target);
           });
           return;
@@ -440,7 +442,7 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
     // 9) Boutons d'impression / téléchargement → boîte d'impression navigateur (démo)
     root.querySelectorAll('a, button').forEach((el) => {
       const t = text(el);
-      if (/^(Imprimer|Télécharger|Relevé PDF|Exporter CSV|Format PDF)/.test(t) || t === 'download') {
+      if (/^(Imprimer|Télécharger|Format PDF)/.test(t) || t === 'download') {
         el.style.cursor = 'pointer';
         on(el, (e) => { e.preventDefault(); window.print(); });
       }

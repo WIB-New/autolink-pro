@@ -13,11 +13,13 @@ const STATUS_META = {
   completed: { label: 'Terminée', cls: 'bg-surface-container-high text-on-surface-variant' },
   cancelled: { label: 'Annulée', cls: 'bg-error-container text-on-error-container' },
   refused: { label: 'Refusée', cls: 'bg-error-container text-on-error-container' },
+  disputed: { label: 'En litige', cls: 'bg-error-container text-on-error-container' },
 };
 
 function statusOf(b) {
   if (b.driver_response === 'offered' && b.status === 'confirmed') return 'pending';
-  if (b.driver_response === 'refused' || b.status === 'cancelled') return 'refused';
+  if (b.driver_response === 'refused') return 'refused';
+  if (b.status === 'cancelled') return 'cancelled';
   if (b.status === 'active') return 'active';
   if (b.driver_response === 'accepted' || b.status === 'confirmed' || b.status === 'pending') return 'accepted';
   return b.status;
@@ -120,6 +122,7 @@ export default function DriverDesignDashboard() {
   const [courses, setCourses] = useState([]);
   const [earnings, setEarnings] = useState(null);
   const [q, setQ] = useState('');
+  const [detail, setDetail] = useState(null);
   const [sortKey, setSortKey] = useState('date');
   const [sortAsc, setSortAsc] = useState(false);
   const [user] = useState(() => { try { return JSON.parse(localStorage.getItem('autolink_user') || '{}'); } catch { return {}; } });
@@ -138,6 +141,7 @@ export default function DriverDesignDashboard() {
           start: new Date(b.start_date).getTime(),
           price: Number(b.subtotal || 0),
           status: statusOf(b),
+          driverResponse: b.driver_response,
           realId: b.id,
         })));
       }).catch(() => {});
@@ -146,10 +150,17 @@ export default function DriverDesignDashboard() {
 
   const setStatus = (id, status) => {
     const course = courses.find((c) => c.id === id);
+    const confirmMsg = { accepted: 'Accepter cette course ?', refused: 'Refuser cette course ?', pending: 'Annuler votre refus ?' }[status];
+    if (!course || !window.confirm(confirmMsg)) return;
     setCourses((cs) => cs.map((c) => (c.id === id ? { ...c, status } : c)));
     if (course?.realId) import('../services/api').then(({ bookingsAPI }) => {
-      if (status === 'accepted') bookingsAPI.acceptDriverRide(course.realId).catch(() => {});
-      else if (status === 'refused') bookingsAPI.refuseDriverRide(course.realId).catch(() => {});
+      const rollback = (err) => {
+        setCourses((cs) => cs.map((c) => (c.id === id ? { ...c, status: course.status } : c)));
+        alert(err?.response?.data?.detail || 'Action impossible pour cette course.');
+      };
+      if (status === 'accepted') bookingsAPI.acceptDriverRide(course.realId).catch(rollback);
+      else if (status === 'refused') bookingsAPI.refuseDriverRide(course.realId).catch(rollback);
+      else if (status === 'pending') bookingsAPI.resetDriverRide(course.realId).catch(rollback);
     });
   };
 
@@ -158,7 +169,7 @@ export default function DriverDesignDashboard() {
   const filtered = courses
     .filter((c) => !q || `${c.client} ${c.car} ${c.id} ${c.from} ${c.to}`.toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => {
-      const v = sortKey === 'price' ? a.price - b.price : sortKey === 'client' ? a.client.localeCompare(b.client, 'fr') : a.start - b.start;
+      const v = sortKey === 'price' ? a.price - b.price : sortKey === 'client' ? a.client.localeCompare(b.client, 'fr') : sortKey === 'status' ? a.status.localeCompare(b.status, 'fr') : a.start - b.start;
       return sortAsc ? v : -v;
     });
 
@@ -226,7 +237,7 @@ export default function DriverDesignDashboard() {
                     ['client', 'Client / Véhicule'],
                     ['date', 'Dates & Trajet'],
                     ['price', 'Montant'],
-                    [null, 'Statut'],
+                    ['status', 'Statut'],
                     [null, 'Actions'],
                   ].map(([k, lbl]) => (
                     <th key={lbl} className="px-3 py-2 border-b border-outline-variant/40">
@@ -260,18 +271,22 @@ export default function DriverDesignDashboard() {
                       <span className={`px-2 py-0.5 rounded-full font-label-sm text-label-sm font-semibold whitespace-nowrap ${STATUS_META[c.status]?.cls || 'bg-surface-container-high text-on-surface-variant'}`}>{STATUS_META[c.status]?.label || c.status}</span>
                     </td>
                     <td className="px-3 py-3 border-b border-outline-variant/20">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => navigate(`/driver/courses/${c.realId}`)} title="Voir en détail" className="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant inline-flex items-center justify-center transition-colors"><Icon name="visibility" size={17} /></button>
                         {c.status === 'pending' && (
                           <>
-                            <button onClick={() => setStatus(c.id, 'accepted')} className="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md font-semibold transition-colors">Accepter</button>
-                            <button onClick={() => setStatus(c.id, 'refused')} className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-error-container hover:text-error text-on-surface font-label-md text-label-md font-semibold transition-colors">Refuser</button>
+                            <button onClick={() => setStatus(c.id, 'accepted')} title="Accepter la course" className="w-8 h-8 rounded-lg bg-primary-fixed hover:bg-primary hover:text-on-primary text-primary inline-flex items-center justify-center transition-colors"><Icon name="check_circle" size={17} /></button>
+                            <button onClick={() => setStatus(c.id, 'refused')} title="Refuser la course" className="w-8 h-8 rounded-lg bg-surface-container hover:bg-error-container hover:text-error text-on-surface-variant inline-flex items-center justify-center transition-colors"><Icon name="cancel" size={17} /></button>
                           </>
                         )}
                         {(c.status === 'accepted' || c.status === 'active') && (
-                          <button onClick={() => navigate('/driver/messages')} className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold transition-colors flex items-center gap-1"><Icon name="chat" size={16} />Message</button>
+                          <>
+                            <button onClick={() => navigate('/driver/messages')} title="Envoyer un message au client" className="w-8 h-8 rounded-lg bg-secondary-container text-on-secondary-container inline-flex items-center justify-center transition-colors"><Icon name="chat" size={16} /></button>
+                            {c.status === 'accepted' && <button onClick={() => setStatus(c.id, 'refused')} title="Se désister de la course" className="w-8 h-8 rounded-lg bg-surface-container hover:bg-error-container hover:text-error text-on-surface-variant inline-flex items-center justify-center transition-colors"><Icon name="event_busy" size={17} /></button>}
+                          </>
                         )}
-                        {c.status === 'refused' && (
-                          <button onClick={() => setStatus(c.id, 'pending')} className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant font-label-md text-label-md transition-colors">Annuler le refus</button>
+                        {c.status === 'refused' && c.driverResponse === 'refused' && (
+                          <button onClick={() => setStatus(c.id, 'pending')} title="Annuler le refus" className="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant inline-flex items-center justify-center transition-colors"><Icon name="settings_backup_restore" size={17} /></button>
                         )}
                         {(c.status === 'completed' || c.status === 'confirmed') && (
                           <span className="font-body-sm text-body-sm text-on-surface-variant">—</span>
@@ -288,6 +303,34 @@ export default function DriverDesignDashboard() {
           </div>
         </section>
       </div>
+      {detail && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4" onClick={() => setDetail(null)}>
+          <div className="w-full max-w-md bg-surface-container-lowest rounded-2xl p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <h3 className="font-headline-sm text-headline-sm font-bold text-on-surface">Course {detail.id}</h3>
+                <span className={`inline-block mt-1 px-2 py-0.5 rounded-full font-label-sm text-label-sm font-semibold ${STATUS_META[detail.status]?.cls || 'bg-surface-container-high text-on-surface-variant'}`}>{STATUS_META[detail.status]?.label || detail.status}</span>
+              </div>
+              <button onClick={() => setDetail(null)} className="w-8 h-8 rounded-lg hover:bg-surface-container inline-flex items-center justify-center text-on-surface-variant"><Icon name="close" size={18} /></button>
+            </div>
+            <dl className="space-y-3 font-body-md text-body-md">
+              {[
+                ['person', 'Client', `${detail.client} — ${detail.tel}`],
+                ['directions_car', 'Véhicule', detail.car],
+                ['event', 'Dates', detail.dates],
+                ['route', 'Trajet', `${detail.from} → ${detail.to}`],
+                ['payments', 'Montant', fmt(detail.price)],
+              ].map(([icon, label, value]) => (
+                <div key={label} className="flex items-start gap-3">
+                  <Icon name={icon} size={18} className="text-secondary mt-0.5 shrink-0" />
+                  <div><dt className="font-label-sm text-label-sm text-on-surface-variant">{label}</dt><dd className="text-on-surface">{value}</dd></div>
+                </div>
+              ))}
+            </dl>
+            <button onClick={() => navigate('/driver/messages')} className="mt-6 w-full py-2.5 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md font-semibold transition-colors flex items-center justify-center gap-2"><Icon name="chat" size={17} />Contacter le client</button>
+          </div>
+        </div>
+      )}
     </DesignShell>
   );
 }

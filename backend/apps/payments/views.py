@@ -10,6 +10,7 @@ from django.db.models import Count, Sum, Q
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.utils import timezone
+from io import BytesIO
 from django.http import HttpResponseRedirect
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, generics, viewsets, permissions, status
@@ -200,8 +201,9 @@ class PayoutViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 def _notify(user, title, message):
-    from apps.users.models import Notification
-    Notification.objects.create(user=user, title=title, message=message)
+    """Notification in-app — ignorée si le client a désactivé le push dans ses préférences."""
+    from apps.users.notif_utils import notify_user
+    notify_user(user, title, message)
 
 
 class WithdrawalRequestViewSet(viewsets.ModelViewSet):
@@ -276,10 +278,180 @@ class WithdrawalRequestViewSet(viewsets.ModelViewSet):
     def reject(self, request, pk=None):
         return self._process(request, pk, False)
 
+    @action(detail=True, methods=['get'], url_path='receipt')
+    def receipt(self, request, pk=None):
+        """Reçu PDF d'une demande de retrait."""
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.lib.units import mm
+        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                        Table, TableStyle, HRFlowable)
+        w = self.get_object()
+        if w.user_id != request.user.id and request.user.role != 'ADMIN':
+            raise PermissionDenied('Ce reçu ne vous appartient pas.')
+        teal = colors.HexColor('#0d7a6f')
+        mute = colors.HexColor('#6b7280')
+        base = ParagraphStyle('b', fontName='Helvetica', fontSize=9.5, leading=13)
+        buf = BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm)
+        header = Table([[Paragraph('AutoLink Pro', ParagraphStyle('br', fontName='Helvetica-Bold', fontSize=20, textColor=colors.white)),
+                         Paragraph(f'REÇU DE RETRAIT<br/><font size="9">{w.reference}</font>', ParagraphStyle('r', fontName='Helvetica-Bold', fontSize=11, textColor=colors.white, alignment=2))]],
+                       colWidths=[115 * mm, 60 * mm])
+        header.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), teal), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                                    ('LEFTPADDING', (0, 0), (-1, -1), 14), ('TOPPADDING', (0, 0), (-1, -1), 12), ('BOTTOMPADDING', (0, 0), (-1, -1), 12)]))
+        lbl = ParagraphStyle('l', parent=base, textColor=mute)
+        def kv(k, v): return [Paragraph(k, lbl), Paragraph(str(v), base)]
+        info = Table([
+            kv('Référence', w.reference), kv('Date', w.created_at.strftime('%d/%m/%Y à %H:%M')),
+            kv('Bénéficiaire', w.user.get_full_name() or w.user.username),
+            kv('Méthode', w.get_method_display() if hasattr(w, 'get_method_display') else w.method),
+            kv('Téléphone / compte', getattr(w, 'phone', '—')),
+            kv('Montant', f'{w.amount} FCFA'), kv('Statut', w.get_status_display() if hasattr(w, 'get_status_display') else w.status),
+        ], colWidths=[45 * mm, 130 * mm])
+        info.setStyle(TableStyle([('LINEBELOW', (0, 0), (-1, -2), 0.4, colors.HexColor('#e5e7eb')),
+                                  ('TOPPADDING', (0, 0), (-1, -1), 6), ('BOTTOMPADDING', (0, 0), (-1, -1), 6)]))
+        doc.build([header, Spacer(1, 16), info, Spacer(1, 16),
+                   HRFlowable(width='100%', thickness=0.6, color=colors.HexColor('#e5e7eb')), Spacer(1, 8),
+                   Paragraph(f'AutoLink Pro — Douala & Yaoundé · Émis le {timezone.localdate()}', ParagraphStyle('f', fontName='Helvetica', fontSize=8, textColor=mute, alignment=1))])
+        resp = HttpResponse(buf.getvalue(), content_type='application/pdf')
+        resp['Content-Disposition'] = f'attachment; filename="recu-{w.reference}.pdf"'
+        return resp
+
 
 class WalletViewSet(viewsets.ViewSet):
     """Solde AutoLink — rechargement et historique."""
     permission_classes = [permissions.IsAuthenticated]
+
+    @action(detail=False, methods=['get'], url_path='transactions/(?P<reference>[^/]+)/receipt')
+    def transaction_receipt(self, request, reference=None):
+        """Reçu PDF d'une transaction du portefeuille (remboursement, paiement, recharge…)."""
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.lib.units import mm
+        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                        Table, TableStyle, HRFlowable)
+        tx = request.user.wallet_transactions.filter(reference=reference).first()
+        if not tx:
+            return Response({'detail': 'Transaction introuvable.'}, status=404)
+        teal = colors.HexColor('#0d7a6f')
+        light = colors.HexColor('#e6f5f3')
+        mute = colors.HexColor('#6b7280')
+        ink = colors.HexColor('#1f2937')
+        base = ParagraphStyle('b', fontName='Helvetica', fontSize=9.5, textColor=ink, leading=13)
+        brand = ParagraphStyle('brand', fontName='Helvetica-Bold', fontSize=20, textColor=colors.white)
+        tag = ParagraphStyle('tag', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#b8e6e0'))
+        ref = ParagraphStyle('r', fontName='Helvetica-Bold', fontSize=11, textColor=colors.white, alignment=2)
+        foot = ParagraphStyle('f', fontName='Helvetica', fontSize=8, textColor=mute, alignment=1)
+        buf = BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
+                                topMargin=14 * mm, bottomMargin=14 * mm)
+        header = Table([[Paragraph('AutoLink Pro', brand),
+                         Paragraph(f'REÇU DE TRANSACTION<br/><font size="9">{tx.reference}</font>', ref)],
+                        [Paragraph('Location de véhicules vérifiés — Cameroun', tag), '']],
+                       colWidths=[115 * mm, 60 * mm])
+        header.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), teal), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 14), ('RIGHTPADDING', (0, 0), (-1, -1), 14),
+            ('TOPPADDING', (0, 0), (-1, 0), 12), ('BOTTOMPADDING', (0, -1), (-1, -1), 12),
+            ('SPAN', (0, 1), (1, 1)),
+        ]))
+
+        def kv(label, value, strong=False):
+            s = ParagraphStyle('kv', parent=base, fontName='Helvetica-Bold' if strong else 'Helvetica',
+                               textColor=teal if strong else ink)
+            return [Paragraph(label, ParagraphStyle('kl', parent=base, textColor=mute)), Paragraph(str(value), s)]
+
+        amt = f'+{tx.amount} FCFA' if tx.amount >= 0 else f'{tx.amount} FCFA'
+        info = Table([
+            kv('Référence', tx.reference, strong=True),
+            kv('Date & heure', tx.created_at.strftime('%d/%m/%Y à %H:%M')),
+            kv('Type d’opération', tx.get_kind_display() or tx.kind),
+            kv('Libellé', tx.note or '—'),
+            kv('Moyen / Source', tx.method or 'wallet'),
+            kv('Statut', tx.get_status_display() or tx.status),
+        ], colWidths=[45 * mm, 130 * mm])
+        info.setStyle(TableStyle([
+            ('LINEBELOW', (0, 0), (-1, -2), 0.4, colors.HexColor('#e5e7eb')),
+            ('TOPPADDING', (0, 0), (-1, -1), 6), ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        amounts = Table([[kv('Montant de la transaction', amt, strong=True)]],
+                        colWidths=[120 * mm, 55 * mm])
+        amounts.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), light), ('BOX', (0, 0), (-1, -1), 0.8, teal),
+            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+            ('TOPPADDING', (0, 0), (-1, -1), 8), ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('LEFTPADDING', (0, 0), (-1, -1), 10), ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ]))
+        story = [header, Spacer(1, 16), info, Spacer(1, 14), amounts, Spacer(1, 20),
+                 HRFlowable(width='100%', thickness=0.6, color=colors.HexColor('#e5e7eb')), Spacer(1, 8),
+                 Paragraph(f'AutoLink Pro — Douala & Yaoundé · Émis le {timezone.localdate()}', foot)]
+        doc.build(story)
+        resp = HttpResponse(buf.getvalue(), content_type='application/pdf')
+        resp['Content-Disposition'] = f'attachment; filename="recu-{tx.reference}.pdf"'
+        return resp
+
+    @action(detail=False, methods=['get'], url_path='statement')
+    def statement(self, request):
+        """Relevé PDF de toutes les transactions du portefeuille."""
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.lib.units import mm
+        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                        Table, TableStyle, HRFlowable)
+        teal = colors.HexColor('#0d7a6f')
+        light = colors.HexColor('#e6f5f3')
+        mute = colors.HexColor('#6b7280')
+        ink = colors.HexColor('#1f2937')
+        base = ParagraphStyle('b', fontName='Helvetica', fontSize=8, textColor=ink, leading=10)
+        head = ParagraphStyle('h', fontName='Helvetica-Bold', fontSize=8, textColor=colors.white)
+        brand = ParagraphStyle('brand', fontName='Helvetica-Bold', fontSize=18, textColor=colors.white)
+        foot = ParagraphStyle('f', fontName='Helvetica', fontSize=8, textColor=mute, alignment=1)
+
+        user = request.user
+        txs = user.wallet_transactions.order_by('-created_at')[:200]
+        buf = BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=14 * mm, rightMargin=14 * mm,
+                                topMargin=14 * mm, bottomMargin=14 * mm)
+        header = Table([[Paragraph('AutoLink Pro', brand),
+                         Paragraph(f'RELEVÉ DE TRANSACTIONS<br/><font size="9">{user.get_full_name() or user.username} — émis le {timezone.localdate()}</font>',
+                                   ParagraphStyle('r', parent=head, fontSize=10, alignment=2))]],
+                       colWidths=[100 * mm, 80 * mm])
+        header.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), teal), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 12), ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+            ('TOPPADDING', (0, 0), (-1, -1), 10), ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ]))
+        rows = [[Paragraph(c, head) for c in ['Date', 'Type', 'Référence', 'Libellé', 'Montant', 'Statut']]]
+        for t in txs:
+            amt = f'+{t.amount} FCFA' if t.amount >= 0 else f'{t.amount} FCFA'
+            rows.append([
+                Paragraph(t.created_at.strftime('%d/%m/%Y %H:%M'), base),
+                Paragraph(t.get_kind_display() or t.kind, base),
+                Paragraph(t.reference or '—', base),
+                Paragraph((t.note or '—')[:60], base),
+                Paragraph(amt, base),
+                Paragraph(t.get_status_display() or t.status, base),
+            ])
+        table = Table(rows, colWidths=[24 * mm, 24 * mm, 26 * mm, 64 * mm, 26 * mm, 18 * mm], repeatRows=1)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), teal),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, light]),
+            ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#d1d5db')),
+            ('ALIGN', (4, 0), (4, -1), 'RIGHT'),
+            ('TOPPADDING', (0, 0), (-1, -1), 5), ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ]))
+        story = [header, Spacer(1, 14), table, Spacer(1, 14),
+                 HRFlowable(width='100%', thickness=0.5, color=colors.HexColor('#e5e7eb')), Spacer(1, 6),
+                 Paragraph(f'AutoLink Pro — Douala & Yaoundé · Solde actuel : {user.balance} FCFA', foot)]
+        doc.build(story)
+        resp = HttpResponse(buf.getvalue(), content_type='application/pdf')
+        resp['Content-Disposition'] = 'attachment; filename="releve-transactions.pdf"'
+        return resp
+
+
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['reference', 'note', 'method', 'kind', 'status']
     ordering_fields = ['created_at', 'amount', 'kind', 'status']
@@ -289,7 +461,7 @@ class WalletViewSet(viewsets.ViewSet):
         for backend in self.filter_backends:
             transactions = backend().filter_queryset(request, transactions, self)
         held = Payment.objects.filter(
-            payer=request.user, status='completed', deposit_status='held',
+            payer=request.user, status__in=('completed', 'succeeded'), deposit_status='held',
         ).exclude(booking__status__in=('completed', 'cancelled'))
         month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         return Response({

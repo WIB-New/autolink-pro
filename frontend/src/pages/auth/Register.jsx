@@ -38,7 +38,7 @@ export default function Register() {
   const presetRole = { client: 'CLIENT', owner: 'OWNER', driver: 'DRIVER' }[(params.get('role') || '').toLowerCase()] || 'CLIENT';
   const [step, setStep] = useState(1); // 1 = formulaire, 2 = vérification OTP
   const [form, setForm] = useState({
-    fullName: '', email: '', phone: '', password: '', confirmPassword: '', role: presetRole, referral: '',
+    fullName: '', email: '', phone: '', password: '', confirmPassword: '', role: presetRole, referral: params.get('ref') || '',
   });
   const [emailSent, setEmailSent] = useState(true);
   const [showPw, setShowPw] = useState(false);
@@ -79,6 +79,7 @@ export default function Register() {
       phone: digits ? `+237${digits.slice(-9)}` : '',
       password: form.password,
       role: form.role,
+      ref_code: form.referral.trim() || undefined,
     });
     if (!result.success) { setLoading(false); setError(result.error); return; }
     // Compte créé → on envoie le code de validation (étape 2, maquette 3)

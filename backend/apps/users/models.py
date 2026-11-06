@@ -14,6 +14,12 @@ class User(AbstractUser):
 
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.CLIENT)
     phone = models.CharField(max_length=20, blank=True)
+    whatsapp = models.CharField(max_length=20, blank=True)
+    payment_method = models.CharField(
+        max_length=10, blank=True,
+        choices=(('mtn', 'MTN MoMo'), ('orange', 'Orange Money'), ('card', 'Carte bancaire')),
+    )
+    payment_phone = models.CharField(max_length=30, blank=True)
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     is_verified = models.BooleanField(default=False)
     newsletter_opt_in = models.BooleanField(default=True)
@@ -25,6 +31,8 @@ class User(AbstractUser):
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     id_document = models.FileField(upload_to='kyc/', null=True, blank=True)
     id_document_verified = models.BooleanField(default=False)
+    address_proof = models.FileField(upload_to='kyc/', null=True, blank=True)
+    insurance = models.FileField(upload_to='kyc/', null=True, blank=True)
     driving_license = models.FileField(upload_to='kyc/', null=True, blank=True)
     driving_license_expires_at = models.DateField(null=True, blank=True)
     kyc_status = models.CharField(
@@ -40,6 +48,7 @@ class User(AbstractUser):
     referred_by = models.ForeignKey(
         'self', null=True, blank=True, on_delete=models.SET_NULL, related_name='referrals')
     referral_credits = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    notif_prefs = models.JSONField(default=dict, blank=True)  # sms, whatsapp, email, push, twofa
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -184,3 +193,61 @@ class Agent(models.Model):
 
     def __str__(self):
         return f'{self.code} — {self.name}'
+
+
+class Offer(models.Model):
+    """Offres promotionnelles actives affichées dans l'espace parrainage."""
+    title = models.CharField(max_length=120)
+    description = models.CharField(max_length=300, blank=True)
+    code = models.CharField(max_length=30)
+    terms = models.CharField(max_length=300, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Offre'
+        ordering = ['title']
+
+    def __str__(self):
+        return f'{self.title} ({self.code})'
+
+
+class UserDocument(models.Model):
+    """Documents supplémentaires déposés par l'utilisateur depuis son profil."""
+    class DocType(models.TextChoices):
+        ID = 'id', "Pièce d'identité"
+        LICENSE = 'license', 'Permis de conduire'
+        ADDRESS = 'address', 'Justificatif de domicile'
+        INSURANCE = 'insurance', 'Assurance'
+        OTHER = 'other', 'Autre'
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='extra_documents')
+    name = models.CharField(max_length=200)
+    doc_type = models.CharField(max_length=20, choices=DocType.choices, default=DocType.OTHER)
+    issued_place = models.CharField(max_length=200, blank=True)
+    validity = models.DateField(null=True, blank=True)
+    file = models.FileField(upload_to='docs/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Document utilisateur'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.name} ({self.user.username})'
+
+
+class UserSession(models.Model):
+    """Session JWT (refresh token jti) — appareil, IP et date de connexion."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions')
+    jti = models.CharField(max_length=64, unique=True)
+    user_agent = models.CharField(max_length=300, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Session'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user.username} · {self.user_agent[:40]}'

@@ -47,13 +47,13 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 </div>
 <!-- Action Cluster -->
 <div class="flex flex-wrap items-center gap-2.5">
-<button class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors shadow-sm font-label-lg text-label-lg" type="button">
+<button class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors shadow-sm font-label-lg text-label-lg" type="button" title="Imprimer la réservation">
 <span class="material-symbols-outlined text-[18px] text-secondary">print</span>
         </button>
-<button class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors shadow-sm font-label-lg text-label-lg" type="button">
+<button class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors shadow-sm font-label-lg text-label-lg" type="button" title="Télécharger le reçu PDF">
 <span class="material-symbols-outlined text-[18px] text-secondary">download</span>
         </button>
-<a class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-on-primary hover:bg-primary-container transition-all shadow-md font-label-lg text-label-lg" href="https://wa.me/237670421890" rel="noopener noreferrer" target="_blank">
+<a class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-on-primary hover:bg-primary-container transition-all shadow-md font-label-lg text-label-lg" href="https://wa.me/237670421890" rel="noopener noreferrer" target="_blank" title="Discuter sur WhatsApp">
 <span class="material-symbols-outlined text-[18px]">chat</span>
         </a>
 </div>
@@ -429,6 +429,23 @@ export default function C4DetailReservation() {
       const el = e.target.closest('button, a');
       if (!el) return;
       const t = el.textContent || '';
+      if (t.trim() === 'print') {
+        e.preventDefault();
+        window.print();
+        return;
+      }
+      if (t.trim() === 'download') {
+        e.preventDefault();
+        bookingsAPI.receipt(id).then((r) => {
+          const url = URL.createObjectURL(r.data);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `recu-BK-${String(id).padStart(4, '0')}.pdf`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }).catch(() => alert('Reçu indisponible pour cette réservation.'));
+        return;
+      }
       if (t.includes("Demander l'annulation")) {
         e.preventDefault();
         if (window.confirm('Annuler cette réservation ?')) {

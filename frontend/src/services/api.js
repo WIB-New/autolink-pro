@@ -59,6 +59,7 @@ export const authAPI = {
   google: (payload) => api.post('/users/google/', payload),
   otpRequest: (payload) => api.post('/users/otp/request/', payload),
   otpVerify: (email, code) => api.post('/users/otp/verify/', { email, code }),
+  resetPassword: (payload) => api.post('/users/password/reset/', payload),
   me: () => api.get('/users/me/'),
 };
 
@@ -101,6 +102,7 @@ export const bookingsAPI = {
   updateStatus: (id, status) => api.patch(`/bookings/${id}/`, { status }),
   acceptDriverRide: (id) => api.post(`/bookings/${id}/driver-accept/`),
   refuseDriverRide: (id) => api.post(`/bookings/${id}/driver-refuse/`),
+  resetDriverRide: (id) => api.post(`/bookings/${id}/driver-reset/`),
   dispute: (id, reason) => api.post(`/bookings/${id}/dispute/`, { reason }),
   resolveDispute: (id, decision) => api.post(`/bookings/${id}/resolve-dispute/`, { decision }),
   disputes: (params) => api.get('/bookings/disputes/', { params }),
@@ -119,6 +121,7 @@ export const bookingsAPI = {
 export const messagingAPI = {
   conversations: (params) => api.get('/messaging/conversations/', { params }),
   open: (payload) => api.post('/messaging/conversations/', payload),
+  users: (params) => api.get('/messaging/conversations/users/', { params }),
   messages: (id) => api.get(`/messaging/conversations/${id}/messages/`),
   send: (id, payload) => api.post(`/messaging/conversations/${id}/messages/`, payload,
     payload instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
@@ -130,6 +133,7 @@ export const withdrawalsAPI = {
   create: (payload) => api.post('/payments/withdrawals/', payload),
   approve: (id, note) => api.post(`/payments/withdrawals/${id}/approve/`, { note }),
   reject: (id, note) => api.post(`/payments/withdrawals/${id}/reject/`, { note }),
+  receipt: (id) => api.get(`/payments/withdrawals/${id}/receipt/`, { responseType: 'blob' }),
 };
 
 export const platformAPI = {
@@ -138,7 +142,21 @@ export const platformAPI = {
   activity: () => api.get('/users/admin/activity/'),
 };
 
+export const documentsAPI = {
+  list: () => api.get('/users/me/documents/'),
+  create: (formData) => api.post('/users/me/documents/', formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } }),
+  update: (id, formData) => api.patch(`/users/me/documents/${id}/`, formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } }),
+  delete: (id) => api.delete(`/users/me/documents/${id}/`),
+};
+
+export const offersAPI = {
+  list: () => api.get('/users/offers/'),
+};
+
 export const kycAPI = {
+  remove: (field) => api.delete('/users/me/kyc/', { params: { field } }),
   upload: (formData) => api.post('/users/me/kyc/', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
@@ -180,7 +198,12 @@ export const usersAPI = {
   update: (id, payload) => api.patch(`/users/${id}/`, payload),
   delete: (id) => api.delete(`/users/${id}/`),
   me: () => api.get('/users/me/'),
-  updateMe: (payload) => api.patch('/users/me/', payload),
+  updatePassword: (payload) => api.post('/users/me/password/', payload),
+  sessions: () => api.get('/users/me/sessions/'),
+  disconnectSession: (jti) => api.delete(`/users/me/sessions/${jti}/`),
+  logoutAllSessions: () => api.delete('/users/me/sessions/logout-all/'),
+  updateMe: (payload) => api.patch('/users/me/', payload,
+    payload instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
   referral: () => api.get('/users/me/referral/'),
 };
 
@@ -204,10 +227,27 @@ export const driversAPI = {
   // 'status' est read-only dans le serializer — l'approbation passe par ces actions
   approve: (id) => api.post(`/drivers/applications/${id}/approve/`),
   reject: (id) => api.post(`/drivers/applications/${id}/reject/`),
+  applications: (params) => api.get('/drivers/applications/', { params }),
+  createApplication: (payload) => api.post('/drivers/applications/', payload, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  updateApplication: (id, payload) => api.patch(`/drivers/applications/${id}/`, payload, {
+    headers: payload instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+  }),
+  adminApplications: (params) => api.get('/drivers/admin/applications/', { params }),
+  updateAdminApplication: (id, payload) => api.patch(`/drivers/admin/applications/${id}/`, payload),
+  profiles: (params) => api.get('/drivers/profiles/', { params }),
+  adminProfiles: (params) => api.get('/drivers/admin/profiles/', { params }),
+  availability: (is_online) => api.patch('/drivers/profiles/availability/', { is_online }),
+  earnings: () => api.get('/drivers/profiles/earnings/'),
+  earningLedger: (params) => api.get('/drivers/earnings/', { params }),
+  earningReceipt: (id) => api.get(`/drivers/earnings/${id}/receipt/`, { responseType: 'blob' }),
 };
 
 export const walletAPI = {
   get: () => api.get('/payments/wallet/'),
+  statement: () => api.get('/payments/wallet/statement/', { responseType: 'blob' }),
+  txReceipt: (ref) => api.get(`/payments/wallet/transactions/${encodeURIComponent(ref)}/receipt/`, { responseType: 'blob' }),
   topup: (amount, method, phone) => api.post('/payments/wallet/topup/', { amount, method, phone }),
   status: (reference) => api.get(`/payments/wallet/transactions/${encodeURIComponent(reference)}/status/`),
   methods: () => api.get('/payments/methods/'),

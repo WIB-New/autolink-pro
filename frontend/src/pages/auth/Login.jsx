@@ -33,6 +33,10 @@ export default function Login() {
   const [otpStep, setOtpStep] = useState(1); // 1 = identité, 2 = saisie du code
   const [otp, setOtp] = useState({ firstName: '', lastName: '', email: '', code: '' });
   const [sent, setSent] = useState(false);
+  const [fp, setFp] = useState(null); // 'email' | 'code' | 'done' — mot de passe oublié
+  const [fpData, setFpData] = useState({ email: '', code: '', pw: '', pw2: '' });
+  const [fpErr, setFpErr] = useState('');
+  const [fpBusy, setFpBusy] = useState(false);
 
   // ?next=/chemin : après authentification on revient terminer
   // l'action initiée (ex. réservation depuis le catalogue public)
@@ -192,7 +196,7 @@ export default function Login() {
            <div>
              <div className="flex justify-between items-center mb-1">
                <label className="label mb-0">Mot de passe</label>
-               <a href="#" className="text-xs text-teal-600 font-semibold hover:underline">Mot de passe oublié ?</a>
+               <button type="button" onClick={() => { setFp('email'); setFpErr(''); setFpData((d) => ({ ...d, email: form.email })); }} className="text-xs text-teal-600 font-semibold hover:underline">Mot de passe oublié ?</button>
              </div>
              <div className="relative">
                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -284,6 +288,61 @@ export default function Login() {
           </Link>
         </p>
       </div>
+
+      {fp && (
+        <div className="fixed inset-0 z-[90] bg-black/50 p-4 flex items-center justify-center" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) setFp(null); }}>
+          <form className="bg-white rounded-2xl p-6 w-full max-w-md flex flex-col gap-4 shadow-2xl" onSubmit={(e) => {
+            e.preventDefault();
+            setFpBusy(true); setFpErr('');
+            if (fp === 'email') {
+              authAPI.otpRequest({ email: fpData.email.trim() })
+                .then(() => setFp('code'))
+                .catch(() => setFpErr("Impossible d'envoyer le code — vérifiez l'email."))
+                .finally(() => setFpBusy(false));
+            } else {
+              if (fpData.pw !== fpData.pw2) { setFpErr('Les mots de passe ne correspondent pas.'); setFpBusy(false); return; }
+              authAPI.resetPassword({ email: fpData.email.trim(), code: fpData.code.trim(), new_password: fpData.pw })
+                .then(() => setFp('done'))
+                .catch((er) => setFpErr(er?.response?.data?.detail || 'Échec de la réinitialisation.'))
+                .finally(() => setFpBusy(false));
+            }
+          }}>
+            <h2 className="text-lg font-bold text-slate-800">Mot de passe oublié</h2>
+            {fp === 'done' ? (
+              <>
+                <p className="text-sm text-slate-600">Mot de passe réinitialisé — connectez-vous avec le nouveau mot de passe.</p>
+                <button type="button" onClick={() => setFp(null)} className="w-full py-2.5 rounded-lg bg-teal-600 text-white font-bold">Se connecter</button>
+              </>
+            ) : fp === 'email' ? (
+              <>
+                <p className="text-sm text-slate-600">Entrez votre email — un code de vérification vous sera envoyé.</p>
+                <input type="email" required value={fpData.email} onChange={(e) => setFpData((d) => ({ ...d, email: e.target.value }))} placeholder="Adresse email"
+                  className="px-4 py-3 rounded-xl bg-slate-100 text-slate-800 outline-none focus:ring-2 focus:ring-teal-600" />
+                {fpErr && <p role="alert" className="p-3 rounded-lg bg-red-50 text-red-700 text-sm">{fpErr}</p>}
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setFp(null)} className="flex-1 py-2.5 rounded-lg bg-slate-100 text-slate-700 font-bold">Annuler</button>
+                  <button type="submit" disabled={fpBusy} className="flex-1 py-2.5 rounded-lg bg-teal-600 text-white font-bold disabled:opacity-60">{fpBusy ? 'Envoi…' : 'Envoyer le code'}</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-slate-600">Code envoyé à <strong>{fpData.email}</strong> — entrez-le avec votre nouveau mot de passe.</p>
+                <input inputMode="numeric" maxLength={6} required value={fpData.code} onChange={(e) => setFpData((d) => ({ ...d, code: e.target.value.replace(/\D/g, '') }))} placeholder="Code à 6 chiffres"
+                  className="px-4 py-3 rounded-xl bg-slate-100 text-slate-800 text-center tracking-widest outline-none focus:ring-2 focus:ring-teal-600" />
+                <input type="password" required minLength={8} value={fpData.pw} onChange={(e) => setFpData((d) => ({ ...d, pw: e.target.value }))} placeholder="Nouveau mot de passe (min. 8)" autoComplete="new-password"
+                  className="px-4 py-3 rounded-xl bg-slate-100 text-slate-800 outline-none focus:ring-2 focus:ring-teal-600" />
+                <input type="password" required minLength={8} value={fpData.pw2} onChange={(e) => setFpData((d) => ({ ...d, pw2: e.target.value }))} placeholder="Confirmer le nouveau mot de passe" autoComplete="new-password"
+                  className="px-4 py-3 rounded-xl bg-slate-100 text-slate-800 outline-none focus:ring-2 focus:ring-teal-600" />
+                {fpErr && <p role="alert" className="p-3 rounded-lg bg-red-50 text-red-700 text-sm">{fpErr}</p>}
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setFp('email')} className="flex-1 py-2.5 rounded-lg bg-slate-100 text-slate-700 font-bold">Retour</button>
+                  <button type="submit" disabled={fpBusy} className="flex-1 py-2.5 rounded-lg bg-teal-600 text-white font-bold disabled:opacity-60">{fpBusy ? 'Vérification…' : 'Réinitialiser'}</button>
+                </div>
+              </>
+            )}
+          </form>
+        </div>
+      )}
     </AuthLayout>
   );
 }

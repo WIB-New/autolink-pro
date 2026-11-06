@@ -1,435 +1,240 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import DesignPage from './DesignPage';
-import useApiData from '../utils/useApiData';
+import DesignShell from './DesignShell';
 import { messagingAPI } from '../services/api';
+import useApiData from '../utils/useApiData';
 
-const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-const hh = (iso) => (iso ? new Date(iso).toLocaleTimeString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { hour: '2-digit', minute: '2-digit' }) : '');
 const ini = (s) => (s || '?').split(' ').map((w) => w[0] || '').join('').slice(0, 2).toUpperCase();
+const hh = (iso) => (iso ? new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '');
+const ROLE_LABEL = { CLIENT: 'Client AutoLink', DRIVER: 'Chauffeur certifié AutoLink', OWNER: 'Propriétaire AutoLink', ADMIN: 'Support AutoLink' };
+const EMOJIS = ['😊', '😂', '😍', '👍', '🙏', '😉', '🔥', '❤️', '🎉', '😢', '😮', '🤝'];
+const FILTERS = [['', 'Tous'], ['CLIENT', 'Clients'], ['DRIVER', 'Chauffeurs'], ['OWNER', 'Propriétaires'], ['ADMIN', 'Support']];
 
-const convItem = (c, activeId) => {
-  const name = c.title || c.name || (c.participants || []).map((p) => p.name || p.username).filter(Boolean).join(', ') || 'Conversation';
-  const last = c.last_message?.content || c.last_message || '';
-  const time = hh(c.last_message?.created_at || c.updated_at || c.created_at);
-  return `<div class="conv-item p-3 rounded-xl ${activeId === c.id ? 'bg-surface-container-high' : 'hover:bg-surface-container-low'} cursor-pointer transition-all" data-conv="${c.id}" data-name="${esc(name)}">
-<div class="flex items-start gap-3">
-<div class="w-11 h-11 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-headline-sm text-[16px] font-bold shadow-sm shrink-0">${ini(name)}</div>
-<div class="flex-1 min-w-0">
-<div class="flex items-center justify-between mb-0.5">
-<span class="font-headline-sm text-[14px] text-on-surface font-bold truncate">${esc(name)}</span>
-<span class="font-label-sm text-label-sm text-primary font-bold">${time}</span>
-</div>
-${c.booking_label ? `<div class="flex items-center gap-1.5 mb-1"><span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container text-on-secondary-container font-label-sm text-[10px] font-semibold"><span class="material-symbols-outlined text-[11px] text-primary">directions_car</span>${esc(c.booking_label)}</span></div>` : ''}
-<p class="font-body-sm text-body-sm text-on-surface-variant truncate">${esc(last)}</p>
-</div>
-${c.unread_count ? `<div class="shrink-0"><span class="w-4 h-4 rounded-full bg-primary text-on-primary text-[10px] font-bold flex items-center justify-center shadow-sm">${c.unread_count}</span></div>` : ''}
-</div>
-</div>`;
-};
+// participants exclut déjà l'utilisateur courant côté API
+const convName = (c) => c.subject || c.title || c.name
+  || (c.participants || []).map((p) => p.name || p.username).filter(Boolean).join(', ')
+  || 'Conversation';
+const other = (c) => (c.participants || [])[0] || null;
 
-const msgBubble = (m) => (m.is_mine
-  ? `<div class="flex items-end justify-end gap-2.5 w-full"><div class="p-3.5 rounded-2xl rounded-br-sm bg-primary text-on-primary text-body-md font-body-md shadow-sm max-w-md">${esc(m.content)}<div class="text-[10px] opacity-70 mt-1 text-right">${hh(m.created_at)}</div></div></div>`
-  : `<div class="flex items-end gap-2.5 w-full"><div class="p-3.5 rounded-2xl rounded-bl-sm bg-surface-container-low text-on-surface text-body-md font-body-md max-w-md">${m.sender_name ? `<div class="font-label-sm font-semibold text-primary mb-0.5">${esc(m.sender_name)}</div>` : ''}${esc(m.content)}<div class="text-[10px] text-outline mt-1">${hh(m.created_at)}</div></div></div>`);
+export default function C7({ role = 'client' }) {
+  const [params] = useSearchParams();
+  const { data: cdata } = useApiData(() => messagingAPI.conversations(), []);
+  const [convs, setConvs] = useState([]);
+  useEffect(() => { setConvs(cdata?.results || (Array.isArray(cdata) ? cdata : [])); }, [cdata]);
 
-const HTML = `<div class="flex flex-col w-full lg:h-[calc(100vh/var(--vz,1)-8rem)]">
-<div class="flex items-center gap-space-sm pb-space-sm mb-space-sm">
-<span class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Messagerie & Échanges</span>
-</div>
-<div class="flex-1 flex flex-col lg:flex-row gap-space-md min-h-0 bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
-<!-- Left Column: Conversation List -->
-<div class="w-full lg:w-[380px] shrink-0 flex flex-col bg-surface-container-lowest border-b lg:border-b-0 border-outline-variant/30">
-<!-- Search & Filters -->
-<div class="p-space-md flex flex-col gap-space-sm bg-surface-container-lowest">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-2">
-<h2 class="font-headline-sm text-headline-sm text-on-surface">Messages</h2>
-<span class="px-2 py-0.5 rounded-full bg-primary text-on-primary font-label-sm text-label-sm font-bold">1 non lu</span>
-</div>
-<button class="w-7 h-7 rounded-lg bg-surface-container-low hover:bg-surface-container flex items-center justify-center text-primary transition-colors" title="Nouvel échange">
-<span class="material-symbols-outlined text-[18px]">edit_square</span>
-</button>
-</div>
-<div class="relative">
-<span class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-outline">
-<span class="material-symbols-outlined text-[18px]">search</span>
-</span>
-<input class="w-full pl-9 pr-4 py-2 bg-surface-container-low text-on-surface placeholder:text-outline font-body-sm text-body-sm rounded-xl focus:bg-surface-container-lowest focus:outline-none transition-all shadow-inner" placeholder="Rechercher un échange, un chauffeur..." type="text"/>
-</div>
-<!-- Filter tabs -->
-<div class="flex items-center gap-1.5 p-1 bg-surface-container-low rounded-xl">
-
-</div>
-<!-- Filter by role -->
-<div class="flex items-center gap-1.5 p-1 bg-surface-container-low rounded-xl">
-<button class="flex-1 py-1 px-2 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm font-semibold shadow-sm transition-all text-center">Tous</button>
-<button class="flex-1 py-1 px-2 rounded-lg text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm font-medium transition-all text-center">Clients</button>
-<button class="flex-1 py-1 px-2 rounded-lg text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm font-medium transition-all text-center">Chauffeurs</button>
-<button class="flex-1 py-1 px-2 rounded-lg text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm font-medium transition-all text-center">Propriétaires</button>
-<button class="flex-1 py-1 px-2 rounded-lg text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm font-medium transition-all text-center">Support</button>
-</div>
-</div>
-<!-- Conversations Scrollable Area -->
-<div class="flex-1 overflow-y-auto px-2 space-y-1 max-h-72 lg:max-h-none">
-<!-- Item 1: Active -->
-<div class="p-3 rounded-xl bg-surface-container-high cursor-pointer transition-all">
-<div class="flex items-start gap-3">
-<div class="relative shrink-0">
-<div class="w-11 h-11 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-headline-sm text-[16px] font-bold shadow-sm">
-                JM
-              </div>
-<span class="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-primary-container ring-2 ring-surface-container-lowest"></span>
-</div>
-<div class="flex-1 min-w-0">
-<div class="flex items-center justify-between mb-0.5">
-<span class="font-headline-sm text-[14px] text-on-surface font-bold truncate">Jean-Pierre Mbida</span>
-<span class="font-label-sm text-label-sm text-primary font-bold">10:42</span>
-</div>
-<div class="flex items-center gap-1.5 mb-1">
-<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container text-on-secondary-container font-label-sm text-[10px] font-semibold">
-<span class="material-symbols-outlined text-[11px] text-primary">directions_car</span>
-                  Toyota RAV4 · 29 Oct
-                </span>
-<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
-<span class="font-label-sm text-[10px] text-outline font-medium">Chauffeur Pro</span>
-</div>
-<p class="font-body-sm text-body-sm text-on-surface font-medium truncate">
-                Bonjour M. Emmanuel, je serai au terminal à 08h15...
-              </p>
-</div>
-<div class="shrink-0 flex flex-col items-end gap-1.5">
-<span class="w-4 h-4 rounded-full bg-primary text-on-primary text-[10px] font-bold flex items-center justify-center shadow-sm">1</span>
-</div>
-</div>
-</div>
-<!-- Item 2: Support Hub Akwa -->
-<div class="p-3 rounded-xl hover:bg-surface-container-low cursor-pointer transition-all">
-<div class="flex items-start gap-3">
-<div class="relative shrink-0">
-<div class="w-11 h-11 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-headline-sm text-[16px] shadow-sm">
-<span class="material-symbols-outlined text-[20px]">hub</span>
-</div>
-</div>
-<div class="flex-1 min-w-0">
-<div class="flex items-center justify-between mb-0.5">
-<span class="font-headline-sm text-[14px] text-on-surface font-semibold truncate">Coordination Hub Akwa</span>
-<span class="font-label-sm text-label-sm text-outline">Hier</span>
-</div>
-<div class="flex items-center gap-1.5 mb-1">
-<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-low text-on-surface-variant font-label-sm text-[10px]">
-                  Support Douala
-                </span>
-</div>
-<p class="font-body-sm text-body-sm text-on-surface-variant truncate">
-                Votre contrat certifié CEMAC est validé avec succès.
-              </p>
-</div>
-</div>
-</div>
-<!-- Item 3: Conciergerie AutoLink -->
-<div class="p-3 rounded-xl hover:bg-surface-container-low cursor-pointer transition-all">
-<div class="flex items-start gap-3">
-<div class="relative shrink-0">
-<div class="w-11 h-11 rounded-full bg-surface-container-high text-primary flex items-center justify-center shadow-sm">
-<span class="material-symbols-outlined text-[20px]">shield_person</span>
-</div>
-</div>
-<div class="flex-1 min-w-0">
-<div class="flex items-center justify-between mb-0.5">
-<span class="font-headline-sm text-[14px] text-on-surface font-semibold truncate">Service Conciergerie AutoLink</span>
-<span class="font-label-sm text-label-sm text-outline">25 Oct</span>
-</div>
-<div class="flex items-center gap-1.5 mb-1">
-<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-surface-container-low text-on-surface-variant font-label-sm text-[10px]">
-                  Caution sécurisée
-                </span>
-</div>
-<p class="font-body-sm text-body-sm text-on-surface-variant truncate">
-                Remboursement de la caution 100 000 FCFA clôturé sur MTN MoMo...
-              </p>
-</div>
-</div>
-</div>
-<!-- Item 4: Propriétaire Marc T. -->
-<div class="p-3 rounded-xl hover:bg-surface-container-low cursor-pointer transition-all">
-<div class="flex items-start gap-3">
-<div class="relative shrink-0">
-<div class="w-11 h-11 rounded-full bg-surface-container-highest text-on-surface flex items-center justify-center font-bold text-sm shadow-sm">
-                MT
-              </div>
-</div>
-<div class="flex-1 min-w-0">
-<div class="flex items-center justify-between mb-0.5">
-<span class="font-headline-sm text-[14px] text-on-surface font-semibold truncate">Propriétaire Partenaire (Marc T.)</span>
-<span class="font-label-sm text-label-sm text-outline">12 Oct</span>
-</div>
-<div class="flex items-center gap-1.5 mb-1">
-<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-surface-container-low text-on-surface-variant font-label-sm text-[10px]">
-                  Prado Yaoundé
-                </span>
-</div>
-<p class="font-body-sm text-body-sm text-on-surface-variant truncate">
-                Merci pour votre retour de location impeccable à Bastos !
-              </p>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Right Column: Active Conversation (Flex-1) -->
-<div class="flex-1 flex flex-col min-w-0 min-h-[60vh] lg:min-h-0 bg-surface-container-lowest relative">
-<!-- Sticky Context Header -->
-<div class="p-space-md bg-surface-container-low/60 backdrop-blur-md flex flex-col gap-space-sm z-10">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-space-sm min-w-0">
-<div class="relative shrink-0">
-<div class="w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-headline-sm font-bold shadow-sm">
-                JM
-              </div>
-<span class="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-primary-container ring-2 ring-surface-container-lowest"></span>
-</div>
-<div class="flex flex-col min-w-0">
-<div class="flex items-center gap-2">
-<span class="font-headline-sm text-headline-sm text-on-surface truncate">Jean-Pierre Mbida</span>
-<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-[11px] font-semibold">
-<span class="material-symbols-outlined text-[13px] text-primary">verified</span>
-                  Chauffeur certifié AutoLink
-                </span>
-</div>
-<div class="flex items-center gap-3 text-outline font-label-sm text-label-sm mt-0.5">
-<span class="flex items-center gap-1 text-tertiary font-bold">
-<span class="material-symbols-outlined text-[15px] fill-current" style="font-variation-settings: 'FILL' 1;">star</span>
-                  4.98
-                  <span class="text-on-surface-variant font-normal">(142 courses)</span>
-</span>
-<span class="flex items-center gap-1 text-on-surface-variant">
-<span class="material-symbols-outlined text-[14px]">call</span>
-                  +237 670 42 18 90
-                </span>
-<span class="flex items-center gap-1 text-primary font-medium">
-<span class="w-2 h-2 rounded-full bg-primary"></span>
-                  En ligne
-                </span>
-</div>
-</div>
-</div>
-<div class="flex items-center gap-space-sm shrink-0">
-<a class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold transition-all shadow-sm" href="tel:+237670421890">
-<span class="material-symbols-outlined text-[18px] text-primary">call</span>
-<span>Appeler</span>
-</a>
-<button class="w-9 h-9 rounded-xl bg-surface-container-lowest hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center transition-all shadow-sm" title="Options du dossier">
-<span class="material-symbols-outlined text-[18px]">more_vert</span>
-</button>
-</div>
-</div>
-<!-- Booking Context Card Banner -->
-<div class="p-3 bg-surface-container-lowest rounded-xl flex items-center justify-between gap-space-md shadow-sm">
-<div class="flex items-center gap-3 min-w-0">
-<div class="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center text-primary shrink-0">
-<span class="material-symbols-outlined text-[20px]">calendar_month</span>
-</div>
-<div class="flex flex-col min-w-0">
-<div class="flex items-center gap-2">
-<span class="font-label-md text-label-md font-bold text-on-surface">Dossier #ALP-2025-DLA-8924</span>
-<span class="w-1.5 h-1.5 rounded-full bg-outline-variant"></span>
-<span class="font-label-md text-label-md text-primary font-semibold truncate">Toyota RAV4 AWD Hybrid (2023)</span>
-<span class="px-2 py-0.5 rounded bg-primary-fixed text-on-primary-fixed text-[10px] font-bold uppercase tracking-wider">Confirmée</span>
-</div>
-<p class="font-body-sm text-[12px] text-on-surface-variant truncate">
-                Prise en charge : <span class="font-semibold text-on-surface">Mercredi 29 Oct à 08:30</span> · Aéroport International de Douala (DLA)
-              </p>
-</div>
-</div>
-<a class="inline-flex items-center gap-1 font-label-sm text-label-sm text-primary hover:text-primary-container font-bold shrink-0 transition-colors" href="#">
-<span>Voir le dossier</span>
-<span class="material-symbols-outlined text-[15px]">arrow_forward</span>
-</a>
-</div>
-</div>
-<!-- Messages Thread History (Scrollable) -->
-<div class="flex-1 overflow-y-auto p-space-md space-y-4">
-<!-- Date Separator -->
-<div class="flex items-center justify-center my-2">
-<div class="px-3.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-[11px] font-semibold uppercase tracking-wider shadow-sm">
-            Aujourd'hui, 28 Octobre
-          </div>
-</div>
-<!-- Inbound Message 1 -->
-<div class="flex items-end gap-2.5 max-w-[80%]">
-<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container text-xs font-bold flex items-center justify-center shrink-0 shadow-sm">
-            JM
-          </div>
-<div class="flex flex-col gap-1 items-start">
-<div class="p-3.5 rounded-2xl rounded-bl-sm bg-surface-container-low text-on-surface text-body-md font-body-md shadow-sm">
-              Bonjour M. Emmanuel ! Je suis Jean-Pierre, votre chauffeur certifié AutoLink pour votre trajet de demain à Douala.
-            </div>
-<span class="font-label-sm text-[11px] text-outline ml-1">09:15</span>
-</div>
-</div>
-<!-- Outbound Message 1 (Emmanuel K.) -->
-<div class="flex items-end justify-end gap-2.5 w-full">
-<div class="flex flex-col gap-1 items-end max-w-[80%]">
-<div class="p-3.5 rounded-2xl rounded-br-sm bg-primary text-on-primary text-body-md font-body-md shadow-sm">
-              Bonjour Jean-Pierre, merci. Mon vol Camair-Co arrive vers 08h15 au terminal domestique. J'aurai 2 valises.
-            </div>
-<div class="flex items-center gap-1 mr-1 text-outline">
-<span class="font-label-sm text-[11px]">09:30</span>
-<span class="material-symbols-outlined text-[14px] text-primary" style="font-variation-settings: 'FILL' 1;">done_all</span>
-</div>
-</div>
-</div>
-<!-- Inbound Message 2 with Photo Card Attachment -->
-<div class="flex items-end gap-2.5 max-w-[85%]">
-<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container text-xs font-bold flex items-center justify-center shrink-0 shadow-sm">
-            JM
-          </div>
-<div class="flex flex-col gap-1.5 items-start">
-<div class="p-3.5 rounded-2xl rounded-bl-sm bg-surface-container-low text-on-surface text-body-md font-body-md shadow-sm space-y-3">
-<p>Parfait, c'est bien noté. Le véhicule est déjà inspecté et lavé au Hub d'Akwa. Voici une photo de l'état de propreté intérieur.</p>
-<!-- Vehicle Interior Attachment Card -->
-<div class="overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm w-full max-w-[380px]">
-<div class="relative h-48 w-full overflow-hidden bg-surface-container">
-<img class="w-full h-full object-cover hover:scale-105 transition-transform duration-300" data-alt="Interior of a pristine black Toyota RAV4 with clean leather seats and polished dashboard, sunlight entering through the window, clean and prepared for executive passenger transport in Douala Cameroon." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdUyZU7GA2tYdNSxZsTWEPFWkqMUzwwEFn0uzs8AoLVXv4Zf1iyAJZQzM8uuMDxpvwM5pnH0ZdY3Jr240Qwm_Z9FncsWE9R1EziS2U25JiTf7-MXX93NpWyRO583FdoQx7CbnS6ktREYyoRciFNEtW2KhM7MhYOsczRYP9NhPdA40MpnZvtTKBpN9u2lk3nc1ItfrFoBK5NNCU-M2LB1VnBigb6v5zEtXGOaXzAvu-4bXQlDC3m6NCdQ"/>
-<div class="absolute top-2 left-2 px-2 py-1 rounded-md bg-inverse-surface/80 backdrop-blur-md text-inverse-on-surface font-label-sm text-[10px] flex items-center gap-1">
-<span class="material-symbols-outlined text-[13px] text-primary-fixed">verified</span>
-<span>Photo horodatée Hub Akwa 08:45</span>
-</div>
-<button class="absolute bottom-2 right-2 w-7 h-7 rounded-lg bg-surface-container-lowest/90 text-on-surface flex items-center justify-center shadow-md hover:bg-surface-container-lowest transition-colors">
-<span class="material-symbols-outlined text-[16px]">zoom_in</span>
-</button>
-</div>
-<div class="p-2.5 flex items-center justify-between bg-surface-container-low">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-[16px] text-primary">fact_check</span>
-<span class="font-label-sm text-label-sm text-on-surface font-semibold">Protocole Nettoyage Pro validé</span>
-</div>
-<span class="font-label-sm text-[11px] text-outline font-medium">1.8 Mo · JPEG</span>
-</div>
-</div>
-</div>
-<span class="font-label-sm text-[11px] text-outline ml-1">09:48</span>
-</div>
-</div>
-<!-- Inbound Message 3 -->
-<div class="flex items-end gap-2.5 max-w-[80%]">
-<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container text-xs font-bold flex items-center justify-center shrink-0 shadow-sm">
-            JM
-          </div>
-<div class="flex flex-col gap-1 items-start">
-<div class="p-3.5 rounded-2xl rounded-bl-sm bg-surface-container-low text-on-surface text-body-md font-body-md shadow-sm">
-              Je vous attendrai dès 08h10 dans le hall des arrivées avec une pancarte à votre nom. Bonne journée !
-            </div>
-<span class="font-label-sm text-[11px] text-outline ml-1">10:42</span>
-</div>
-</div>
-</div>
-<!-- Quick Reply Action Chips -->
-<div class="px-space-md py-1.5 flex items-center gap-2 overflow-x-auto bg-surface-container-lowest">
-<button class="shrink-0 px-3 py-1 rounded-full bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high font-label-sm text-label-sm font-medium transition-colors">
-          Je serai là à l'heure
-        </button>
-<button class="shrink-0 px-3 py-1 rounded-full bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high font-label-sm text-label-sm font-medium transition-colors">
-          Retard de vol Camair-Co
-        </button>
-<button class="shrink-0 px-3 py-1 rounded-full bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high font-label-sm text-label-sm font-medium transition-colors">
-          Pouvez-vous m'appeler ?
-        </button>
-<button class="shrink-0 px-3 py-1 rounded-full bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high font-label-sm text-label-sm font-medium transition-colors">
-          Préciser le point de rendez-vous
-        </button>
-</div>
-<!-- Message Composer -->
-<div class="p-space-md bg-surface-container-lowest">
-<div class="flex items-end gap-space-sm p-2 rounded-2xl bg-surface-container-low focus-within:bg-surface-container-lowest focus-within:shadow-md transition-all">
-<div class="flex items-center gap-1 pb-1">
-<button class="w-9 h-9 rounded-xl hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center transition-colors" title="Ajouter une pièce jointe">
-<span class="material-symbols-outlined text-[20px]">attach_file</span>
-</button>
-<button class="w-9 h-9 rounded-xl hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center transition-colors" title="Envoyer une photo">
-<span class="material-symbols-outlined text-[20px]">photo_camera</span>
-</button>
-</div>
-<div class="flex-1 min-w-0">
-<textarea class="w-full bg-transparent resize-none py-2 px-1 text-on-surface placeholder:text-outline font-body-md text-body-md focus:outline-none max-h-28" placeholder="Écrivez votre message à Jean-Pierre Mbida..." rows="1"></textarea>
-</div>
-<div class="flex items-center gap-1.5 pb-1">
-<button class="w-9 h-9 rounded-xl hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center transition-colors" title="Insérer un émoji">
-<span class="material-symbols-outlined text-[20px]">sentiment_satisfied</span>
-</button>
-<button class="h-10 px-4 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center gap-2 shadow-sm transition-transform active:scale-95">
-<span>Envoyer</span>
-<span class="material-symbols-outlined text-[18px]">send</span>
-</button>
-</div>
-</div>
-</div>
-</div>
-</div>
-`;
-const LINKS = {
-  'Voir le dossier': '/client/bookings/1',
-};
-
-export default function C7Messagerie({ role = 'client' }) {
   const [active, setActive] = useState(null);
-  const [activeName, setActiveName] = useState('');
   const [msgs, setMsgs] = useState([]);
-  const [searchParams] = useSearchParams();
-  const { data } = useApiData(() => messagingAPI.conversations(), []);
-  const convs = useMemo(() => data?.results || (Array.isArray(data) ? data : []) || [], [data]);
+  const [text, setText] = useState('');
+  const [search, setSearch] = useState('');
+  const [frole, setFrole] = useState('');
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [compose, setCompose] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [picked, setPicked] = useState([]);
+  const [uq, setUq] = useState('');
+  const [urole, setUrole] = useState('');
+  const fileRef = useRef(null);
+  const photoRef = useRef(null);
+  const endRef = useRef(null);
+
+  const activeConv = convs.find((c) => c.id === active);
+  const peer = activeConv ? other(activeConv) : null;
+  const name = activeConv ? convName(activeConv) : '';
   const unread = convs.reduce((a, c) => a + (c.unread_count || 0), 0);
 
   useEffect(() => {
-    const wanted = Number(searchParams.get('conv') || 0);
-    if (wanted && convs.some((c) => c.id === wanted)) { setActive(wanted); return; }
-    if (!active && convs.length) { setActive(convs[0].id); }
-  }, [convs, active, searchParams]);
+    const wanted = Number(params.get('conv'));
+    if (wanted && convs.some((c) => c.id === wanted)) setActive(wanted);
+    else if (!active && convs.length) setActive(convs[0].id);
+  }, [convs, params]); // eslint-disable-line
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) return undefined;
     messagingAPI.messages(active)
-      .then(({ data: d }) => setMsgs(d?.results || d || []))
+      .then(({ data: d }) => setMsgs(Array.isArray(d) ? d : d?.results || []))
       .catch(() => setMsgs([]));
+    return undefined;
   }, [active]);
 
-  useEffect(() => {
-    const click = (e) => {
-      const item = e.target.closest('.conv-item');
-      if (item) { setActive(Number(item.dataset.conv)); setActiveName(item.dataset.name); return; }
-      const sendBtn = e.target.closest('button');
-      if (sendBtn && sendBtn.querySelector('.material-symbols-outlined')?.textContent.trim() === 'send') {
-        const ta = document.querySelector('textarea');
-        const content = (ta?.value || '').trim();
-        if (content && active) {
-          messagingAPI.send(active, { content }).then(() => {
-            ta.value = '';
-            return messagingAPI.messages(active);
-          }).then(({ data: d }) => setMsgs(d?.results || d || [])).catch(() => {});
-        }
-      }
-    };
-    document.addEventListener('click', click);
-    return () => document.removeEventListener('click', click);
-  }, [active]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs]);
 
-  const html = useMemo(() => {
-    const base = role === 'driver' ? HTML.replace('Voir le dossier', 'Voir la course') : HTML;
-    const items = convs.length
-      ? convs.map((c) => convItem(c, active)).join('')
-      : '<div class="p-6 text-center text-on-surface-variant font-body-sm">Aucune conversation.</div>';
-    const bubbles = msgs.length
-      ? msgs.map(msgBubble).join('')
-      : '<div class="text-center text-on-surface-variant font-body-sm py-8">Sélectionnez une conversation.</div>';
-    return base
-      .replace(/<!-- Conversations Scrollable Area -->[\s\S]*?<!-- Right Column/,
-        `<!-- Conversations Scrollable Area -->\n<div class="flex-1 overflow-y-auto px-2 space-y-1 max-h-72 lg:max-h-none" id="conv-list">${items}</div>\n</div>\n<!-- Right Column`)
-      .replace(/<div class="flex-1 overflow-y-auto p-space-md space-y-4">[\s\S]*?(?=<!-- Message Composer -->)/,
-        `<div class="flex-1 overflow-y-auto p-space-md space-y-4" id="msg-thread">${bubbles}</div>\n`)
-      .replace('>1 non lu<', `>${unread} non lu${unread > 1 ? 's' : ''}<`)
-      .replace('Jean-Pierre Mbida', activeName || 'Conversation');
-  }, [convs, msgs, active, activeName, unread, role]);
+  const refresh = () => {
+    messagingAPI.conversations().then(({ data: d }) => setConvs(d?.results || d || [])).catch(() => {});
+    if (active) messagingAPI.messages(active).then(({ data: d }) => setMsgs(Array.isArray(d) ? d : d?.results || [])).catch(() => {});
+  };
+  const send = () => {
+    const content = text.trim();
+    if (!content || !active) return;
+    messagingAPI.send(active, { content }).then(() => { setText(''); refresh(); }).catch(() => {});
+  };
+  const sendFiles = (files) => {
+    if (!active || !files?.length) return;
+    [...files].reduce((p, f) => p.then(() => {
+      const fd = new FormData();
+      fd.append('attachment', f); fd.append('content', f.name);
+      return messagingAPI.send(active, fd).catch(() => {});
+    }), Promise.resolve()).then(refresh);
+  };
+  const loadUsers = (q, r) => messagingAPI.users({ search: q, role: r }).then((res) => setUsers(res.data || [])).catch(() => setUsers([]));
+  const flag = () => messagingAPI.open({ support: true, subject: 'Signalement' }).then(({ data: conv }) => {
+    messagingAPI.send(conv.id, { content: `Signalement depuis la messagerie — conversation #${active || '-'}.` }).catch(() => {});
+    window.location.href = `/messages?conv=${conv.id}`;
+  }).catch(() => {});
 
-  const links = role === 'driver' ? { ...LINKS, 'Voir la course': '/driver/dashboard' } : LINKS;
-  return <DesignPage html={html} links={links} role={role} />;
+  const filtered = convs.filter((c) => {
+    if (frole === 'ADMIN' && !(c.kind === 'support' || (c.participants || []).some((p) => p.role === 'ADMIN'))) return false;
+    if (frole && frole !== 'ADMIN' && !(c.participants || []).some((p) => p.role === frole)) return false;
+    return !search || convName(c).toLowerCase().includes(search.toLowerCase())
+      || String(c.last_message?.content || '').toLowerCase().includes(search.toLowerCase());
+  });
+
+  return (
+    <DesignShell role={role}>
+      <div className="h-[calc(100dvh-64px)] lg:h-full flex flex-col p-4 lg:p-6 gap-4">
+        <h1 className="font-headline-lg text-headline-lg text-on-surface font-bold">Messagerie & Échanges</h1>
+        <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4">
+          {/* Liste des conversations */}
+          <aside className={`w-full lg:w-80 shrink-0 ${active ? 'hidden lg:flex' : 'flex'} flex-col gap-3 bg-surface-container-lowest rounded-2xl p-3 shadow-sm min-h-0`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-headline-sm text-headline-sm font-bold text-on-surface">Messages</span>
+                <span className="px-2 py-0.5 rounded-full bg-primary text-on-primary font-label-sm text-[11px] font-bold">{unread} non lu{unread > 1 ? 's' : ''}</span>
+              </div>
+              <button type="button" onClick={() => { setCompose(true); setPicked([]); setUq(''); setUrole(''); loadUsers('', ''); }}
+                className="w-8 h-8 rounded-lg bg-surface-container-low hover:bg-surface-container text-primary flex items-center justify-center" title="Nouvel échange">
+                <span className="material-symbols-outlined text-[18px]">edit_square</span>
+              </button>
+            </div>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un échange, un chauffeur..."
+              className="w-full px-3 py-2 rounded-xl bg-surface-container-low font-body-sm text-body-sm outline-none focus:ring-2 focus:ring-primary" />
+            <div className="flex gap-1.5 p-1 bg-surface-container-low rounded-xl">
+              {FILTERS.map(([k, l]) => (
+                <button key={k} type="button" onClick={() => setFrole(k)}
+                  className={`flex-1 py-1 px-1 rounded-lg font-label-sm text-[11px] text-center transition-all ${frole === k ? 'bg-surface-container-lowest text-on-surface font-semibold shadow-sm' : 'text-on-surface-variant'}`}>{l}</button>
+              ))}
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-1">
+              {filtered.map((c) => (
+                <button key={c.id} type="button" onClick={() => setActive(c.id)}
+                  className={`w-full flex items-start gap-3 p-3 rounded-xl text-left transition-all ${active === c.id ? 'bg-surface-container-high' : 'hover:bg-surface-container-low'}`}>
+                  <span className="w-11 h-11 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-[14px] shrink-0">{ini(convName(c))}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="flex justify-between"><span className="font-label-md text-label-md font-bold text-on-surface truncate">{convName(c)}</span>
+                      <span className="font-label-sm text-[10px] text-primary font-bold shrink-0">{hh(c.last_message?.created_at || c.updated_at)}</span></span>
+                    {c.booking_label && <span className="block font-label-sm text-[10px] text-on-surface-variant truncate"><span className="material-symbols-outlined text-[11px] align-middle">directions_car</span> {c.booking_label}</span>}
+                    <span className="block font-body-sm text-body-sm text-on-surface-variant truncate">{c.last_message?.content || ''}</span>
+                  </span>
+                  {!!c.unread_count && <span className="w-5 h-5 rounded-full bg-primary text-on-primary text-[10px] font-bold flex items-center justify-center shrink-0">{c.unread_count}</span>}
+                </button>
+              ))}
+              {!filtered.length && <p className="text-center font-body-sm text-on-surface-variant py-8">Aucune conversation.</p>}
+            </div>
+          </aside>
+
+          {/* Panneau conversation */}
+          <section className={`flex-1 min-w-0 min-h-0 ${active ? 'flex' : 'hidden lg:flex'} flex-col bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden`}>
+            {activeConv ? (
+              <>
+                <header className="flex items-center gap-3 p-4 border-b border-surface-container shrink-0">
+                  <button type="button" onClick={() => setActive(null)} className="lg:hidden w-9 h-9 rounded-xl hover:bg-surface-container-high text-on-surface flex items-center justify-center shrink-0" title="Retour">
+                    <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                  </button>
+                  <span className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold shrink-0">{ini(name)}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-headline-sm text-headline-sm font-bold text-on-surface truncate">{name}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-primary-fixed text-primary text-[10px] font-bold">{ROLE_LABEL[peer?.role] || (activeConv.kind === 'support' ? 'Support AutoLink' : 'Contact')}</span>
+                    </div>
+                    {peer?.phone && <p className="font-body-sm text-[12px] text-on-surface-variant"><span className="material-symbols-outlined text-[13px] align-middle">call</span> {peer.phone}</p>}
+                  </div>
+                  {peer?.phone && <a href={`tel:${peer.phone}`} className="px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface font-label-sm font-bold hover:bg-surface-container flex items-center gap-1"><span className="material-symbols-outlined text-[15px]">call</span>Appeler</a>}
+                  <button type="button" onClick={flag} title="Signaler à l'admin" className="w-9 h-9 rounded-xl hover:bg-error-container hover:text-error text-on-surface-variant flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[18px]">flag</span>
+                  </button>
+                </header>
+                <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
+                  {msgs.map((m) => {
+                    const mine = !!m.is_mine;
+                    return (
+                      <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl shadow-sm font-body-md text-body-md ${mine ? 'bg-primary text-on-primary rounded-br-sm' : 'bg-surface-container-low text-on-surface rounded-bl-sm'}`}>
+                          {!mine && <span className="block font-label-sm text-[11px] font-bold opacity-70">{m.sender_name || ''}</span>}
+                          {m.content && <span className="whitespace-pre-wrap break-words">{m.content}</span>}
+                          {m.attachment && <a href={m.attachment} target="_blank" rel="noreferrer" className="block mt-1 underline font-label-sm">{String(m.attachment).split('/').pop() || 'Pièce jointe'}</a>}
+                          <span className={`block text-right font-label-sm text-[10px] mt-1 ${mine ? 'opacity-70' : 'text-outline'}`}>{hh(m.created_at)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {!msgs.length && <p className="text-center font-body-sm text-on-surface-variant py-10">Aucun message — écrivez le premier.</p>}
+                  <div ref={endRef} />
+                </div>
+                <div className="relative shrink-0 border-t border-surface-container p-3 bg-surface-container-lowest">
+                  {emojiOpen && (
+                    <div className="absolute bottom-16 right-20 z-50 bg-surface-container-lowest rounded-2xl shadow-2xl p-2 grid grid-cols-6 gap-1">
+                      {EMOJIS.map((e) => <button key={e} type="button" onClick={() => setText((t) => t + e)} className="text-[22px] hover:bg-surface-container rounded-lg p-1">{e}</button>)}
+                    </div>
+                  )}
+                  <div className="flex items-end gap-2 rounded-2xl bg-surface-container-low p-2">
+                    <button type="button" onClick={() => fileRef.current?.click()} title="Joindre des fichiers" className="w-9 h-9 rounded-xl hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[20px]">attach_file</span></button>
+                    <button type="button" onClick={() => photoRef.current?.click()} title="Photo / caméra" className="w-9 h-9 rounded-xl hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[20px]">photo_camera</span></button>
+                    <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => { sendFiles(e.target.files); e.target.value = ''; }} />
+                    <input ref={photoRef} type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={(e) => { sendFiles(e.target.files); e.target.value = ''; }} />
+                    <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} placeholder={`Écrivez votre message à ${name}...`}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+                      className="flex-1 bg-transparent resize-none py-2 px-1 text-on-surface placeholder:text-outline font-body-md text-body-md focus:outline-none max-h-28" />
+                    <button type="button" onClick={() => setEmojiOpen((o) => !o)} title="Émojis" className="w-9 h-9 rounded-xl hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[20px]">sentiment_satisfied</span></button>
+                    <button type="button" onClick={send} className="h-10 px-4 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-label-md font-bold flex items-center gap-2 shrink-0">Envoyer<span className="material-symbols-outlined text-[18px]">send</span></button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-on-surface-variant font-body-md">Sélectionnez une conversation.</div>
+            )}
+          </section>
+        </div>
+      </div>
+
+      {/* Modale nouvel échange */}
+      {compose && (
+        <div className="fixed inset-0 z-[90] bg-black/50 p-4 flex items-center justify-center" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) setCompose(false); }}>
+          <div className="bg-surface-container-lowest rounded-2xl p-5 w-full max-w-md flex flex-col gap-3 shadow-2xl max-h-[85vh]">
+            <h2 className="font-headline-md text-headline-md text-on-surface font-bold">Nouvel échange</h2>
+            <div className="flex flex-wrap gap-2">
+              {FILTERS.map(([k, l]) => (
+                <button key={k} type="button" onClick={() => { setUrole(k); loadUsers(uq, k); }}
+                  className={`px-3 py-1.5 rounded-full font-label-sm text-label-sm ${urole === k ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface'}`}>{l}</button>
+              ))}
+            </div>
+            <input value={uq} onChange={(e) => { setUq(e.target.value); loadUsers(e.target.value, urole); }} placeholder="Nom, prénom ou email…"
+              className="w-full px-3 py-2.5 rounded-lg bg-surface-container-low font-body-md text-body-md outline-none focus:ring-2 focus:ring-primary" />
+            <div className="flex-1 overflow-y-auto flex flex-col gap-1 min-h-[140px]">
+              {users.map((u) => {
+                const on = picked.includes(u.id);
+                return (
+                  <button key={u.id} type="button" onClick={() => setPicked((p) => (on ? p.filter((x) => x !== u.id) : [...p, u.id]))}
+                    className={`flex items-center gap-3 p-2.5 rounded-xl text-left ${on ? 'bg-primary/10 ring-1 ring-primary' : 'hover:bg-surface-container-low'}`}>
+                    {u.photo ? <img src={u.photo} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                      : <span className="w-9 h-9 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-[13px] shrink-0">{ini(u.name)}</span>}
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-label-md text-label-md font-semibold text-on-surface truncate">{u.name}</span>
+                      <span className="block font-body-sm text-[11px] text-on-surface-variant truncate">{u.email} · {u.role}</span>
+                    </span>
+                    {on && <span className="material-symbols-outlined text-primary text-[18px]">check_circle</span>}
+                  </button>
+                );
+              })}
+              {!users.length && <p className="text-center font-body-sm text-on-surface-variant py-8">Aucun utilisateur trouvé.</p>}
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setCompose(false)} className="flex-1 py-2.5 rounded-lg bg-surface-container-high text-on-surface font-label-md font-bold">Annuler</button>
+              <button type="button" disabled={!picked.length} onClick={() => {
+                messagingAPI.open({ users: picked }).then(({ data: conv }) => { setCompose(false); setActive(conv.id); refresh(); }).catch(() => {});
+              }} className="flex-1 py-2.5 rounded-lg bg-primary text-on-primary font-label-md font-bold disabled:opacity-60">Démarrer{picked.length > 1 ? ` (${picked.length})` : ''}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </DesignShell>
+  );
 }
