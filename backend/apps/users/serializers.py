@@ -226,6 +226,7 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError('Email ou mot de passe incorrect.')
         if not user.check_password(attrs['password']) or not user.is_active:
             raise serializers.ValidationError('Email ou mot de passe incorrect.')
+        send_login_notification(user)
         refresh = RefreshToken.for_user(user)
         return {
             'access': str(refresh.access_token),
@@ -245,6 +246,7 @@ class GoogleAuthSerializer(serializers.Serializer):
     def validate(self, attrs):
         email = attrs['email'].strip().lower()
         user = User.objects.filter(email__iexact=email).first()
+        created = user is None
         if user is None:
             base = email.split('@')[0]
             username = base
@@ -259,11 +261,15 @@ class GoogleAuthSerializer(serializers.Serializer):
                 last_name=attrs.get('last_name', ''),
                 role='CLIENT',
                 is_verified=True,
+                language=get_request_language(self.context.get('request')),
             )
             user.set_unusable_password()
             user.save()
         if not user.is_active:
             raise serializers.ValidationError('Ce compte a été suspendu.')
+        if created:
+            send_welcome_email(user)
+        send_login_notification(user)
         refresh = RefreshToken.for_user(user)
         return {
             'access': str(refresh.access_token),

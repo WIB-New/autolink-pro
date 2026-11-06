@@ -11,8 +11,11 @@ import logging
 from urllib.parse import urlencode
 from django.core import signing
 from django.core.mail import get_connection, EmailMultiAlternatives
+from django.db.models import Count
+from django.db.models.deletion import ProtectedError
 from django.urls import reverse
 from django.utils.html import escape, strip_tags
+from rest_framework.exceptions import ValidationError
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.viewsets import ModelViewSet
 from .email_utils import (
@@ -505,7 +508,8 @@ class RegisterView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.save()
+        user = serializer.save(language=get_request_language(request))
+        send_welcome_email(user)
         refresh = RefreshToken.for_user(user)
         _record_session(request, user, refresh)
         return Response({
@@ -765,19 +769,58 @@ class IsAdminRole(permissions.BasePermission):
         return request.user.is_authenticated and request.user.role == 'ADMIN'
 
 
-class UserListView(generics.ListAPIView):
-    queryset = User.objects.all().order_by('-created_at')
-    serializer_class = AdminUserSerializer
+class UserListView(generics.ListCreateAPIView):
     permission_classes = [IsAdminRole]
-    filterset_fields = ['role', 'is_verified', 'is_active']
+    filterset_fields = ['role', 'is_verified', 'is_active', 'kyc_status', 'id_document_verified']
     search_fields = ['username', 'email', 'first_name', 'last_name', 'phone']
+    ordering_fields = ['created_at', 'username', 'email', 'first_name', 'last_name', 'role', 'is_active', 'is_verified']
+
+    def get_queryset(self):
+        return User.objects.annotate(
+            bookings_count=Count('bookings', distinct=True),
+            vehicles_count=Count('vehicles', distinct=True),
+            trips_count=Count('driven_bookings', distinct=True),
+        ).order_by('-created_at')
+
+    def get_serializer_class(self):
+        return AdminUserCreateSerializer if self.request.method == 'POST' else AdminUserSerializer
 
 
-class UserDetailView(generics.RetrieveUpdateAPIView):
-    """Admin peut activer/désactiver/vérifier/modifier n'importe quel compte."""
-    queryset = User.objects.all()
+class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Admin peut modifier et supprimer un compte."""
     serializer_class = AdminUserSerializer
     permission_classes = [IsAdminRole]
+
+    def get_queryset(self):
+        return User.objects.annotate(
+            bookings_count=Count('bookings', distinct=True),
+            vehicles_count=Count('vehicles', distinct=True),
+            trips_count=Count('driven_bookings', distinct=True),
+        )
+
+    def perform_update(self, serializer):
+        if serializer.instance == self.request.user and serializer.validated_data.get('is_active') is False:
+            raise ValidationError({'is_active': 'Vous ne pouvez pas suspendre votre propre compte.'})
+        previous_kyc = serializer.instance.kyc_status
+        kyc_status = serializer.validated_data.get('kyc_status')
+        extra = {'id_document_verified': kyc_status == 'approved'} if kyc_status else {}
+        user = serializer.save(**extra)
+        if kyc_status and kyc_status != previous_kyc and kyc_status in ('approved', 'rejected'):
+            Notification.objects.create(
+                user=user,
+                title='Documents validés' if kyc_status == 'approved' else 'Documents refusés',
+                message=('Vos pièces justificatives ont été validées.' if kyc_status == 'approved'
+                         else f'Vos pièces justificatives ont été refusées. {user.kyc_note}'.strip()))
+
+    def destroy(self, request, *args, **kwargs):
+        user = self.get_object()
+        if user.pk == request.user.pk:
+            return Response({'detail': 'Vous ne pouvez pas supprimer votre propre compte.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user.delete()
+        except ProtectedError:
+            return Response({'detail': 'Impossible de supprimer un compte lié à des réservations ou véhicules.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class NotificationListView(generics.ListAPIView):

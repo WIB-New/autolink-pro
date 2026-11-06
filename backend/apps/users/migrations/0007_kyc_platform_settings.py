@@ -5,6 +5,7 @@
 # des objets avant de les créer — compatible SQLite et PostgreSQL.
 
 from django.db import migrations, models
+from config.migration_utils import AddFieldIfMissing, AlterFieldIfPresent
 
 
 def _create_settings_table(apps, schema_editor):
@@ -43,22 +44,6 @@ def _ensure_settings_columns(apps, schema_editor):
                         ALTER TABLE users_platformsettings ALTER COLUMN support_phone SET DEFAULT '';
                     END IF;
                 END $$;""")
-
-
-class AddFieldIfMissing(migrations.AddField):
-    def database_forwards(self, app_label, schema_editor, from_state, to_state):
-        model = to_state.apps.get_model(app_label, self.model_name)
-        if not self.allow_migrate_model(schema_editor.connection.alias, model):
-            return
-        field = model._meta.get_field(self.name)
-        with schema_editor.connection.cursor() as cursor:
-            existing = {
-                column.name for column in schema_editor.connection.introspection.get_table_description(
-                    cursor, model._meta.db_table
-                )
-            }
-        if field.column not in existing:
-            super().database_forwards(app_label, schema_editor, from_state, to_state)
 
 
 class Migration(migrations.Migration):
@@ -125,7 +110,7 @@ class Migration(migrations.Migration):
             name='kyc_submitted_at',
             field=models.DateTimeField(blank=True, null=True),
         ),
-        migrations.AlterField(
+        AlterFieldIfPresent(
             model_name='user',
             name='id_document',
             field=models.FileField(blank=True, null=True, upload_to='kyc/'),
