@@ -233,7 +233,7 @@ export default function PublicNavbar() {
                 </button> */}
                 <button onClick={() => navigate('/login')}
                   className="text-sm font-bold bg-teal-600 hover:bg-teal-600 text-white px-5 py-2.5 rounded-lg transition-colors shadow-sm whitespace-nowrap">
-                  S'authentifié
+                  Connexion
                 </button>
               </>
             )}
