@@ -550,7 +550,6 @@ const HTML = `<div class="flex flex-col w-full">
   </script>
 `;
 const LINKS = {
-  'Réserver maintenant': '/client/booking/recap',
   'Voir fiche': '/client/vehicule/2',
   'Explorer tout le catalogue': '/client/search',
   'Comparer la séléction': '/client/search',
@@ -666,6 +665,10 @@ export default function C6Favoris() {
         rm.closest('.fav-card')?.remove();
       } else if (book) window.location.href = `/client/booking/recap?vehicle=${book.dataset.id}`;
       else if (detail) window.location.href = `/client/vehicule/${detail.dataset.id}`;
+      else {
+        const card = e.target.closest('.fav-card');
+        if (card && !e.target.closest('button, a, input, select')) window.location.href = `/client/vehicule/${card.dataset.cardId}`;
+      }
     };
     document.addEventListener('click', click);
     return () => { document.removeEventListener('click', click); document.removeEventListener('input', apply); document.removeEventListener('change', apply); };

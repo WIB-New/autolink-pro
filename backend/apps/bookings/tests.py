@@ -160,8 +160,13 @@ class BookingFlowTests(APITestCase):
         r = self.client.patch(f'/api/bookings/{booking.id}/', {'status': 'cancelled'}, format='json')
         self.assertEqual(r.status_code, 200, r.data)
         self.client_user.refresh_from_db()
-        self.assertEqual(self.client_user.balance, Decimal('5000000'))  # remboursé intégralement
+        # Politique : location 100 % remboursée, caution remboursée à 90 % (10 % conservés)
+        expected = Decimal('5000000') - booking.deposit_amount * Decimal('0.10')
+        self.assertEqual(self.client_user.balance, expected)
         self.assertEqual(booking.payment.escrow_status, 'refunded')
+        # La part conservée est créditée au portefeuille admin
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.balance, booking.deposit_amount * Decimal('0.10'))
 
     def test_client_cannot_cancel_other_booking(self):
         self.client_user.balance = 5_000_000

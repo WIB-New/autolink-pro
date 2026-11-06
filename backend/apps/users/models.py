@@ -61,6 +61,9 @@ class PlatformSettings(models.Model):
     maintenance_mode = models.BooleanField(default=False)
     bookings_enabled = models.BooleanField(default=True)
     owner_response_hours = models.PositiveIntegerField(default=24)
+    cancel_deposit_keep_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=10,
+        help_text="% de la caution conservé par AutoLink en cas d'annulation client avant le début de la location.")
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal
 from django.conf import settings
 from django.db import transaction as db_transaction
-from django.db.models import Count, Sum
+from django.db.models import Count, Sum, Q
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.utils import timezone
@@ -223,8 +223,8 @@ class WithdrawalRequestViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         from apps.users.models import User
-        if self.request.user.role not in ('OWNER', 'DRIVER'):
-            raise PermissionDenied('Les retraits sont réservés aux propriétaires et chauffeurs.')
+        if self.request.user.role not in ('OWNER', 'DRIVER', 'CLIENT'):
+            raise PermissionDenied('Les retraits sont réservés aux propriétaires, chauffeurs et clients.')
         amount = serializer.validated_data['amount']
         with db_transaction.atomic():
             user = User.objects.select_for_update().get(pk=self.request.user.pk)
@@ -291,9 +291,17 @@ class WalletViewSet(viewsets.ViewSet):
         held = Payment.objects.filter(
             payer=request.user, status='completed', deposit_status='held',
         ).exclude(booking__status__in=('completed', 'cancelled'))
+        month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         return Response({
             'balance': request.user.balance,
             'held_deposit': held.aggregate(v=Coalesce(Sum('deposit_amount'), Decimal('0.00')))['v'],
+            'recharged_month': transactions.filter(
+                kind='topup', status='completed', created_at__gte=month_start,
+            ).aggregate(v=Coalesce(Sum('amount'), Decimal('0.00')))['v'],
+            'released_deposits': transactions.filter(
+                kind='refund', status='completed',
+            ).filter(Q(reference__startswith='DEPOSIT') | Q(note__icontains='caution'))
+            .aggregate(v=Coalesce(Sum('amount'), Decimal('0.00')))['v'],
             'held_deposits': [{
                 'booking': p.booking_id,
                 'vehicle': str(p.booking.vehicle),

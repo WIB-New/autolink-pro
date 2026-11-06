@@ -108,6 +108,7 @@ ${list.length ? list.map((n) => row(n, labels)).join('') : '<tr><td class="px-5 
 
 export default function C8Notifications({ role = 'client' }) {
   const { data } = useApiData(() => notificationsAPI.list(), []);
+  const [detail, setDetail] = React.useState(null);
   const html = useMemo(() => {
     const items = data?.results || (Array.isArray(data) ? data : []) || [];
     const unread = data?.unread ?? items.filter((n) => !n.is_read).length;
@@ -126,13 +127,15 @@ export default function C8Notifications({ role = 'client' }) {
         notificationsAPI.read(read.dataset.id).then(reload).catch(() => {});
       } else if (del) {
         notificationsAPI.remove(del.dataset.id).then(reload).catch(() => {});
-      } else if (open?.dataset.link) {
-        window.location.href = open.dataset.link;
+      } else if (open) {
+        const items = data?.results || (Array.isArray(data) ? data : []) || [];
+        const n = items.find((x) => String(x.id) === String(open.dataset.id));
+        if (n) { notificationsAPI.read(n.id).catch(() => {}); setDetail(n); }
       }
     };
     document.addEventListener('click', click);
     return () => document.removeEventListener('click', click);
-  }, []);
+  }, [data]);
 
   React.useEffect(() => {
     const q = document.getElementById('notif-search');
@@ -153,5 +156,36 @@ export default function C8Notifications({ role = 'client' }) {
     return () => { q.removeEventListener('input', filter); k.removeEventListener('change', filter); };
   });
 
-  return <DesignPage html={html} links={{}} role={role} />;
+  const kindLabel = detail && (role === 'driver' ? KIND_LABEL_DRIVER : KIND_LABEL)[detail.kind];
+  return (
+    <>
+      <DesignPage html={html} links={{}} role={role} />
+      {detail && (
+        <div className="fixed inset-0 z-[90] bg-black/50 p-4 flex items-center justify-center" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) setDetail(null); }}>
+          <div className="bg-surface-container-lowest rounded-2xl p-6 w-full max-w-md flex flex-col gap-4 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${detail.is_read ? 'bg-surface-container-high text-on-surface-variant' : 'bg-primary-fixed text-primary'}`}>
+                <span className="material-symbols-outlined text-[24px]">{KIND_ICON[detail.kind] || 'notifications'}</span>
+              </div>
+              <div className="min-w-0">
+                <h2 className="font-headline-md text-headline-md text-on-surface font-bold">{detail.title}</h2>
+                <p className="font-label-sm text-label-sm text-on-surface-variant mt-0.5">{kindLabel || detail.kind || 'Général'} · {detail.created_at ? new Date(detail.created_at).toLocaleString('fr-FR') : ''}</p>
+              </div>
+            </div>
+            <p className="font-body-md text-body-md text-on-surface leading-relaxed whitespace-pre-line">{detail.message || '—'}</p>
+            <div className="flex items-center gap-2 font-label-sm text-label-sm">
+              <span className={`px-2.5 py-1 rounded-full ${detail.is_read ? 'bg-surface-container-high text-on-surface-variant' : 'bg-primary-fixed text-primary'}`}>{detail.is_read ? 'Lue' : 'Non lue'}</span>
+              {detail.link && <span className="px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant">Dossier lié</span>}
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button type="button" onClick={() => setDetail(null)} className="flex-1 py-2.5 rounded-lg bg-surface-container-high text-on-surface font-label-md font-bold">Fermer</button>
+              {detail.link && (
+                <button type="button" onClick={() => { window.location.href = detail.link; }} className="flex-1 py-2.5 rounded-lg bg-primary text-on-primary font-label-md font-bold">Voir le dossier</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }

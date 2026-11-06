@@ -147,7 +147,7 @@ const HTML = `<div class="flex flex-col w-full">
 </div>
 <button id="btn-edit-options" class="text-primary hover:text-primary-container font-label-md text-label-md font-semibold flex items-center gap-0.5 transition-colors" type="button">
 <span class="material-symbols-outlined text-[16px]">edit</span>
-              Modifier les options
+              Modifier les dates de la réservation
             </button>
 </div>
 <div class="flex flex-col gap-space-sm">
@@ -393,7 +393,7 @@ export default function C2TunnelEtape1Recapitulatif() {
 
   const links = useMemo(() => ({
     ...LINKS,
-    'Modifier les options': `/client/vehicule/${vid}`, 
+    'Modifier les dates de la réservation': `/client/vehicule/${vid}`, 
   }), [vid, start, end]);
 
   const html = useMemo(() => {
