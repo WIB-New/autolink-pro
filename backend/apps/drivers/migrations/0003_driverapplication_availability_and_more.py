@@ -3,6 +3,7 @@
 from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion
+from config.migration_utils import AddFieldIfMissing, AlterFieldIfPresent
 
 
 class Migration(migrations.Migration):
@@ -13,77 +14,77 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
+        AddFieldIfMissing(
             model_name='driverapplication',
             name='availability',
             field=models.CharField(choices=[('full', 'Temps plein'), ('part', 'Temps partiel'), ('weekend', 'Week-ends uniquement')], default='full', max_length=20),
         ),
-        migrations.AddField(
+        AddFieldIfMissing(
             model_name='driverapplication',
             name='city',
             field=models.CharField(blank=True, max_length=80),
         ),
-        migrations.AddField(
+        AddFieldIfMissing(
             model_name='driverapplication',
             name='email',
             field=models.EmailField(blank=True, max_length=254),
         ),
-        migrations.AddField(
+        AddFieldIfMissing(
             model_name='driverapplication',
             name='full_name',
             field=models.CharField(blank=True, max_length=120),
         ),
-        migrations.AddField(
+        AddFieldIfMissing(
             model_name='driverapplication',
             name='guarantee_type',
             field=models.CharField(blank=True, max_length=60),
         ),
-        migrations.AddField(
+        AddFieldIfMissing(
             model_name='driverapplication',
             name='has_insurance',
             field=models.BooleanField(default=False),
         ),
-        migrations.AddField(
+        AddFieldIfMissing(
             model_name='driverapplication',
             name='has_vehicle',
             field=models.BooleanField(default=False),
         ),
-        migrations.AddField(
+        AddFieldIfMissing(
             model_name='driverapplication',
             name='license_obtained_at',
             field=models.DateField(blank=True, null=True),
         ),
-        migrations.AddField(
+        AddFieldIfMissing(
             model_name='driverapplication',
             name='license_type',
             field=models.CharField(blank=True, max_length=10),
         ),
-        migrations.AddField(
+        AddFieldIfMissing(
             model_name='driverapplication',
             name='message',
             field=models.TextField(blank=True),
         ),
-        migrations.AddField(
+        AddFieldIfMissing(
             model_name='driverapplication',
             name='phone',
             field=models.CharField(blank=True, max_length=30),
         ),
-        migrations.AddField(
+        AddFieldIfMissing(
             model_name='driverapplication',
             name='professional_status',
             field=models.CharField(blank=True, max_length=60),
         ),
-        migrations.AddField(
+        AddFieldIfMissing(
             model_name='driverapplication',
             name='references',
             field=models.TextField(blank=True),
         ),
-        migrations.AddField(
+        AddFieldIfMissing(
             model_name='driverapplication',
             name='vehicle_description',
             field=models.CharField(blank=True, max_length=120),
         ),
-        migrations.AlterField(
+        AlterFieldIfPresent(
             model_name='driverapplication',
             name='applicant',
             field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='driver_application', to=settings.AUTH_USER_MODEL),

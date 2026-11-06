@@ -8,7 +8,7 @@ from config.migration_utils import AddFieldIfMissing
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0008_fix_legacy_notnull_columns'),
+        ('users', '0009_fix_legacy_notnull_columns'),
     ]
 
     operations = [

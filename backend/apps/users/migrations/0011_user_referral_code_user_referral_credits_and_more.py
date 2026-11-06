@@ -11,7 +11,7 @@ from config.migration_utils import AddFieldIfMissing
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0009_notification_kind_notification_link'),
+        ('users', '0010_notification_kind_notification_link'),
     ]
 
     operations = [

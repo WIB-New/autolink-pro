@@ -49,7 +49,7 @@ def _ensure_settings_columns(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0006_user_language'),
+        ('users', '0007_user_language'),
     ]
 
     operations = [

@@ -32,7 +32,7 @@ def fix_columns(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0007_kyc_platform_settings'),
+        ('users', '0008_kyc_platform_settings'),
     ]
 
     operations = [

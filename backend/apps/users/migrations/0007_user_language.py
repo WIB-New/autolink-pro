@@ -9,7 +9,7 @@ from config.migration_utils import AddFieldIfMissing
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0005_user_newsletter_opt_in_newslettercampaign'),
+        ('users', '0006_user_newsletter_opt_in_newslettercampaign'),
     ]
 
     operations = [
