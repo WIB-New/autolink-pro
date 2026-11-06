@@ -2,6 +2,7 @@ from django.db import transaction
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
+from io import BytesIO
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -158,6 +159,55 @@ class DriverEarningListView(viewsets.ReadOnlyModelViewSet):
     ]
     ordering_fields = ['created_at', 'amount', 'booking__start_date']
     ordering = ['-created_at']
+
+    @action(detail=True, methods=['get'], url_path='receipt')
+    def receipt(self, request, pk=None):
+        """Reçu PDF du gain crédité au chauffeur pour une course."""
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.lib.units import mm
+        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                        Table, TableStyle, HRFlowable)
+        e = self.get_object()
+        teal = colors.HexColor('#0d7a6f')
+        light = colors.HexColor('#e6f5f3')
+        mute = colors.HexColor('#6b7280')
+        base = ParagraphStyle('b', fontName='Helvetica', fontSize=9.5, leading=13)
+        lbl = ParagraphStyle('l', parent=base, textColor=mute)
+        buf = BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm)
+        header = Table([[Paragraph('AutoLink Pro', ParagraphStyle('br', fontName='Helvetica-Bold', fontSize=20, textColor=colors.white)),
+                         Paragraph(f'REÇU DE GAIN<br/><font size="9">BK-{e.booking_id:04d}</font>', ParagraphStyle('r', fontName='Helvetica-Bold', fontSize=11, textColor=colors.white, alignment=2))]],
+                       colWidths=[115 * mm, 60 * mm])
+        header.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), teal), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                                    ('LEFTPADDING', (0, 0), (-1, -1), 14), ('TOPPADDING', (0, 0), (-1, -1), 12), ('BOTTOMPADDING', (0, 0), (-1, -1), 12)]))
+        def kv(k, v): return [Paragraph(k, lbl), Paragraph(str(v), base)]
+        b = e.booking
+        info = Table([
+            kv('Référence gain', f'GE-{e.id:04d}'),
+            kv('Course', f'BK-{b.id:04d} — {b.vehicle.brand} {b.vehicle.model} ({b.vehicle.plate})'),
+            kv('Période', f'{b.start_date} → {b.end_date}'),
+            kv('Chauffeur', e.driver.get_full_name() or e.driver.username),
+            kv('Client', b.client.get_full_name() or b.client.username),
+            kv('Crédité le', e.created_at.strftime('%d/%m/%Y à %H:%M')),
+        ], colWidths=[45 * mm, 130 * mm])
+        info.setStyle(TableStyle([('LINEBELOW', (0, 0), (-1, -2), 0.4, colors.HexColor('#e5e7eb')),
+                                  ('TOPPADDING', (0, 0), (-1, -1), 6), ('BOTTOMPADDING', (0, 0), (-1, -1), 6)]))
+        amounts = Table([[kv('Montant crédité au chauffeur', f'+{e.amount} FCFA')]],
+                        colWidths=[120 * mm, 55 * mm])
+        amounts.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), light), ('BOX', (0, 0), (-1, -1), 0.8, teal),
+                                     ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+                                     ('TOPPADDING', (0, 0), (-1, -1), 8), ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                                     ('LEFTPADDING', (0, 0), (-1, -1), 10), ('RIGHTPADDING', (0, 0), (-1, -1), 10)]))
+        doc.build([header, Spacer(1, 16), info, Spacer(1, 14), amounts, Spacer(1, 16),
+                   HRFlowable(width='100%', thickness=0.6, color=colors.HexColor('#e5e7eb')), Spacer(1, 8),
+                   Paragraph(f'AutoLink Pro — Douala & Yaoundé · Émis le {timezone.localdate()}',
+                             ParagraphStyle('f', fontName='Helvetica', fontSize=8, textColor=mute, alignment=1))])
+        from django.http import HttpResponse
+        resp = HttpResponse(buf.getvalue(), content_type='application/pdf')
+        resp['Content-Disposition'] = f'attachment; filename="recu-gain-GE-{e.id:04d}.pdf"'
+        return resp
 
     def get_queryset(self):
         return DriverEarning.objects.filter(driver=self.request.user).select_related(

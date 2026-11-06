@@ -24,9 +24,14 @@ DRIVER_ALLOWED_STATUS = {'active', 'completed'}
 
 
 def _notify(user, title, message):
-    from apps.users.models import Notification
-    if user:
-        Notification.objects.create(user=user, title=title, message=message)
+    """Notification in-app — ignorée si le client a désactivé le push dans ses préférences."""
+    from apps.users.notif_utils import notify_user
+    notify_user(user, title, message)
+
+
+def _notify_legacy(user, title, message):
+    from apps.users.notif_utils import notify_user
+    notify_user(user, title, message)
 
 
 def _assign_internal_driver(booking):
@@ -107,9 +112,20 @@ class BookingViewSet(viewsets.ModelViewSet):
     def driver_refuse(self, request, pk=None):
         booking = self.get_object()
         self._driver_booking(request.user, booking)
-        if booking.status != 'confirmed' or booking.driver_response != 'offered':
+        if booking.status != 'confirmed' or booking.driver_response not in ('offered', 'accepted'):
             raise ValidationError({'detail': 'Cette course ne peut plus être refusée.'})
         booking.driver_response = 'refused'
+        booking.save(update_fields=['driver_response', 'updated_at'])
+        return Response(self.get_serializer(booking).data)
+
+    @action(detail=True, methods=['post'], url_path='driver-reset')
+    def driver_reset(self, request, pk=None):
+        """Annule un refus : la course repasse en 'offered' (en attente)."""
+        booking = self.get_object()
+        self._driver_booking(request.user, booking)
+        if booking.driver_response != 'refused':
+            raise ValidationError({'detail': 'Cette course n\'a pas été refusée.'})
+        booking.driver_response = 'offered'
         booking.save(update_fields=['driver_response', 'updated_at'])
         return Response(self.get_serializer(booking).data)
 
@@ -668,74 +684,120 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     def _receipt_pdf(self, booking):
         from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import getSampleStyleSheet
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.lib import colors
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.lib.units import mm
+        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                        Table, TableStyle, HRFlowable)
         from apps.users.email_utils import get_user_language
 
         language = get_user_language(booking.client)
+        teal = colors.HexColor('#0d7a6f')
+        light = colors.HexColor('#e6f5f3')
+        ink = colors.HexColor('#1f2937')
+        mute = colors.HexColor('#6b7280')
         buffer = BytesIO()
-        document = SimpleDocTemplate(buffer, pagesize=A4)
-        styles = getSampleStyleSheet()
+        document = SimpleDocTemplate(buffer, pagesize=A4,
+                                     leftMargin=18 * mm, rightMargin=18 * mm,
+                                     topMargin=14 * mm, bottomMargin=14 * mm)
+        brand = ParagraphStyle('brand', fontName='Helvetica-Bold', fontSize=20, textColor=colors.white)
+        tagline = ParagraphStyle('tagline', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#b8e6e0'))
+        ref_style = ParagraphStyle('ref', fontName='Helvetica-Bold', fontSize=11, textColor=colors.white, alignment=2)
+        h2 = ParagraphStyle('h2', fontName='Helvetica-Bold', fontSize=10.5, textColor=teal, spaceBefore=8, spaceAfter=4)
+        base = ParagraphStyle('base', fontName='Helvetica', fontSize=9.5, textColor=ink, leading=13)
+        foot = ParagraphStyle('foot', fontName='Helvetica', fontSize=8, textColor=mute, alignment=1)
+
         try:
             payment = booking.payment
             method = payment.get_method_display()
             payment_status = payment.get_status_display()
             if language == 'en':
-                method = {
-                    'wallet': 'Wallet',
-                    'mtn': 'MTN Mobile Money',
-                    'orange': 'Orange Money',
-                    'senbid': 'SenBid',
-                    'paybid': 'PayBid',
-                    'stripe': 'Card (Stripe)',
-                    'paypal': 'PayPal',
-                }.get(payment.method, method)
-                payment_status = {
-                    'pending': 'Pending',
-                    'completed': 'Confirmed',
-                    'failed': 'Failed',
-                    'refunded': 'Refunded',
-                }.get(payment.status, payment_status)
+                method = {'wallet': 'Wallet', 'mtn': 'MTN Mobile Money', 'orange': 'Orange Money',
+                          'senbid': 'SenBid', 'paybid': 'PayBid', 'stripe': 'Card (Stripe)', 'paypal': 'PayPal'}.get(payment.method, method)
+                payment_status = {'pending': 'Pending', 'completed': 'Confirmed',
+                                  'failed': 'Failed', 'refunded': 'Refunded'}.get(payment.status, payment_status)
         except Exception:
             method, payment_status = '—', 'Pending' if language == 'en' else 'En attente'
-        if language == 'en':
-            lines = [
-                '<b>AutoLink Pro</b>',
-                f'Contact: {settings.CONTACT_EMAIL}',
-                f'Booking receipt BK-{booking.pk:04d}',
-                f'Client: {escape(booking.client.get_full_name())} ({escape(booking.client.email)})',
-                f'Vehicle: {escape(booking.vehicle.brand)} {escape(booking.vehicle.model)} — {escape(booking.vehicle.plate)}',
-                f'Dates: {booking.start_date.isoformat()} to {booking.end_date.isoformat()} ({booking.days} days)',
-                f'Daily rate: {booking.daily_rate} FCFA',
-                f'Discount: {booking.discount_percent}%',
-                f'Subtotal: {booking.subtotal} FCFA',
-                f'Deposit: {booking.deposit_amount} FCFA',
-                f'Payment method: {method} — {payment_status}',
-                f'Issue date: {timezone.localdate().isoformat()}',
-            ]
-        else:
-            lines = [
-                '<b>AutoLink Pro</b>',
-                f'Contact : {settings.CONTACT_EMAIL}',
-                f'Reçu de réservation BK-{booking.pk:04d}',
-                f'Client : {escape(booking.client.get_full_name())} ({escape(booking.client.email)})',
-                f'Véhicule : {escape(booking.vehicle.brand)} {escape(booking.vehicle.model)} — {escape(booking.vehicle.plate)}',
-                f'Dates : {booking.start_date} au {booking.end_date} ({booking.days} jour(s))',
-                f'Tarif journalier : {booking.daily_rate} FCFA',
-                f'Remise : {booking.discount_percent} %',
-                f'Sous-total : {booking.subtotal} FCFA',
-                f'Caution : {booking.deposit_amount} FCFA',
-                f'Moyen de paiement : {method} — {payment_status}',
-                f'Date d’émission : {timezone.localdate()}',
-            ]
-        story = []
-        for line in lines:
-            story.extend((Paragraph(line, styles['Normal']), Spacer(1, 10)))
+
+        tr = {
+            'receipt': 'REÇU DE RÉSERVATION' if language != 'en' else 'BOOKING RECEIPT',
+            'client': 'Client' if language != 'en' else 'Customer',
+            'vehicle': 'Véhicule' if language != 'en' else 'Vehicle',
+            'dates': 'Période' if language != 'en' else 'Dates',
+            'days': 'jour(s)' if language != 'en' else 'day(s)',
+            'rate': 'Tarif journalier' if language != 'en' else 'Daily rate',
+            'discount': 'Remise' if language != 'en' else 'Discount',
+            'subtotal': 'Sous-total' if language != 'en' else 'Subtotal',
+            'deposit': 'Caution (séquestre)' if language != 'en' else 'Deposit (escrow)',
+            'payment': 'Paiement' if language != 'en' else 'Payment',
+            'issued': 'Date d’émission' if language != 'en' else 'Issue date',
+            'footer': ('AutoLink Pro — location de véhicules vérifiés · Douala & Yaoundé · '
+                       + str(settings.CONTACT_EMAIL)) if language != 'en'
+                      else 'AutoLink Pro — verified car rentals · Douala & Yaoundé · ' + str(settings.CONTACT_EMAIL),
+        }
+
+        header = Table(
+            [[Paragraph('AutoLink Pro', brand), Paragraph(tr['receipt'] + '<br/><font size="9">BK-' + format(booking.pk, '04d') + '</font>', ref_style)],
+             [Paragraph('Location de véhicules vérifiés — Cameroun', tagline), '']],
+            colWidths=[115 * mm, 60 * mm])
+        header.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), teal),
+            ('LEFTPADDING', (0, 0), (-1, -1), 14), ('RIGHTPADDING', (0, 0), (-1, -1), 14),
+            ('TOPPADDING', (0, 0), (-1, 0), 12), ('BOTTOMPADDING', (0, -1), (-1, -1), 12),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('SPAN', (0, 1), (1, 1)),
+        ]))
+
+        def kv(label, value):
+            return [Paragraph(label, base), Paragraph(str(value), base)]
+
+        info = Table([
+            kv(tr['client'], escape(booking.client.get_full_name()) + ' — ' + escape(booking.client.email or '')),
+            kv(tr['vehicle'], escape(booking.vehicle.brand) + ' ' + escape(booking.vehicle.model) + ' · ' + escape(booking.vehicle.plate)),
+            kv(tr['dates'], str(booking.start_date) + ' → ' + str(booking.end_date) + ' (' + str(booking.days) + ' ' + tr['days'] + ')'),
+            kv(tr['payment'], str(method) + ' — ' + str(payment_status)),
+            kv(tr['issued'], timezone.localdate().isoformat()),
+        ], colWidths=[40 * mm, 135 * mm])
+        info.setStyle(TableStyle([
+            ('LINEBELOW', (0, 0), (-1, -2), 0.4, colors.HexColor('#e5e7eb')),
+            ('TOPPADDING', (0, 0), (-1, -1), 6), ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('TEXTCOLOR', (0, 0), (0, -1), mute),
+        ]))
+
+        def amount_row(label, value, strong=False):
+            s = ParagraphStyle('ar', parent=base, fontName='Helvetica-Bold' if strong else 'Helvetica',
+                               textColor=teal if strong else ink, fontSize=10 if strong else 9.5)
+            lbl = ParagraphStyle('arl', parent=base, textColor=mute)
+            return [Paragraph(label, lbl), Paragraph(value, s)]
+
+        amounts = Table([
+            amount_row(tr['rate'], str(booking.daily_rate) + ' FCFA'),
+            amount_row(tr['discount'], str(booking.discount_percent) + ' %'),
+            amount_row(tr['subtotal'], str(booking.subtotal) + ' FCFA', strong=True),
+            amount_row(tr['deposit'], str(booking.deposit_amount) + ' FCFA', strong=True),
+        ], colWidths=[120 * mm, 55 * mm])
+        amounts.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), light),
+            ('BOX', (0, 0), (-1, -1), 0.8, teal),
+            ('LINEABOVE', (0, 2), (-1, 2), 0.6, teal),
+            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+            ('TOPPADDING', (0, 0), (-1, -1), 7), ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+            ('LEFTPADDING', (0, 0), (-1, -1), 10), ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ]))
+
+        story = [
+            header, Spacer(1, 16),
+            info, Spacer(1, 14),
+            amounts, Spacer(1, 20),
+            HRFlowable(width='100%', thickness=0.6, color=colors.HexColor('#e5e7eb')), Spacer(1, 8),
+            Paragraph(tr['footer'], foot),
+            Paragraph('Merci de votre confiance — document généré automatiquement, valable sans signature.', foot),
+        ]
         document.build(story)
         return buffer.getvalue()
 
     def _can_access_receipt(self, booking, user):
-        if booking.client_id == user.id or booking.vehicle.owner_id == user.id or user.role == 'ADMIN':
+        if booking.client_id == user.id or booking.vehicle.owner_id == user.id or booking.driver_id == user.id or user.role == 'ADMIN':
             return
         raise PermissionDenied('Vous ne pouvez pas accéder à ce reçu.')
 
@@ -786,6 +848,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     def client_dashboard(self, request):
         if request.user.role != 'CLIENT':
             raise PermissionDenied('Réservé aux clients.')
+        from apps.payments.models import Payment
         now = timezone.now()
         qs = Booking.objects.filter(client=request.user)
         paid = qs.exclude(status='cancelled')
@@ -804,7 +867,9 @@ class BookingViewSet(viewsets.ModelViewSet):
         trust = max(0, min(100, 100 - 5 * cancelled - 15 * disputes + 2 * completed))
         return Response({
             'balance': request.user.balance,
-            'held_deposit': paid.filter(status__in=['confirmed', 'active'])
+            'held_deposit': Payment.objects.filter(
+                payer=request.user, status__in=('completed', 'succeeded'), deposit_status='held',
+            ).exclude(booking__status__in=('completed', 'cancelled'))
                 .aggregate(v=Sum('deposit_amount'))['v'] or Decimal('0'),
             'bookings_total': qs.count(),
             'upcoming': qs.filter(status__in=['pending', 'confirmed'], start_date__gte=now).count(),

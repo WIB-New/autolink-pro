@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import DesignPage from './DesignPage';
 import useApiData from '../utils/useApiData';
-import { bookingsAPI, authAPI } from '../services/api';
+import { bookingsAPI, authAPI, walletAPI } from '../services/api';
 
 const fmt = (n) => new Intl.NumberFormat((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')).format(Math.round(Number(n) || 0));
 
@@ -144,7 +144,7 @@ const HTML = `<div class="w-full px-gutter py-space-lg flex flex-col gap-space-l
 <span class="material-symbols-outlined text-[20px] text-primary">add_card</span>
 <span>Recharger mon portefeuille</span>
 </button>
-<button class="w-full inline-flex items-center gap-space-xs px-space-md py-space-sm rounded-xl bg-surface-container-low text-on-surface font-label-lg text-label-lg hover:bg-surface-container transition-all" title="Télécharger les relevés de factures" type="button">
+<button class="w-full inline-flex items-center gap-space-xs px-space-md py-space-sm rounded-xl bg-surface-container-low text-on-surface font-label-lg text-label-lg hover:bg-surface-container transition-all" title="Télécharger le relevé des factures (PDF)" data-tip="Télécharger le relevé des factures (PDF)" type="button">
 <span class="material-symbols-outlined text-[20px] text-secondary">download</span>
 <span>Factures</span>
 </button>
@@ -154,7 +154,6 @@ const HTML = `<div class="w-full px-gutter py-space-lg flex flex-col gap-space-l
 const LINKS = {
   'Rechercher un véhicule': '/client/search',
   'Recharger mon portefeuille': '/client/wallet?recharge=1',
-  'Factures': '/client/wallet',
 };
 
 export default function C1TableauDeBordClient() {
@@ -242,7 +241,21 @@ export default function C1TableauDeBordClient() {
       } else tip.style.display = 'none';
     };
     document.addEventListener('mousemove', move);
-    return () => { document.removeEventListener('mousemove', move); tip.remove(); };
+    const click = (e) => {
+      const el = e.target.closest('button');
+      if (!el || !el.textContent.includes('Factures')) return;
+      e.preventDefault();
+      walletAPI.statement().then((r) => {
+        const url = URL.createObjectURL(r.data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'releve-factures.pdf';
+        a.click();
+        URL.revokeObjectURL(url);
+      }).catch(() => alert('Relevé indisponible.'));
+    };
+    document.addEventListener('click', click);
+    return () => { document.removeEventListener('mousemove', move); document.removeEventListener('click', click); tip.remove(); };
   }, []);
 
   return <DesignPage html={html} links={LINKS} />;

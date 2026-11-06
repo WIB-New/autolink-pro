@@ -43,6 +43,9 @@ def render_email_template(template_name, context):
 
 
 def send_welcome_email(user):
+    from apps.users.notif_utils import notif_allowed
+    if not notif_allowed(user, 'email'):
+        return
     if not user.email:
         return
 
@@ -78,6 +81,9 @@ def send_welcome_email(user):
 
 
 def send_login_notification(user):
+    from apps.users.notif_utils import notif_allowed
+    if not notif_allowed(user, 'email'):
+        return
     if not user.email:
         return
 

@@ -70,9 +70,15 @@ class ConversationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
                     kind='support', subject=request.data.get('subject') or 'Support AutoLink')
                 admins = User.objects.filter(role='ADMIN', is_active=True)
                 conversation.participants.add(user, *admins)
+        elif request.data.get('users'):
+            others = User.objects.filter(pk__in=request.data.get('users') or [], is_active=True)
+            if not others.exists():
+                raise ValidationError({'users': 'Aucun utilisateur sélectionné.'})
+            names = ', '.join((u.get_full_name() or u.username) for u in others[:3])
+            conversation = Conversation.objects.create(
+                kind='direct', subject=request.data.get('subject') or names)
+            conversation.participants.add(user, *others)
         elif request.data.get('user'):
-            if user.role not in STAFF_ROLES:
-                raise PermissionDenied('Seule l’équipe AutoLink peut ouvrir une conversation directe.')
             other = User.objects.filter(pk=request.data.get('user')).first()
             if not other:
                 raise ValidationError({'user': 'Utilisateur introuvable.'})
@@ -85,6 +91,24 @@ class ConversationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
         else:
             raise ValidationError({'detail': 'Précisez une réservation, le support ou un utilisateur.'})
         return Response(self.get_serializer(conversation).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'])
+    def users(self, request):
+        """Annuaire léger pour composer un nouvel échange (photo, nom, email, rôle)."""
+        q = (request.query_params.get('search') or '').strip()
+        role = (request.query_params.get('role') or '').strip()
+        qs = User.objects.filter(is_active=True).exclude(pk=request.user.pk)
+        if role in ('CLIENT', 'DRIVER', 'OWNER', 'ADMIN'):
+            qs = qs.filter(role=role)
+        if q:
+            qs = qs.filter(
+                Q(first_name__icontains=q) | Q(last_name__icontains=q)
+                | Q(email__icontains=q) | Q(username__icontains=q))
+        return Response([{
+            'id': u.pk, 'name': u.get_full_name() or u.username, 'email': u.email,
+            'role': u.role,
+            'photo': u.photo.url if getattr(u, 'photo', None) and getattr(u.photo, 'url', None) else '',
+        } for u in qs.order_by('first_name', 'last_name')[:40]])
 
     @action(detail=True, methods=['get', 'post'], parser_classes=[JSONParser, MultiPartParser, FormParser])
     def messages(self, request, pk=None):

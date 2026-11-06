@@ -62,6 +62,7 @@ import Favorites from './pages/client/Favorites';
 import D8 from './design/c8_notifications';
 import DD from './design/driver_dashboard';
 import DP from './design/driver_profile';
+import DC from './design/driver_course';
 import DR from './design/driver_revenue';
 import DDN from './design/driver_notifications';
 import Parametres from './design/Parametres';
@@ -144,6 +145,7 @@ function AppRoutes() {
       <Route path="/owner/revenue" element={<Guard roles={['OWNER']}><OwnerRevenue /></Guard>} />
 
       <Route path="/driver/dashboard" element={<Guard roles={['DRIVER']}><DD /></Guard>} />
+      <Route path="/driver/courses/:id" element={<Guard roles={['DRIVER']}><DC /></Guard>} />
       <Route path="/driver/revenue" element={<DR />} />
       <Route path="/driver/application" element={<Guard><DriverApplicationForm /></Guard>} />
       <Route path="/driver/notifications" element={<Guard roles={['DRIVER']}><DDN /></Guard>} />

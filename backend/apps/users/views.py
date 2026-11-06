@@ -24,8 +24,9 @@ from .email_utils import (
     send_welcome_email,
 )
 from rest_framework.parsers import FormParser, MultiPartParser
-from .models import ContactMessage, NewsletterCampaign, PlatformSettings, User, Notification, LoginCode
-from .serializers import ContactMessageAdminSerializer, ContactMessageSerializer, NewsletterCampaignSerializer, NewsletterSendSerializer, UserSerializer, RegisterSerializer, LoginSerializer, AdminUserSerializer, AdminUserCreateSerializer, GoogleAuthSerializer, NotificationSerializer, KYCUploadSerializer, PlatformSettingsSerializer
+from .models import ContactMessage, NewsletterCampaign, PlatformSettings, User, Notification, LoginCode, UserDocument
+from .serializers import ContactMessageAdminSerializer, ContactMessageSerializer, NewsletterCampaignSerializer, NewsletterSendSerializer, UserSerializer, RegisterSerializer, LoginSerializer, AdminUserSerializer, AdminUserCreateSerializer, GoogleAuthSerializer, NotificationSerializer, KYCUploadSerializer, PlatformSettingsSerializer, UserDocumentSerializer, OfferSerializer, UserSessionSerializer
+from .models import Offer, UserSession
 
 
 logger = logging.getLogger(__name__)
@@ -205,10 +206,18 @@ class KYCUploadView(generics.UpdateAPIView):
     serializer_class = KYCUploadSerializer
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
-    http_method_names = ['post', 'patch', 'options']
+    http_method_names = ['post', 'patch', 'delete', 'options']
 
     def get_object(self):
         return self.request.user
+
+    def delete(self, request, *args, **kwargs):
+        """Supprime un justificatif précis (?field=id_document|driving_license|address_proof|insurance)."""
+        field = request.query_params.get('field')
+        if field in ('id_document', 'driving_license', 'address_proof', 'insurance'):
+            setattr(request.user, field, None)
+            request.user.save(update_fields=[field])
+        return Response(UserSerializer(request.user, context={'request': request}).data)
 
     def post(self, request, *args, **kwargs):
         return self.partial_update(request, *args, **kwargs)
@@ -224,6 +233,29 @@ class KYCUploadView(generics.UpdateAPIView):
     def update(self, request, *args, **kwargs):
         super().update(request, *args, **kwargs)
         return Response(UserSerializer(request.user, context={'request': request}).data)
+
+
+class UserDocumentListCreateView(generics.ListCreateAPIView):
+    """Documents personnels du client — liste + ajout (nom, type, lieu, validité, fichier)."""
+    serializer_class = UserDocumentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_queryset(self):
+        return self.request.user.extra_documents.all()
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class UserDocumentDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Voir / modifier / supprimer un document personnel (propriétaire uniquement)."""
+    serializer_class = UserDocumentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_queryset(self):
+        return self.request.user.extra_documents.all()
 
 
 class ContactMessageViewSet(ModelViewSet):
@@ -407,13 +439,29 @@ class NewsletterSendView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
+def _record_session(request, user, refresh):
+    """Enregistre la session (jti du refresh token, appareil, IP) à chaque connexion."""
+    try:
+        token = refresh if isinstance(refresh, RefreshToken) else RefreshToken(refresh)
+        jti = token.get('jti') or token['jti']
+        ip = (request.META.get('HTTP_X_FORWARDED_FOR') or '').split(',')[0].strip() or request.META.get('REMOTE_ADDR')
+        UserSession.objects.get_or_create(
+            jti=jti, defaults={'user': user, 'user_agent': request.META.get('HTTP_USER_AGENT', '')[:300], 'ip_address': ip or None})
+    except Exception:
+        pass
+
+
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response(serializer.validated_data)
+        data = serializer.validated_data
+        user = User.objects.filter(email__iexact=data.get('user', {}).get('email') or request.data.get('email') or '').first()
+        if user and data.get('refresh'):
+            _record_session(request, user, data['refresh'])
+        return Response(data)
 
 
 class GoogleAuthView(APIView):
@@ -459,6 +507,7 @@ class RegisterView(generics.CreateAPIView):
         user = serializer.save(language=get_request_language(request))
         send_welcome_email(user)
         refresh = RefreshToken.for_user(user)
+        _record_session(request, user, refresh)
         return Response({
             'user': UserSerializer(user).data,
             'refresh': str(refresh),
@@ -472,6 +521,75 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+def _blacklist_jti(user, jti):
+    """Blacklist le refresh token et supprime la session enregistrée."""
+    try:
+        from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
+        t = OutstandingToken.objects.filter(user=user, jti=jti).first()
+        if t:
+            t.blacklist()
+    except Exception:
+        pass
+    UserSession.objects.filter(user=user, jti=jti).delete()
+
+
+class MeSessionListView(generics.ListAPIView):
+    """Sessions actives du compte — appareil, IP, date de connexion."""
+    serializer_class = UserSessionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return self.request.user.sessions.all()
+
+
+class MeSessionDeleteView(APIView):
+    """Déconnecte un appareil précis (jti) — révoque son refresh token."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, jti):
+        _blacklist_jti(request.user, jti)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class MeSessionLogoutAllView(APIView):
+    """Tout déconnecter — révoque toutes les sessions du compte."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request):
+        for s in UserSession.objects.filter(user=request.user):
+            _blacklist_jti(request.user, s.jti)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class OfferListView(generics.ListAPIView):
+    """Offres promotionnelles actives — affichées dans l'espace parrainage."""
+    serializer_class = OfferSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Offer.objects.filter(is_active=True)
+
+
+class MePasswordView(APIView):
+    """Changement de mot de passe — mot de passe actuel requis."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        current = request.data.get('current_password') or ''
+        new = request.data.get('new_password') or ''
+        confirm = request.data.get('new_password2') or request.data.get('confirm') or ''
+        if not user.check_password(current):
+            return Response({'detail': 'Mot de passe actuel incorrect.'}, status=status.HTTP_400_BAD_REQUEST)
+        if len(new) < 6:
+            return Response({'detail': 'Le nouveau mot de passe doit contenir au moins 6 caractères.'}, status=status.HTTP_400_BAD_REQUEST)
+        if new != confirm:
+            return Response({'detail': 'Les deux nouveaux mots de passe ne correspondent pas.'}, status=status.HTTP_400_BAD_REQUEST)
+        user.set_password(new)
+        user.save(update_fields=['password'])
+        return Response({'status': 'ok'})
 
 
 class MeReferralView(APIView):
@@ -600,6 +718,35 @@ class OTPRequestView(APIView):
         return Response({'detail': 'Code envoyé.', 'email': email})
 
 
+class PasswordResetView(APIView):
+    """Réinitialise le mot de passe via le code OTP envoyé par email."""
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip().lower()
+        code = (request.data.get('code') or '').strip()
+        new = request.data.get('new_password') or ''
+        otp = LoginCode.objects.filter(email=email).first()
+        if not otp or otp.expires_at < timezone.now():
+            return Response({'detail': 'Code expiré — demandez-en un nouveau.'}, status=400)
+        if otp.attempts >= 5:
+            otp.delete()
+            return Response({'detail': 'Trop de tentatives — demandez un nouveau code.'}, status=429)
+        if otp.code != code:
+            otp.attempts += 1
+            otp.save(update_fields=['attempts'])
+            return Response({'detail': 'Code incorrect.'}, status=400)
+        if len(new) < 8:
+            return Response({'detail': 'Le nouveau mot de passe doit contenir au moins 8 caractères.'}, status=400)
+        user = User.objects.filter(email__iexact=email).first()
+        if not user:
+            return Response({'detail': 'Aucun compte avec cet email.'}, status=404)
+        user.set_password(new)
+        user.save(update_fields=['password'])
+        otp.delete()
+        return Response({'status': 'ok'})
+
+
 class OTPVerifyView(APIView):
     """Vérifie le code email et retourne les tokens JWT (compte créé si besoin)."""
     permission_classes = [permissions.AllowAny]
@@ -642,6 +789,7 @@ class OTPVerifyView(APIView):
         otp.delete()
 
         refresh = RefreshToken.for_user(user)
+        _record_session(request, user, refresh)
         return Response({
             'access': str(refresh.access_token),
             'refresh': str(refresh),

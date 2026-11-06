@@ -37,14 +37,14 @@ const HTML = `<div class="flex flex-col w-full pb-16 max-w-[1100px] mx-auto">
 <div class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[22px]">call</span></div>
 <span class="font-label-lg text-label-lg font-bold text-on-surface">Appeler le standard — 24h/24</span>
 <span class="font-body-sm text-body-sm text-on-surface-variant">Urgences route, pannes et retards.</span>
-<span class="font-label-md text-label-md text-primary font-bold">+237 699 456 123</span>
-<span class="font-label-md text-label-md text-primary font-bold">+237 656 789 000</span>
+<a href="tel:+237699456123" class="font-label-md text-label-md text-primary font-bold hover:underline">+237 699 456 123</a>
+<a href="tel:+237656789000" class="font-label-md text-label-md text-primary font-bold hover:underline">+237 656 789 000</a>
 </div>
 <div class="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-2">
 <div class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-green-600"><span class="material-symbols-outlined text-[22px]">chat</span></div>
 <span class="font-label-lg text-label-lg font-bold text-on-surface">WhatsApp Business</span>
 <span class="font-body-sm text-body-sm text-on-surface-variant">Réponse moyenne en moins de 10 min, 7j/7 de 7h à 22h.</span>
-<span class="font-label-md text-label-md text-green-600 font-bold">Démarrer sur WhatsApp</span>
+<a href="https://wa.me/237699456123" target="_blank" rel="noreferrer" class="font-label-md text-label-md text-green-600 font-bold hover:underline">Démarrer sur WhatsApp</a>
 </div>
 <div class="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-2">
 <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-800"><span class="material-symbols-outlined text-[22px]">location_on</span></div>
@@ -68,19 +68,20 @@ const HTML = `<div class="flex flex-col w-full pb-16 max-w-[1100px] mx-auto">
 </button>
 </div>
 </div>`;
-const LINKS = { 'Démarrer sur WhatsApp': 'https://wa.me/237699456123', 'Envoyer le message': '#send-msg' };
+const LINKS = { 'Démarrer sur WhatsApp': 'https://wa.me/237699456123' };
 
 export default function C10Aide() {
   React.useEffect(() => {
-    // Accordéons : .faq-q toggle .faq-a + rotation icone
-    document.querySelectorAll('.faq-q').forEach((el) => {
-      el.addEventListener('click', () => {
-        const body = el.parentElement.querySelector('.faq-a');
-        const arrow = el.querySelector('.faq-arrow');
-        const hid = body.classList.toggle('hidden');
-        if (arrow) arrow.textContent = hid ? 'expand_more' : 'expand_less';
-      });
-    });
+    // Accordéons : délégation — le DOM est ré-injecté par DesignPage à chaque rendu
+    const faqClick = (e) => {
+      const el = e.target.closest('.faq-q');
+      if (!el) return;
+      const body = el.parentElement.querySelector('.faq-a');
+      const arrow = el.querySelector('.faq-arrow');
+      const hid = body.classList.toggle('hidden');
+      if (arrow) arrow.textContent = hid ? 'expand_more' : 'expand_less';
+    };
+    document.addEventListener('click', faqClick);
     // Catégories -> data-cat
     const catKey = { 'réservation': 'reservation', 'reservation': 'reservation', 'paiement': 'paiement', 'payment': 'paiement', 'assistance': 'assistance', 'sécurité': 'assistance', 'security': 'assistance' };
     const cats = [...document.querySelectorAll('button')].filter((b) => /catégorie|Réservation|Paiement|Assistance/i.test(b.textContent));
@@ -106,23 +107,64 @@ export default function C10Aide() {
       if (waBtn.tagName === 'A') { waBtn.href = 'https://wa.me/237699456123'; waBtn.target = '_blank'; }
       else waBtn.addEventListener('click', () => window.open('https://wa.me/237699456123', '_blank'));
     }
-    // Formulaire de contact -> contactAPI.send
-    const send = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Envoyer le message'));
-    send?.addEventListener('click', async (e) => {
+    // Valeurs capturées en direct — le DOM peut être ré-injecté entre saisie et clic
+    const vals = { nom: '', tel: '', email: '', sujet: '', msg: '' };
+    const track = (e) => {
+      const el = e.target;
+      if (el.tagName === 'TEXTAREA') vals.msg = el.value;
+      else if (el.tagName === 'SELECT') vals.sujet = el.value;
+      else if (el.tagName === 'INPUT') {
+        if (el.type === 'email') vals.email = el.value;
+        else if (el.type === 'tel') vals.tel = el.value;
+        else vals.nom = el.value;
+      }
+    };
+    document.addEventListener('input', track);
+    document.addEventListener('change', track);
+    // Formulaire de contact -> contactAPI.send (délégué — le DOM est ré-injecté)
+    const sendClick = async (e) => {
+      const send = e.target.closest('button');
+      if (!send || !send.textContent.includes('Envoyer le message')) return;
       e.preventDefault();
-      const form = send.closest('div');
+      let form = send.parentElement;
+      while (form && !form.querySelector('textarea')) form = form.parentElement;
+      if (!form) form = document;
       const ins = [...form.querySelectorAll('input')]; const ta = form.querySelector('textarea');
-      const [nom, tel, email] = ins.map((i) => i.value.trim());
-      const msg = ta?.value.trim() || '';
-      if (!email || !msg) { send.textContent = 'Email et message requis'; setTimeout(() => { send.innerHTML = '<span class="material-symbols-outlined text-[18px]">send</span>Envoyer le message'; }, 2000); return; }
+      const sel = form.querySelector('select');
+      const [nom, tel, email] = ins.map((i, idx) => (i.value.trim() || [vals.nom, vals.tel, vals.email][idx]));
+      const msg = (ta?.value.trim() || vals.msg).trim();
+      if (!email || !msg) {
+        const missing = !email ? 'Adresse e-mail requise' : 'Votre message est requis';
+        send.textContent = missing;
+        const bad = !email ? ins[2] : ta;
+        if (bad) { bad.classList.add('ring-2', 'ring-error'); setTimeout(() => bad.classList.remove('ring-2', 'ring-error'), 2500); }
+        setTimeout(() => { send.innerHTML = '<span class="material-symbols-outlined text-[18px]">send</span>Envoyer le message'; }, 2000);
+        return;
+      }
       send.disabled = true; send.textContent = 'Envoi…';
+      const parts = nom.split(/\s+/).filter(Boolean);
+      const sujet = sel?.value || vals.sujet || 'Autre';
       try {
         const { contactAPI } = await import('../services/api');
-        await contactAPI.send({ name: nom || 'Client', email, phone: tel, subject: `Support — ${nom || 'client'}`, message: msg });
+        await contactAPI.send({
+          first_name: parts[0] || 'Client',
+          last_name: parts.slice(1).join(' ') || parts[0] || 'AutoLink',
+          email, phone: tel,
+          rental_type: sujet,
+          message: `[${sujet}] ${msg}`,
+        });
         send.textContent = 'Message envoyé !'; if (ta) ta.value = '';
+        if (!form.querySelector('.msg-ok')) {
+          const p = document.createElement('p');
+          p.className = 'msg-ok font-label-md text-label-md text-primary font-bold mt-2';
+          p.textContent = 'Votre message a bien été transmis au support — réponse sous 24 h ouvrées.';
+          send.parentElement.appendChild(p);
+        }
         setTimeout(() => { send.innerHTML = '<span class="material-symbols-outlined text-[18px]">send</span>Envoyer le message'; send.disabled = false; }, 2500);
       } catch (_e) { send.textContent = 'Erreur — réessayez'; setTimeout(() => { send.innerHTML = '<span class="material-symbols-outlined text-[18px]">send</span>Envoyer le message'; send.disabled = false; }, 2500); }
-    });
+    };
+    document.addEventListener('click', sendClick);
+    return () => { document.removeEventListener('click', faqClick); document.removeEventListener('click', sendClick); document.removeEventListener('input', track); document.removeEventListener('change', track); };
   }, []);
   return <DesignPage html={HTML} links={LINKS} />;
 }

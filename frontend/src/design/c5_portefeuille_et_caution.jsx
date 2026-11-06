@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import DesignPage from './DesignPage';
 import useApiData from '../utils/useApiData';
-import api, { withdrawalsAPI } from '../services/api';
+import api, { withdrawalsAPI, walletAPI } from '../services/api';
 
 const fmt = (n) => new Intl.NumberFormat((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')).format(Math.round(Number(n) || 0));
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -836,11 +836,35 @@ export default function C5PortefeuilleEtCaution() {
         a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
         a.download = 'transactions-autolink.csv'; a.click(); return;
       }
-      if (t.includes('Relevé PDF')) { e.preventDefault(); window.print(); return; }
+      if (t.includes('Relevé PDF')) {
+        e.preventDefault();
+        walletAPI.statement().then((r) => {
+          const url = URL.createObjectURL(r.data);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'releve-transactions.pdf';
+          a.click();
+          URL.revokeObjectURL(url);
+        }).catch(() => alert('Relevé indisponible.'));
+        return;
+      }
       const rec = el.closest('.tx-receipt');
       if (rec) {
-        const m = (rec.dataset.ref || '').match(/\d+/);
-        if (m) window.location.href = `/client/bookings/${Number(m[0])}`;
+        e.preventDefault();
+        const ref = rec.dataset.ref || '';
+        walletAPI.txReceipt(ref).then((r) => {
+          const url = URL.createObjectURL(r.data);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `recu-${ref || 'transaction'}.pdf`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }).catch(() => {
+          const m = ref.match(/\d+/);
+          if (m) window.location.href = `/client/bookings/${Number(m[0])}`;
+          else alert('Reçu indisponible pour cette transaction.');
+        });
+        return;
       }
     };
     window._wPage = 1;
@@ -897,3 +921,4 @@ export default function C5PortefeuilleEtCaution() {
     </>
   );
 }
+// releve PDF walletAPI.statement

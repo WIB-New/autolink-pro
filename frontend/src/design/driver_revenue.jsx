@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DesignShell from './DesignShell';
 import Icon from '../components/Icon';
 
@@ -19,6 +20,8 @@ export default function DriverRevenue() {
   const [error, setError] = useState('');
   const [earnings, setEarnings] = useState(null);
   const [ops, setOps] = useState([]);
+  const [wdDetail, setWdDetail] = useState(null);
+  const navigate = useNavigate();
   const [wallet, setWallet] = useState(null);
   const [q, setQ] = useState('');
   const [sortKey, setSortKey] = useState('date');
@@ -33,11 +36,11 @@ export default function DriverRevenue() {
       Promise.all([
         driversAPI.earningLedger({ page_size: 50 }).then(({ data }) => (Array.isArray(data) ? data : (data.results || [])).map((e) => ({
           date: e.created_at, label: e.booking_ref || `Gain course #${e.booking || e.id}`,
-          ref: e.booking_ref || `#${e.booking || e.id}`, method: 'Gains', amount: Number(e.amount), status: 'credited', kind: 'gain',
+          ref: e.booking_ref || `#${e.booking || e.id}`, method: 'Gains', amount: Number(e.amount), status: 'credited', kind: 'gain', realId: e.booking, earnId: e.id,
         }))).catch(() => []),
         withdrawalsAPI.list({ page_size: 50 }).then(({ data }) => (Array.isArray(data) ? data : (data.results || [])).map((w) => ({
           date: w.created_at, label: `Retrait ${{ mtn: 'MTN MoMo', orange: 'Orange Money', card: 'Carte bancaire' }[w.method] || w.method} ${w.phone}`,
-          ref: w.reference, method: { mtn: 'MTN MoMo', orange: 'Orange Money', card: 'Carte bancaire' }[w.method] || w.method, amount: -Number(w.amount), status: w.status, kind: 'retrait',
+          ref: w.reference, method: { mtn: 'MTN MoMo', orange: 'Orange Money', card: 'Carte bancaire' }[w.method] || w.method, amount: -Number(w.amount), status: w.status, kind: 'retrait', realId: w.id,
         }))).catch(() => []),
       ]).then(([g, w]) => setOps([...g, ...w]));
     });
@@ -72,7 +75,7 @@ export default function DriverRevenue() {
   const filtered = ops
     .filter((o) => !q || `${o.label} ${o.ref} ${o.method}`.toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => {
-      const v = sortKey === 'amount' ? a.amount - b.amount : sortKey === 'label' ? a.label.localeCompare(b.label, 'fr') : new Date(a.date) - new Date(b.date);
+      const v = sortKey === 'amount' ? a.amount - b.amount : sortKey === 'label' ? a.label.localeCompare(b.label, 'fr') : sortKey === 'method' ? (a.method || '').localeCompare(b.method || '', 'fr') : sortKey === 'status' ? (a.status || '').localeCompare(b.status || '', 'fr') : new Date(a.date) - new Date(b.date);
       return sortAsc ? v : -v;
     });
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER));
@@ -85,6 +88,20 @@ export default function DriverRevenue() {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8' }));
     a.download = 'operations-chauffeur.csv'; a.click();
+  };
+
+  const downloadReceipt = (o) => {
+    import('../services/api').then(({ driversAPI, withdrawalsAPI }) => {
+      const call = o.kind === 'gain' ? driversAPI.earningReceipt(o.earnId) : withdrawalsAPI.receipt(o.realId);
+      call.then((r) => {
+        const url = URL.createObjectURL(r.data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `recu-${o.ref || o.realId}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }).catch(() => alert('Reçu indisponible pour cette opération.'));
+    });
   };
 
   return (
@@ -164,7 +181,7 @@ export default function DriverRevenue() {
             <table className="w-full min-w-[720px] text-left border-separate border-spacing-0">
               <thead>
                 <tr className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">
-                  {[['date', 'Date'], ['label', 'Opération'], [null, 'Méthode'], ['amount', 'Montant'], [null, 'Statut']].map(([k, lbl]) => (
+                  {[['date', 'Date'], ['label', 'Opération'], ['method', 'Méthode'], ['amount', 'Montant'], ['status', 'Statut'], [null, 'Document']].map(([k, lbl]) => (
                     <th key={lbl} className="px-3 py-2 border-b border-outline-variant/40">
                       {k ? <button onClick={() => toggleSort(k)} className="flex items-center gap-1 uppercase font-semibold hover:text-on-surface transition-colors">{lbl}<Icon name={sortIco(k)} size={14} /></button> : lbl}
                     </th>
@@ -184,9 +201,15 @@ export default function DriverRevenue() {
                     <td className="px-3 py-3 border-b border-outline-variant/20 font-body-sm text-body-sm text-on-surface-variant whitespace-nowrap">{o.method}</td>
                     <td className={`px-3 py-3 border-b border-outline-variant/20 font-label-md text-label-md font-bold whitespace-nowrap ${o.amount < 0 ? 'text-error' : 'text-primary'}`}>{o.amount < 0 ? '−' : '+'}{Math.abs(o.amount).toLocaleString('fr-FR')} FCFA</td>
                     <td className="px-3 py-3 border-b border-outline-variant/20"><span className={`px-2 py-0.5 rounded-full font-label-sm text-label-sm font-semibold whitespace-nowrap ${STATUS_META[o.status]?.[1] || 'bg-surface-container-high text-on-surface-variant'}`}>{STATUS_META[o.status]?.[0] || o.status}</span></td>
+                    <td className="px-3 py-3 border-b border-outline-variant/20 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => o.kind === 'gain' ? navigate(`/driver/courses/${o.realId}`) : setWdDetail(o)} title="Voir en détail" className="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant inline-flex items-center justify-center"><Icon name="visibility" size={16} /></button>
+                        <button onClick={() => downloadReceipt(o)} title="Télécharger le reçu" className="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant inline-flex items-center justify-center"><Icon name="download" size={16} /></button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
-                {!pageOps.length && <tr><td colSpan="5" className="px-3 py-10 text-center font-body-md text-body-md text-on-surface-variant">Aucune opération trouvée.</td></tr>}
+                {!pageOps.length && <tr><td colSpan="6" className="px-3 py-10 text-center font-body-md text-body-md text-on-surface-variant">Aucune opération trouvée.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -201,6 +224,30 @@ export default function DriverRevenue() {
           )}
         </section>
       </div>
+      {wdDetail && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4" onClick={() => setWdDetail(null)}>
+          <div className="w-full max-w-sm bg-surface-container-lowest rounded-2xl p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="font-headline-sm text-headline-sm font-bold text-on-surface">Opération {wdDetail.ref}</h3>
+              <button onClick={() => setWdDetail(null)} className="w-8 h-8 rounded-lg hover:bg-surface-container inline-flex items-center justify-center text-on-surface-variant"><Icon name="close" size={18} /></button>
+            </div>
+            <dl className="space-y-3 font-body-md text-body-md">
+              {[['event', 'Date', new Date(wdDetail.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })],
+                ['send_money', 'Opération', wdDetail.label],
+                ['account_balance_wallet', 'Méthode', wdDetail.method],
+                ['payments', 'Montant', `${wdDetail.amount < 0 ? '−' : '+'}${Math.abs(wdDetail.amount).toLocaleString('fr-FR')} FCFA`],
+                ['task_alt', 'Statut', STATUS_META[wdDetail.status]?.[0] || wdDetail.status],
+              ].map(([icon, label, value]) => (
+                <div key={label} className="flex items-start gap-3">
+                  <Icon name={icon} size={18} className="text-secondary mt-0.5 shrink-0" />
+                  <div><dt className="font-label-sm text-label-sm text-on-surface-variant">{label}</dt><dd className="text-on-surface">{value}</dd></div>
+                </div>
+              ))}
+            </dl>
+            <button onClick={() => downloadReceipt(wdDetail)} className="mt-5 w-full py-2.5 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md font-semibold inline-flex items-center justify-center gap-2"><Icon name="download" size={16} />Télécharger le reçu</button>
+          </div>
+        </div>
+      )}
     </DesignShell>
   );
 }
