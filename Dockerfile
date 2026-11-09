@@ -21,6 +21,10 @@ ARG REACT_APP_API_URL=https://api-autolink-pro.worldwide-international.business/
 ENV DISABLE_ESLINT_PLUGIN=true
 ENV CI=false
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
+ARG REACT_APP_GOOGLE_CLIENT_ID=889045236012-e9ahdo1fip8jg0d8cgmsrr3sr6rogfli.apps.googleusercontent.com
+# ARG seul ne suffit pas : il faut un ENV pour que `npm run build` (CRA)
+# inline la valeur dans le bundle.
+ENV REACT_APP_GOOGLE_CLIENT_ID=$REACT_APP_GOOGLE_CLIENT_ID
 
 # Build production
 RUN npm run build
