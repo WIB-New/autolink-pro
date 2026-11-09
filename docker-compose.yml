@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
       args:
         REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:8000/api}
-        REACT_APP_GOOGLE_CLIENT_ID: ${REACT_APP_GOOGLE_CLIENT_ID:-}
+        REACT_APP_GOOGLE_CLIENT_ID: ${REACT_APP_GOOGLE_CLIENT_ID:-889045236012-e9ahdo1fip8jg0d8cgmsrr3sr6rogfli.apps.googleusercontent.com}
     container_name: autolink-web
     restart: unless-stopped
     ports:
