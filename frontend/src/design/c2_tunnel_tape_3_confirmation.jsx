@@ -224,10 +224,6 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <span class="font-body-md text-body-md text-on-surface-variant">Prestation Chauffeur Pro</span>
 <span class="font-label-md text-label-md text-on-surface font-semibold">10 000 FCFA</span>
 </div>
-<div class="flex items-center justify-between py-2">
-<span class="font-body-md text-body-md text-on-surface-variant">Taxes CEMAC & Frais de service (8%)</span>
-<span class="font-label-md text-label-md text-on-surface font-semibold">5 500 FCFA</span>
-</div>
 <div class="pt-3 flex items-center justify-between">
 <div>
 <span class="font-headline-md text-headline-md text-on-surface">Total payé & débité</span>
@@ -256,7 +252,7 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <p class="font-headline-sm text-headline-sm text-on-surface">26 500 FCFA</p>
 </div>
 </div>
-<a class="px-3.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface transition-colors" href="#">
+<a class="px-3.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface transition-colors" href="/client/wallet?recharge=1">
               Recharger
             </a>
 </div>
@@ -294,7 +290,7 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <div class="flex items-center gap-3">
 <span class="material-symbols-outlined text-primary text-2xl">mark_email_read</span>
 <span class="font-body-md text-body-md text-on-surface-variant">
-          Un e-mail de confirmation détaillé vous a été adressé à <strong>client.pro@orange.cm</strong>
+          Un e-mail de confirmation détaillé vous a été adressé à <strong id="confirm-email">votre adresse</strong>
 </span>
 </div>
 <div class="flex flex-wrap items-center gap-4 w-full sm:w-auto">
@@ -344,22 +340,75 @@ export default function C2TunnelEtape3Confirmation() {
         .replace('Mercredi 29 Oct. 2025', dmy(b.start_date))
         .replace('Jeudi 30 Oct. 2025', dmy(b.end_date))
         .replace('58 000 FCFA', `${fmt(b.subtotal || b.total_price)} FCFA`)
-        .replace('73 500 FCFA', `${fmt(b.subtotal || b.total_price || 0)} FCFA`)
-        .replace('150 000 FCFA', `${fmt(b.deposit_amount)} FCFA`);
+        .replace(/73 500 FCFA/g, `${fmt(b.subtotal || b.total_price || 0)} FCFA`)
+        .replace(/150 000 FCFA/g, `${fmt(b.deposit_amount)} FCFA`)
+        .replace(/src="https:\/\/lh3\.googleusercontent\.com[^"]*"/, `src="${b.vehicle_image || ''}"`)
+        .replace('Toyota RAV4 AWD Hybrid 2022', esc(name))
+        .replace('5 Places', `${b.days || 1} jour(s) · ${b.vehicle_tier || ''}`)
+        .replace('>4.92<', `>${b.vehicle_rating || '—'}<`)
+        .replace('08:30 GMT+1', `${b.start_time ? String(b.start_time).slice(0, 5) : '—'} GMT+1`)
+        .replace('08:30 GMT+1', `${b.end_time ? String(b.end_time).slice(0, 5) : '—'} GMT+1`)
+        .replace('Hub Central AutoLink Akwa (Face Hôtel Douala Bercy) ou Livraison Terminal Douala International (DLA).', esc(b.pickup_address || 'Prise en charge à convenir'))
+        .replace('Hub Central AutoLink Akwa (Même point ou dépôt conventionné Yaoundé disponible).', esc(b.dropoff_address || 'Restitution à convenir'))
+        .replace('Jean-Pierre M.', esc(b.driver_name || 'Chauffeur AutoLink (assigné par le hub)'))
+        .replace('+237 670 •• •• 12', esc(b.driver_phone || '—'));
     }
-    if (me) h = h.replace('26 500 FCFA', `${fmt(me.balance)} FCFA`);
+    if (me) h = h.replace('26 500 FCFA', `${fmt(me.balance)} FCFA`).replace('>votre adresse<', `>${esc(me.email || 'votre adresse')}<`);
     return h;
   }, [b, me]);
 
   React.useEffect(() => {
-    const cp = document.getElementById('copy-btn');
-    cp?.addEventListener('click', () => { navigator.clipboard.writeText(b?.reference || `BK-${String(b?.id || 0).padStart(4, '0')}`); if (window.showToast) window.showToast(); });
-    const dl = [...document.querySelectorAll('button')].find((x) => x.textContent.includes('Télécharger le reçu'));
-    dl?.addEventListener('click', () => {
-      const w = window.open('', '_blank');
-      w.document.write(`<html><body style="font-family:sans-serif;padding:40px"><h1>Reçu AutoLink — ${b?.reference || ''}</h1><p>Véhicule : ${b?.vehicle_name || ''}</p><p>Du ${b?.start_date || ''} au ${b?.end_date || ''}</p><p>Montant : ${b?.subtotal || b?.total_price || ''} FCFA — Caution : ${b?.deposit_amount || ''} FCFA</p><hr><p>Client : ${me?.first_name || ''} ${me?.last_name || ''}</p></body></html>`);
-      w.document.close(); w.print();
-    });
+    const onClick = (e) => {
+      const el = e.target.closest('button, a');
+      if (!el) return;
+      if (el.id === 'copy-btn') {
+        navigator.clipboard.writeText(b?.reference || `BK-${String(b?.id || 0).padStart(4, '0')}`);
+        if (window.showToast) window.showToast();
+      }
+      if (el.textContent.includes('Télécharger le reçu')) {
+        if (Date.now() - (window._pdfLast || 0) < 500) return;
+        window._pdfLast = Date.now();
+        const save = (data, name) => { const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' })); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); URL.revokeObjectURL(url); };
+        if (b?.id) {
+          bookingsAPI.receipt(b.id).then(({ data }) => save(data, `recu-BK-${String(b.id).padStart(4, '0')}.pdf`)).catch(() => {});
+          bookingsAPI.contract(b.id).then(({ data }) => save(data, `contrat-BK-${String(b.id).padStart(4, '0')}.pdf`)).catch(() => {});
+        }
+      }
+      // Ajouter au calendrier : .ics (Outlook) + Google Agenda (nouvel onglet)
+      if (el.textContent.includes('calendrier')) {
+        if (!b?.id) return;
+        if (Date.now() - (window._icsLast || 0) < 500) return;
+        window._icsLast = Date.now();
+        const stamp = (d, t) => {
+          const dt = new Date(`${d}T${t || '08:00'}`);
+          return dt.toISOString().replace(/[-:]|\.\d{3}/g, '').slice(0, 15) + 'Z';
+        };
+        const ics = [
+          'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//AutoLink Pro//FR', 'CALSCALE:GREGORIAN',
+          'BEGIN:VEVENT',
+          `UID:bk-${b.id}@autolink-pro`,
+          `DTSTAMP:${stamp(new Date().toISOString().slice(0, 10), new Date().toTimeString().slice(0, 5))}`,
+          `DTSTART:${stamp(b.start_date, b.start_time)}`,
+          `DTEND:${stamp(b.end_date, b.end_time)}`,
+          `SUMMARY:Location AutoLink — ${b.vehicle_name || 'Véhicule'} (BK-${String(b.id).padStart(4, '0')})`,
+          `LOCATION:${(b.pickup_address || 'Prise en charge à convenir').replace(/,/g, '\\,')}`,
+          `DESCRIPTION:Référence BK-${String(b.id).padStart(4, '0')} — Caution ${b.deposit_amount || 0} FCFA sous séquestre. ${(b.dropoff_address || '')}`,
+          'BEGIN:VALARM', 'TRIGGER:-PT2H', 'ACTION:DISPLAY', 'DESCRIPTION:Prise en charge dans 2h', 'END:VALARM',
+          'END:VEVENT', 'END:VCALENDAR',
+        ].join('\r\n');
+        const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+        const a = document.createElement('a'); a.href = url; a.download = `location-BK-${String(b.id).padStart(4, '0')}.ics`; a.click(); URL.revokeObjectURL(url);
+        const gUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`Location AutoLink — ${b.vehicle_name || 'Véhicule'} (BK-${String(b.id).padStart(4, '0')})`)}&dates=${stamp(b.start_date, b.start_time)}/${stamp(b.end_date, b.end_time)}&details=${encodeURIComponent(`Caution ${b.deposit_amount || 0} FCFA sous séquestre.`)}&location=${encodeURIComponent(b.pickup_address || '')}`;
+        window.open(gUrl, '_blank', 'noopener');
+      }
+    };
+    document.addEventListener('click', onClick);
+    // Envoi du mail de confirmation (reçu + contrat en PJ) — une seule fois par réservation
+    if (b?.id && me?.email && window[`_confMail${b.id}`] === undefined) {
+      window[`_confMail${b.id}`] = 1;
+      bookingsAPI.confirmationEmail(b.id).catch(() => {});
+    }
+    return () => document.removeEventListener('click', onClick);
   }, [b, me]);
   return <DesignPage html={html} links={LINKS} />;
 }

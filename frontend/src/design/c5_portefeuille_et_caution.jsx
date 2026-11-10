@@ -690,14 +690,10 @@ const MODAL = `<div class="flex flex-col w-full relative">
 <input class="w-full pl-44 pr-16 py-3 rounded-xl bg-surface-container-low text-on-surface font-headline-sm text-headline-sm outline-none focus:ring-2 focus:ring-primary border border-outline-variant/40" id="custom-amount-input" placeholder="0" type="number" value="0">
 <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant font-label-md text-label-md">FCFA</span>
 </div>
-<button class="w-full inline-flex items-center justify-center gap-2.5 py-3 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg font-bold shadow-md hover:shadow-lg transition-all" type="button">
-<span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
-<span>Recharger maintenant</span>
-</button>
 <div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-low text-body-sm font-body-sm text-on-surface-variant">
 <div class="flex items-center gap-2">
 <span class="material-symbols-outlined text-primary text-[18px]">info</span>
-<span>Nouveau solde estimé : <strong class="text-on-surface" id="future-balance">56 500 FCFA</strong></span>
+<span>Nouveau solde estimé : <strong class="text-on-surface" id="future-balance">—</strong></span>
 </div>
 <span class="text-outline-variant font-label-sm text-label-sm">Validation par push USSD direct</span>
 </div>
@@ -768,9 +764,12 @@ export default function C5PortefeuilleEtCaution() {
     patch(data.balance, 'Solde disponible');
     patch(data.held_deposit, 'Caution bloquée');
     patch(data.released_deposits, 'Cautions restituées');
+    window._walletBalance = Number(data.balance) || 0;
+    h = h.replace('id="future-balance">—', `id="future-balance">${fmt(data.balance)} FCFA`)
+      .replace(/const baseBalance = \d+;/g, `const baseBalance = ${Number(data.balance) || 0};`);
     const txs = data.transactions || [];
     const reloaded = data.recharged_month ?? txs.filter((t) => t.kind === 'topup').reduce((a, t) => a + Number(t.amount || 0), 0);
-    patch(reloaded, 'Rechargé');
+    patch(reloaded, 'Rechargé ce mois');
     const rows = txs.length ? txs.map(txRow).join('')
       : '<tr><td class="py-10 px-4 text-center text-on-surface-variant" colspan="8">Aucune transaction pour le moment.</td></tr>';
     return h.replace(/<tbody[^>]*>[\s\S]*?<\/tbody>/, `<tbody>${rows}</tbody>`);

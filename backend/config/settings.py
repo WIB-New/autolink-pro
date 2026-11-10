@@ -131,6 +131,7 @@ CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:
 CORS_ALLOW_CREDENTIALS = True
 
 COMMISSION_RATE = config('COMMISSION_RATE', default=0.15, cast=float)
+DRIVER_SHARE_RATE = config('DRIVER_SHARE_RATE', default=0.30, cast=float)
 
 # ─── Paiements externes (LIVE) ────────────────────────────────────────────────
 # Les secrets ne sont JAMAIS commités : ils viennent des variables d'env (.env

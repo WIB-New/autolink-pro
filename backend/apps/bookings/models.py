@@ -197,7 +197,6 @@ class Booking(models.Model):
             message=f'Votre location du véhicule {self.vehicle} est terminée. Merci d\'avoir utilisé AutoLink.',
         )
 
-    @classmethod
     def _credit_referral(self):
         """Parrainage : le filleul termine sa 1re location → parrain crédité de 5 000 FCFA
         de crédits parrainage + bonus de bienvenue de 2 000 FCFA pour le filleul."""
