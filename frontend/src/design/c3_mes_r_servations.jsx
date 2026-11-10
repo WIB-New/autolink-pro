@@ -14,7 +14,6 @@ const STATUS_UI = {
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const fmt = (n) => new Intl.NumberFormat((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')).format(Math.round(Number(n) || 0));
 const dt = (iso) => (iso ? new Date(iso).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short' }) : '');
-const hm = (iso) => (iso ? new Date(iso).toLocaleTimeString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { hour: '2-digit', minute: '2-digit' }) : '');
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=200&q=70';
 
 const row = (b) => {
@@ -27,7 +26,7 @@ const row = (b) => {
 <span class="font-body-sm text-body-sm text-on-surface-variant">${esc(b.vehicle_tier || '')}${b.driver_type && b.driver_type !== 'none' ? ' · Chauffeur' : ''}</span></div>
 </div></td>
 <td class="px-4 py-4 whitespace-nowrap font-label-sm text-label-sm text-on-surface-variant">#${esc(b.reference || b.id)}</td>
-<td class="px-4 py-4 whitespace-nowrap font-body-sm text-body-sm text-on-surface">${dt(b.start_date)} ${hm(b.start_date)} → ${dt(b.end_date)} ${hm(b.end_date)}</td>
+<td class="px-4 py-4 whitespace-nowrap font-body-sm text-body-sm text-on-surface">${dt(b.start_date)}${b.start_time ? ` ${String(b.start_time).slice(0, 5)}` : ''} → ${dt(b.end_date)}${b.end_time ? ` ${String(b.end_time).slice(0, 5)}` : ''}</td>
 <td class="px-4 py-4 whitespace-nowrap font-body-sm text-body-sm text-on-surface-variant">${esc(b.pickup_city || b.vehicle_city || '—')}</td>
 <td class="px-4 py-4 whitespace-nowrap font-headline-sm text-headline-sm font-bold text-on-surface">${fmt(b.subtotal)} F</td>
 <td class="px-4 py-4 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-label-sm text-label-sm font-bold ${cls}">${label}</span></td>

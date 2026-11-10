@@ -9,7 +9,7 @@ const HTML = `<div class="w-full px-gutter py-space-lg flex flex-col gap-space-l
 <!-- Header Greeting & Action Bar -->
 <div class="flex flex-col gap-space-xs">
 <h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">Bienvenue, Emmanuel!</h1>
-<p class="font-body-lg text-body-lg text-on-surface-variant">Ravi de vous revoir sur votre espace AutoLink Pro (Douala / Yaoundé).</p>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Ravi de vous revoir sur votre espace AutoLink Pro.</p>
 </div>
 <!-- KPI Cards Row -->
 <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-md">

@@ -333,7 +333,7 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
       const cta = root.querySelector('#cta-amount'); if (cta) cta.textContent = val.replace(' FCFA', '');
       const input = root.querySelector('#custom-amount-input'); if (input) input.value = parseInt(val.replace(/\D/g, ''), 10) || 0;
       const future = root.querySelector('#future-balance');
-      if (future && input) future.textContent = fmt(26500 + (parseInt(input.value, 10) || 0));
+      if (future && input) future.textContent = fmt((window._walletBalance ?? 0) + (parseInt(input.value, 10) || 0));
       root.querySelectorAll('.amount-pill, .amount-btn').forEach((p) => {
         const active = text(p).includes(val.replace(' FCFA', ''));
         p.classList.toggle('bg-primary', active);
@@ -365,7 +365,7 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
     if (customInput) {
       const handler = () => {
         const future = root.querySelector('#future-balance');
-        if (future) future.textContent = fmt(26500 + (parseInt(customInput.value, 10) || 0));
+        if (future) future.textContent = fmt((window._walletBalance ?? 0) + (parseInt(customInput.value, 10) || 0));
         // Désélectionner les boutons prédéfinis quand on tape dans l'input
         root.querySelectorAll('.amount-pill, .amount-btn').forEach((p) => {
           p.classList.remove('bg-primary', 'text-on-primary');
@@ -442,7 +442,7 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
     // 9) Boutons d'impression / téléchargement → boîte d'impression navigateur (démo)
     root.querySelectorAll('a, button').forEach((el) => {
       const t = text(el);
-      if (/^(Imprimer|Télécharger|Format PDF)/.test(t) || t === 'download') {
+      if (/^(Imprimer|Format PDF)/.test(t) || t === 'download' || (/^Télécharger/.test(t) && !/reçu|contrat|relevé|csv|pdf/i.test(t))) {
         el.style.cursor = 'pointer';
         on(el, (e) => { e.preventDefault(); window.print(); });
       }

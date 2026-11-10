@@ -284,6 +284,7 @@ const HTML = `<div class="flex flex-col w-full">
 </div>
 <!-- Big Primary Step Forward Action (Mobile & Desktop) -->
 <div class="pt-space-xs">
+<div id="docs-warning" style="display:none" class="mb-2 px-3 py-2.5 rounded-xl bg-error-container text-on-error-container font-body-sm text-body-sm"></div>
 <button class="w-full h-14 bg-primary hover:bg-primary-container text-on-primary rounded-xl font-headline-sm text-headline-sm flex items-center justify-center gap-space-md shadow-lg transition-transform active:scale-[0.99]" id="btnContinuePayment" type="button">
 <span>Continuer vers le paiement (Étape 2)</span>
 <span class="material-symbols-outlined text-[24px]">arrow_forward</span>
@@ -440,6 +441,11 @@ export default function C2TunnelEtape1Recapitulatif() {
     const click = (e) => {
       if (e.target.closest('#btnContinuePayment')) {
         const next = new URLSearchParams(params);
+        next.set('vehicle', vid);
+        next.set('start', start);
+        next.set('end', end);
+        next.set('stime', stime);
+        next.set('etime', etime);
         next.set('driver', document.getElementById('opt-driver')?.checked ? '1' : '0');
         next.set('delivery', document.getElementById('opt-delivery')?.checked ? '1' : '0');
         const notes = document.getElementById('bookingNotes');
@@ -474,7 +480,29 @@ export default function C2TunnelEtape1Recapitulatif() {
     <input accept=".pdf,.jpg,.jpeg,.png" class="hidden" data-docfield="${field}" type="file"/>
   </label>
 </div>`;
+    let curMe = null;
+    const checkDocs = () => {
+      const cni = curMe?.id_document;
+      const lic = curMe?.driving_license;
+      const wantDriver = document.getElementById('opt-driver')?.checked;
+      const missing = [];
+      if (!cni) missing.push('Pièce d\'identité');
+      if (!wantDriver && !lic) missing.push('Permis de conduire (location sans chauffeur)');
+      const btn = document.getElementById('btnContinuePayment');
+      if (btn) {
+        btn.disabled = !!missing.length;
+        btn.classList.toggle('opacity-50', !!missing.length);
+        btn.classList.toggle('cursor-not-allowed', !!missing.length);
+      }
+      const warn = document.getElementById('docs-warning');
+      if (warn) {
+        warn.style.display = missing.length ? '' : 'none';
+        warn.textContent = missing.length ? `Documents requis : ${missing.join(' + ')} — téléversez-les ci-dessus ou sur votre profil.` : '';
+      }
+    };
     const renderDocs = (u) => {
+      curMe = u || curMe;
+      checkDocs();
       const block = document.getElementById('drivingLicenseBlock');
       if (!block) return;
       const cniUrl = u?.id_document || '';
@@ -526,7 +554,7 @@ ${docCard('driving_license', 'directions_car', 'Permis de conduire', licUrl)}
       document.getElementById('opt-driver')?.closest('.bg-surface-container-lowest')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       document.getElementById('opt-driver')?.focus();
     });
-    driverChk?.addEventListener('change', recalc);
+    driverChk?.addEventListener('change', () => { recalc(); checkDocs(); });
     deliveryChk?.addEventListener('change', recalc);
     recalc(); // etat initial : chauffeur pre-coche si driver=1, livraison masquee
     // Notes : persister dans localStorage pour l'etape 2 + admin

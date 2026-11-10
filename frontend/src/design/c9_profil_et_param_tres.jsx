@@ -264,7 +264,7 @@ export default function C9ProfilEtParametres({ role = 'client' }) {
     const name = `${me.first_name || ''} ${me.last_name || ''}`.trim() || me.username || '';
     const roleLabel = { CLIENT: 'Client AutoLink', DRIVER: 'Chauffeur AutoLink', OWNER: 'Propriétaire AutoLink', ADMIN: 'Admin AutoLink' }[me.role] || 'Client AutoLink';
     const init = name.split(' ').map((w) => w[0] || '').join('').slice(0, 2).toUpperCase() || 'U';
-    const badge = (ok, txt) => `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${ok ? 'bg-primary-fixed text-primary' : txt === 'REFUSÉ' ? 'bg-error-container text-on-error-container' : 'bg-surface-container-high text-on-surface-variant'}">${txt || (ok ? 'VALIDÉ' : 'À FOURNIR')}</span>`;
+    const badge = (ok, txt) => `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${ok || txt === 'EN VÉRIFICATION' ? 'bg-primary-fixed text-primary' : txt === 'REFUSÉ' ? 'bg-error-container text-on-error-container' : 'bg-surface-container-high text-on-surface-variant'}">${txt || (ok ? 'VALIDÉ' : 'À FOURNIR')}</span>`;
     const iconBtn = (cls, title, icon, data = '') => `<button type="button" class="${cls} w-8 h-8 rounded-lg hover:bg-surface-container-high text-on-surface-variant inline-flex items-center justify-center" title="${title}" ${data}><span class="material-symbols-outlined text-[17px]">${icon}</span></button>`;
     const viewBtn = (url) => url ? `<a href="${url}" target="_blank" rel="noreferrer" class="w-8 h-8 rounded-lg hover:bg-surface-container-high text-on-surface-variant inline-flex items-center justify-center" title="Voir"><span class="material-symbols-outlined text-[17px]">visibility</span></a>` : '';
     const upBtn = (field) => iconBtn('doc-upload', 'Modifier', 'edit', `data-field="${field}"`);

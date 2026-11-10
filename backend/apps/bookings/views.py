@@ -809,6 +809,95 @@ class BookingViewSet(viewsets.ModelViewSet):
         response['Content-Disposition'] = f'attachment; filename="recu-BK-{booking.pk:04d}.pdf"'
         return response
 
+    @action(detail=True, methods=['get'], url_path='contract')
+    def contract(self, request, pk=None):
+        booking = self._receipt_booking(pk)
+        self._can_access_receipt(booking, request.user)
+        response = HttpResponse(self._contract_pdf(booking), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="contrat-BK-{booking.pk:04d}.pdf"'
+        return response
+
+    def _contract_pdf(self, booking):
+        """Contrat de location préliminaire — PDF professionnel avec clauses CEMAC."""
+        from html import escape
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.lib.units import mm
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        teal = colors.HexColor('#0d6e64')
+        gray = colors.HexColor('#64748b')
+        buf = BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=20 * mm, rightMargin=20 * mm,
+                                topMargin=16 * mm, bottomMargin=16 * mm)
+        styles = getSampleStyleSheet()
+        title = ParagraphStyle('t', parent=styles['Title'], textColor=colors.white, fontSize=18)
+        sub = ParagraphStyle('s', parent=styles['Normal'], textColor=colors.white, fontSize=10)
+        h = ParagraphStyle('h', parent=styles['Heading2'], textColor=teal, spaceBefore=10)
+        body = ParagraphStyle('b', parent=styles['Normal'], fontSize=9.5, leading=13)
+
+        header = Table([[Paragraph('AutoLink Pro', title)],
+                        [Paragraph(f'CONTRAT DE LOCATION PRÉLIMINAIRE — BK-{booking.pk:04d}', sub)]],
+                       colWidths=[175 * mm])
+        header.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), teal),
+            ('LEFTPADDING', (0, 0), (-1, -1), 14), ('RIGHTPADDING', (0, 0), (-1, -1), 14),
+            ('TOPPADDING', (0, 0), (-1, 0), 12), ('BOTTOMPADDING', (0, -1), (-1, -1), 12),
+        ]))
+
+        def kv(l, v):
+            return [Paragraph(l, body), Paragraph(str(v), body)]
+        parties = Table([
+            [Paragraph('Loueur', h), Paragraph('Locataire', h)],
+            [Paragraph('AutoLink Pro SAS — Hub Douala Akwa<br/>Douala, Cameroun — RC/DLA.2024.B.4187', body),
+             Paragraph(escape(booking.client.get_full_name()) + '<br/>' + escape(booking.client.email or '') + '<br/>' + escape(booking.client.phone or ''), body)],
+        ], colWidths=[88 * mm, 87 * mm])
+        parties.setStyle(TableStyle([
+            ('BOX', (0, 0), (-1, -1), 0.5, gray), ('INNERGRID', (0, 0), (-1, -1), 0.25, gray),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('TOPPADDING', (0, 0), (-1, -1), 6), ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ]))
+
+        veh = booking.vehicle
+        details = Table([
+            kv('Véhicule', f'{veh.brand} {veh.model} ({veh.year or ""}) — Immat. {veh.plate}'),
+            kv('Période', f'{booking.start_date} → {booking.end_date} ({booking.days} jour(s))'),
+            kv('Prise en charge', escape(booking.pickup_address or 'À convenir')),
+            kv('Restitution', escape(booking.dropoff_address or 'À convenir')),
+            kv('Chauffeur', escape(booking.driver.get_full_name() if booking.driver_id else 'Sans chauffeur')),
+            kv('Total location', f'{booking.subtotal or booking.total_price:,.0f} FCFA'.replace(',', ' ')),
+            kv('Caution (séquestre)', f'{booking.deposit_amount:,.0f} FCFA — restituée 100% après inspection'.replace(',', ' ')),
+        ], colWidths=[45 * mm, 130 * mm])
+        details.setStyle(TableStyle([
+            ('GRID', (0, 0), (-1, -1), 0.25, colors.HexColor('#cbd5e1')),
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f1f5f9')),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 5), ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ]))
+
+        clauses = [
+            'Le locataire déclare détenir les pièces requises (CNI, permis valide le cas échéant) conformément à la réglementation CEMAC.',
+            'La caution sous séquestre est restituée intégralement sous 15 jours après restitution conforme du véhicule.',
+            'Toute annulation pendant la location : caution remboursée à 100%, seuls les jours restants sont remboursés.',
+            'Le kilométrage forfaitaire de 250 km/jour s\'applique — 150 FCFA/km supplémentaire.',
+            'Assurance Tous Risques Activa Assurances incluse dans le tarif (collision, vol, assistance 24/7).',
+            'Ce contrat préliminaire sera confirmé par la signature du contrat définitif à la prise en charge.',
+        ]
+        sig = Table([
+            [Paragraph('Le Loueur', body), Paragraph('Le Locataire', body)],
+            [Paragraph('<br/><br/>_____________________', body), Paragraph('<br/><br/>_____________________', body)],
+            [Paragraph('AutoLink Pro — ' + timezone.localdate().isoformat(), body), Paragraph(escape(booking.client.get_full_name()), body)],
+        ], colWidths=[88 * mm, 87 * mm])
+        sig.setStyle(TableStyle([('TOPPADDING', (0, 0), (-1, -1), 8)]))
+
+        doc.build([header, Spacer(1, 10 * mm), Paragraph('Parties au contrat', h), parties,
+                   Paragraph('Objet de la location', h), details,
+                   Paragraph('Clauses générales', h)] +
+                  [Paragraph(f'{i}. {c}', body) for i, c in enumerate(clauses, 1)] +
+                  [Spacer(1, 8 * mm), sig])
+        buf.seek(0)
+        return buf.getvalue()
+
     @action(detail=True, methods=['post'], url_path='receipt/email')
     def email_receipt(self, request, pk=None):
         booking = self._receipt_booking(pk)
@@ -835,6 +924,30 @@ class BookingViewSet(viewsets.ModelViewSet):
         email.attach(filename, self._receipt_pdf(booking), 'application/pdf')
         email.send(fail_silently=False)
         return Response({'detail': detail}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='confirmation-email')
+    def confirmation_email(self, request, pk=None):
+        """Envoie le mail de confirmation détaillé + reçu et contrat en pièces jointes."""
+        booking = self._receipt_booking(pk)
+        self._can_access_receipt(booking, request.user)
+        from apps.users.email_utils import get_user_language
+
+        language = get_user_language(booking.client)
+        reference = f'BK-{booking.pk:04d}'
+        details = (f'Vehicule : {booking.vehicle}\nPeriode : {booking.start_date} → {booking.end_date}\n'
+                   f'Total : {booking.subtotal or booking.total_price} FCFA\nCaution : {booking.deposit_amount} FCFA\n')
+        if language == 'en':
+            subject = f'Booking confirmed — {reference} | AutoLink Pro'
+            body = f'Hello {booking.client.first_name or booking.client.username},\n\nYour booking is confirmed.\n{details}\nReceipt and preliminary contract attached.\n— AutoLink Pro'
+        else:
+            subject = f'Reservation confirmee — {reference} | AutoLink Pro'
+            body = (f'Bonjour {booking.client.first_name or booking.client.username},\n\nVotre reservation est confirmee.\n{details}\n'
+                    'Recu et contrat preliminaire en pieces jointes.\n— AutoLink Pro')
+        email = EmailMessage(subject=subject, body=body, to=[booking.client.email])
+        email.attach(f'recu-{reference}.pdf', self._receipt_pdf(booking), 'application/pdf')
+        email.attach(f'contrat-{reference}.pdf', self._contract_pdf(booking), 'application/pdf')
+        email.send(fail_silently=False)
+        return Response({'detail': 'Confirmation envoyée.'}, status=status.HTTP_200_OK)
 
     @staticmethod
     def _receipt_booking(pk):
