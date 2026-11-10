@@ -36,7 +36,7 @@
     },
     "extra": {
       "apiBaseUrl": "https://api-autolink-pro.worldwide-international.business/api",
-      "commissionRate": 0.25
+      "commissionRate": 0.15
     }
   }
 }

@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
-import { fleetImage } from '../ownerfleet/FleetCard';
+import { getVehicleImage } from '../../utils/carImages';
+
 import { COMMISSION_LABEL, ownerNet } from '../../utils/commission';
+
+const bookingImage = (b) => b.vehicle_image || getVehicleImage('default');
 
 const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 const fmtDate = d => { try { return new Date(d).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short', year: 'numeric' }); } catch (_) { return '—'; } };
@@ -58,7 +61,7 @@ export default function RevenueTable({ bookings }) {
                 </td>
                 <td className="px-4 py-4">
                   <div className="flex items-center gap-2.5">
-                    <img src={fleetImage({ model: b.vehicle_name, brand: b.vehicle_name })} alt="" className="w-12 h-9 object-cover rounded-lg" />
+                    <img src={bookingImage(b)} alt="" className="w-12 h-9 object-cover rounded-lg" />
                     <div className="min-w-0">
                       <div className="text-[11px] font-bold text-slate-800 truncate max-w-[140px]">{b.vehicle_name || 'Véhicule'}</div>
                       <div className="text-[9px] text-slate-400">{b.vehicle_plate || ''}</div>

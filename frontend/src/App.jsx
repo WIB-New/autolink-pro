@@ -111,6 +111,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/Nos-vehicules" element={<Catalog />} />
+      <Route path="/vehicule/:id" element={<VehicleDetail />} />
       <Route path="/client/vehicule/:id" element={<Guard roles={['CLIENT']}><D11 /></Guard>} />
       <Route path="/comment-ca-marche" element={<HowItWorks />} />
       <Route path="/tarifs" element={<Pricing />} />

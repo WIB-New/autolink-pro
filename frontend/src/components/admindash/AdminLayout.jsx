@@ -6,7 +6,7 @@ import {
   LayoutDashboard, CalendarCheck, Car, Building2, Users, UserCheck,
   Landmark, AlertTriangle, Wrench, Settings, UserIcon,
   LogOut, Search, Bell, Menu, X, Siren,
-  ChevronDown, ArrowRightLeft,
+  ChevronDown, ArrowRightLeft, Sun, Moon,
 } from 'lucide-react';
 
 const ITEMS = [
@@ -31,13 +31,20 @@ export default function AdminLayout({ title, subtitle, children, badges = {} }) 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const toggleDark = () => {
+    const v = !dark;
+    setDark(v);
+    document.documentElement.classList.toggle('dark', v);
+    localStorage.setItem('autolink_theme', v ? 'dark' : 'light');
+  };
 
   const initials = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`.toUpperCase() || 'A';
 
   const renderSidebar = (mini) => (
-    <div className={`flex flex-col h-full bg-white border-r border-slate-100 ${mini ? 'w-20' : 'w-60'} transition-all duration-300`}>
+    <div className={`flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 ${mini ? 'w-20' : 'w-60'} transition-all duration-300`}>
       {/* Logo */}
-      <div className={`pt-3 pb-3 border-b border-slate-100 flex items-center ${mini ? 'justify-center px-2' : 'px-4 gap-2'}`}>
+      <div className={`pt-3 pb-3 border-b border-slate-100 dark:border-slate-800 flex items-center ${mini ? 'justify-center px-2' : 'px-4 gap-2'}`}>
         <Link to="/" className="flex items-center">
           <AutoLinkLogo size={mini ? 'xs' : 'xxs'} />
         </Link>
@@ -52,7 +59,7 @@ export default function AdminLayout({ title, subtitle, children, badges = {} }) 
             <button key={item.label} onClick={() => { navigate(item.to); setMobileOpen(false); setCollapsed(true); }}
               title={mini ? item.label : undefined}
               className={`relative w-full flex items-center rounded-xl text-[13px] font-semibold transition-colors ${mini ? 'justify-center px-0 py-3' : 'gap-3 px-3 py-2.5'} ${
-                active ? 'bg-teal-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
+                active ? 'bg-teal-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100'}`}>
               <item.icon size={17} />
               {!mini && <span className="flex-1 text-left">{item.label}</span>}
               {!mini && count > 0 && (
@@ -91,7 +98,7 @@ export default function AdminLayout({ title, subtitle, children, badges = {} }) 
       )} */}
 
       {/* Utilisateur */}
-      <div className={`border-t border-slate-100 ${mini ? 'p-2' : 'p-3'}`}>
+      <div className={`border-t border-slate-100 dark:border-slate-800 ${mini ? 'p-2' : 'p-3'}`}>
         {mini ? (
           <div className="flex justify-center">
             <div className="w-9 h-9 bg-teal-600 rounded-xl flex items-center justify-center text-white text-xs font-black" title={`${user?.first_name} ${user?.last_name || ''}`}>
@@ -99,12 +106,12 @@ export default function AdminLayout({ title, subtitle, children, badges = {} }) 
             </div>
           </div>
         ) : (
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex items-center gap-3">
+          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl p-3 flex items-center gap-3">
             <div className="w-9 h-9 bg-teal-600 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0">
               {initials}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[12px] font-black text-slate-900 truncate">{user?.first_name} {user?.last_name?.[0]}.</div>
+              <div className="text-[12px] font-black text-slate-900 dark:text-slate-100 truncate">{user?.first_name} {user?.last_name?.[0]}.</div>
               <div className="text-[10px] text-slate-400">Super Admin</div>
             </div>
           </div>
@@ -114,7 +121,7 @@ export default function AdminLayout({ title, subtitle, children, badges = {} }) 
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Sidebar desktop — s'ouvre au survol, se referme à la sortie */}
       <aside className="hidden lg:block fixed inset-y-0 left-0 z-40"
         onMouseEnter={() => setCollapsed(false)}
@@ -132,7 +139,7 @@ export default function AdminLayout({ title, subtitle, children, badges = {} }) 
 
       <div className={`${collapsed ? 'lg:pl-20' : 'lg:pl-60'} transition-all duration-300`}>
         {/* Topbar */}
-        <header className="sticky top-0 z-30 bg-white border-b border-slate-100">
+        <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
           <div className="px-4 sm:px-6 h-16 flex items-center gap-1">
             <button onClick={() => setMobileOpen(true)} className="lg:hidden p-2 text-slate-600"><Menu size={20} /></button>
 
@@ -140,14 +147,18 @@ export default function AdminLayout({ title, subtitle, children, badges = {} }) 
             <div className="hidden md:flex flex-1 max-w-md relative">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input placeholder="Rechercher un MoMo, VIN, Dossier…"
-                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-full text-xs focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500" />
             </div>
 
             <div className="flex-1 md:hidden" />
 
             {/* Groupe d'actions — toujours à l'extrémité droite du header */}
             <div className="ml-auto flex items-center gap-2 mr-1 sm:mr-3">
-              <button className="relative p-2 text-slate-500 hover:text-teal-600 transition-colors">
+              <button onClick={toggleDark} title={dark ? 'Mode clair' : 'Mode sombre'}
+                className="p-2 text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+                {dark ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+              <button className="relative p-2 text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
                 <Bell size={18} />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
               </button>
@@ -167,16 +178,16 @@ export default function AdminLayout({ title, subtitle, children, badges = {} }) 
                 {menuOpen && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-100 rounded-2xl shadow-lg py-2 z-20">
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-lg py-2 z-20">
                       <button onClick={() => { navigate('/Nos-vehicules'); setMenuOpen(false); }}
-                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                         <ArrowRightLeft size={14} className="text-teal-600" /> Mode Client
                       </button>
                       <button onClick={() => { navigate('/profile'); setMenuOpen(false); }}
-                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                         <UserIcon size={14} className="text-teal-600" /> Profil
                       </button>
-                      <div className="border-t border-slate-100 my-1" />
+                      <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
                       <button onClick={() => { setMenuOpen(false); logout(); }}
                         className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-semibold text-red-500 hover:bg-red-50 transition-colors">
                         <LogOut size={14} /> Déconnexion
@@ -195,8 +206,8 @@ export default function AdminLayout({ title, subtitle, children, badges = {} }) 
 
         {/* En-tête page + contenu centrés */}
         <div className="px-4 sm:px-6 pt-6 max-w-7xl mx-auto">
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900">{title}</h1>
-          {subtitle && <p className="text-xs text-slate-400 mt-1">{subtitle}</p>}
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100">{title}</h1>
+          {subtitle && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{subtitle}</p>}
         </div>
 
         <main className="px-4 sm:px-6 py-5 max-w-7xl mx-auto">{children}</main>

@@ -194,6 +194,7 @@ export const newsletterAPI = {
 export const usersAPI = {
   list: (params) => api.get('/users/', { params }),
   getAll: (params) => api.get('/users/', { params }),
+  get: (id) => api.get(`/users/${id}/`),
   create: (payload) => api.post('/users/', payload),
   update: (id, payload) => api.patch(`/users/${id}/`, payload),
   delete: (id) => api.delete(`/users/${id}/`),
@@ -205,6 +206,7 @@ export const usersAPI = {
   updateMe: (payload) => api.patch('/users/me/', payload,
     payload instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
   referral: () => api.get('/users/me/referral/'),
+  documents: (userId) => api.get(`/users/${userId}/documents/`),
 };
 
 // Agents / parrainage — admin uniquement
@@ -238,6 +240,7 @@ export const driversAPI = {
   updateAdminApplication: (id, payload) => api.patch(`/drivers/admin/applications/${id}/`, payload),
   profiles: (params) => api.get('/drivers/profiles/', { params }),
   adminProfiles: (params) => api.get('/drivers/admin/profiles/', { params }),
+  toggleDriverActive: (driverId) => api.post('/drivers/admin/profiles/toggle-active/', { driver: driverId }),
   availability: (is_online) => api.patch('/drivers/profiles/availability/', { is_online }),
   earnings: () => api.get('/drivers/profiles/earnings/'),
   earningLedger: (params) => api.get('/drivers/earnings/', { params }),

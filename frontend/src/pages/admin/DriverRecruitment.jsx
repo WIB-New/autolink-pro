@@ -3,7 +3,7 @@ import { CheckCircle, XCircle, Eye, Clock, User, Shield, X, UserCheck, MapPin, P
 import AdminLayout from '../../components/admindash/AdminLayout';
 import StatCard from '../../components/StatCard';
 import DataTable from '../../components/DataTable';
-import { driversAPI } from '../../services/api';
+import { driversAPI, usersAPI } from '../../services/api';
 
 const STATUS_CONFIG = {
   pending:  { label: 'En attente',         cls: 'bg-amber-100 text-amber-700' },
@@ -17,8 +17,10 @@ const shortDate = iso => iso ? new Date(iso).toLocaleDateString('fr-FR', { day: 
 const bool = v => v ? <CheckCircle size={14} className="text-emerald-500 inline" /> : <XCircle size={14} className="text-slate-300 inline" />;
 
 /* Modale de détail : affiche la candidature réelle + actions admin. */
-function ApplicationModal({ app, onClose, onDecision, busy }) {
+function ApplicationModal({ app, onClose, onDecision, onToggleActive, busy }) {
   const st = STATUS_CONFIG[app.status] || STATUS_CONFIG.pending;
+  const decided = ['approved', 'rejected'].includes(app.status);
+  const isApproved = app.status === 'approved';
   const rows = [
     ['Téléphone', app.phone || '—'],
     ['Email', app.email || '—'],
@@ -76,22 +78,43 @@ function ApplicationModal({ app, onClose, onDecision, busy }) {
               </div>
             ))}
           </div>
-          {app.license_document && (
-            <a href={app.license_document} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2 text-[11px] font-bold text-teal-700 bg-teal-50 rounded-xl px-3.5 py-2.5 hover:bg-teal-100 transition-colors">
-              <FileText size={13} /> Voir le document du permis
-            </a>
-          )}
+          <div className="space-y-2">
+            {[
+              ['Permis de conduire', app.license_document],
+              ['Casier judiciaire', app.criminal_record_document],
+              ['Certificat médical', app.medical_certificate_document],
+            ].map(([label, url]) => url ? (
+              <a key={label} href={url} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-2 text-[11px] font-bold text-teal-700 bg-teal-50 rounded-xl px-3.5 py-2.5 hover:bg-teal-100 transition-colors">
+                <FileText size={13} /> Voir — {label}
+              </a>
+            ) : (
+              <div key={label} className="flex items-center gap-2 text-[11px] font-bold text-slate-400 bg-slate-50 rounded-xl px-3.5 py-2.5">
+                <FileText size={13} /> {label} — non déposé
+              </div>
+            ))}
+          </div>
         </div>
         <div className="p-6 border-t border-slate-100 flex gap-3">
-          <button disabled={busy} onClick={() => onDecision('rejected')}
-            className="flex-1 flex items-center justify-center gap-2 bg-red-100 hover:bg-red-200 disabled:opacity-50 text-red-700 font-semibold py-3 rounded-xl transition-colors">
-            <XCircle size={16} /> Refuser
-          </button>
-          <button disabled={busy} onClick={() => onDecision('approved')}
-            className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors">
-            <CheckCircle size={16} /> Approuver
-          </button>
+          {isApproved ? (
+            <button disabled={busy} onClick={onToggleActive}
+              className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors">
+              <UserCheck size={16} /> {app.driver_active === false ? 'Réactiver le compte' : 'Désactiver le compte'}
+            </button>
+          ) : decided ? (
+            <p className="flex-1 text-center text-[11px] font-bold text-slate-400 py-3">Candidature déjà tranchée — {st.label.toLowerCase()}.</p>
+          ) : (
+            <>
+              <button disabled={busy} onClick={() => onDecision('rejected')}
+                className="flex-1 flex items-center justify-center gap-2 bg-red-100 hover:bg-red-200 disabled:opacity-50 text-red-700 font-semibold py-3 rounded-xl transition-colors">
+                <XCircle size={16} /> Refuser
+              </button>
+              <button disabled={busy} onClick={() => onDecision('approved')}
+                className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors">
+                <CheckCircle size={16} /> Approuver
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -104,6 +127,17 @@ export default function DriverRecruitment() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [driverActive, setDriverActive] = useState(null);
+
+  /* État du compte chauffeur quand la candidature est approuvée. */
+  useEffect(() => {
+    setDriverActive(null);
+    if (selected?.status === 'approved' && selected.applicant) {
+      usersAPI.get(selected.applicant)
+        .then(({ data }) => setDriverActive(data.is_active !== false))
+        .catch(() => setDriverActive(true));
+    }
+  }, [selected]);
 
   const load = useCallback(async () => {
     try {
@@ -124,6 +158,17 @@ export default function DriverRecruitment() {
       await load();
       setSelected(null);
     } catch (_) { setBusy(false); }
+    setBusy(false);
+  };
+
+  const toggleActive = async () => {
+    if (!selected?.applicant) return;
+    setBusy(true);
+    try {
+      await driversAPI.toggleDriverActive(selected.applicant);
+      setDriverActive(a => !(a !== false));
+      await load();
+    } catch (_) {}
     setBusy(false);
   };
 
@@ -201,7 +246,7 @@ export default function DriverRecruitment() {
         />
       </div>
 
-      {selected && <ApplicationModal app={selected} onClose={() => setSelected(null)} onDecision={decide} busy={busy} />}
+      {selected && <ApplicationModal app={{ ...selected, driver_active: driverActive }} onClose={() => setSelected(null)} onDecision={decide} onToggleActive={toggleActive} busy={busy} />}
     </AdminLayout>
   );
 }

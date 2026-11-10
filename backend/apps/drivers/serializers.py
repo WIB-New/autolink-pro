@@ -17,7 +17,7 @@ class DriverApplicationSerializer(serializers.ModelSerializer):
     def get_fields(self):
         fields = super().get_fields()
         request = self.context.get('request')
-        if request and request.user.role != 'ADMIN':
+        if request and getattr(request.user, 'role', None) != 'ADMIN':
             fields['status'].read_only = True
             fields['reviewer_notes'].read_only = True
         return fields

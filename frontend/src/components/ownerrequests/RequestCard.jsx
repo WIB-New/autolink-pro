@@ -1,7 +1,10 @@
 import React from 'react';
 import { MapPin, Phone, UserCheck } from 'lucide-react';
-import { fleetImage } from '../ownerfleet/FleetCard';
+import { getVehicleImage } from '../../utils/carImages';
+
 import { ownerNet } from '../../utils/commission';
+
+const bookingImage = (b) => b.vehicle_image || getVehicleImage('default');
 
 const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 const fmtDate = d => { try { return new Date(d).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short', year: 'numeric' }); } catch (_) { return '—'; } };
@@ -45,7 +48,7 @@ export default function RequestCard({ b, selected, onSelect }) {
 
       {/* Véhicule */}
       <div className="flex items-center gap-3 bg-slate-50 rounded-2xl p-3 mb-4">
-        <img src={fleetImage({ model: b.vehicle_name, brand: b.vehicle_name })} alt="" className="w-16 h-12 object-cover rounded-lg" />
+        <img src={bookingImage(b)} alt="" className="w-16 h-12 object-cover rounded-lg" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-black text-slate-900 text-xs truncate">{b.vehicle_name || 'Véhicule'}</span>

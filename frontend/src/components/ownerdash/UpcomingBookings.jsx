@@ -1,11 +1,9 @@
 import React from 'react';
 import { CalendarRange, MoreHorizontal } from 'lucide-react';
-import { CATALOG_VEHICLES } from '../../utils/carImages';
+import { getVehicleImage } from '../../utils/carImages';
+import { ownerNet } from '../../utils/commission';
 
-const carImg = (name = '') => {
-  const found = CATALOG_VEHICLES.find(v => name.toLowerCase().includes((v.model || '').toLowerCase()) && v.model);
-  return found?.image || CATALOG_VEHICLES[0].image;
-};
+const carImg = (b) => b.vehicle_image || getVehicleImage('default');
 
 const STATUS = {
   confirmed: { label: 'Départ prêt',   cls: 'bg-teal-100 text-teal-700' },
@@ -50,7 +48,7 @@ export default function UpcomingBookings({ bookings }) {
                 <tr key={b.id} className="hover:bg-slate-50/60 transition-colors">
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2.5">
-                      <img src={carImg(b.vehicle_name)} alt="" className="w-11 h-8 object-cover rounded-lg" />
+                      <img src={carImg(b)} alt="" className="w-11 h-8 object-cover rounded-lg" />
                       <div className="min-w-0">
                         <div className="font-bold text-slate-900 text-[12px] truncate max-w-[130px]">{b.vehicle_name || 'Véhicule'}</div>
                         <div className="text-[9px] text-slate-400">#{b.id}</div>
@@ -60,7 +58,7 @@ export default function UpcomingBookings({ bookings }) {
                   <td className="px-4 py-3 text-[11px] font-semibold text-slate-700">{b.client_name || 'Client'}</td>
                   <td className="px-4 py-3 text-[11px] text-slate-500 whitespace-nowrap">{fmtDate(b.start_date)} → {fmtDate(b.end_date)}</td>
                   <td className="px-4 py-3 text-[12px] font-black text-slate-900 whitespace-nowrap">
-                    {Math.round(Number(b.owner_amount || b.total_price || 0) * 0.85).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} <span className="text-[9px] text-slate-400 font-bold">F</span>
+                    {Math.round(ownerNet(b)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} <span className="text-[9px] text-slate-400 font-bold">F</span>
                   </td>
                   <td className="px-4 py-3"><span className={`text-[9px] font-black px-2 py-1 rounded-md ${st.cls}`}>{st.label}</span></td>
                   <td className="px-4 py-3 text-right"><button className="p-1 text-slate-300 hover:text-teal-600 transition-colors"><MoreHorizontal size={15} /></button></td>

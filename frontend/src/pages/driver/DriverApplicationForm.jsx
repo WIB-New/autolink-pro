@@ -9,6 +9,7 @@ const CHECKS = [
   ['has_medical_certificate', uiText("pages.driver.DriverApplicationForm", "Certificat médical valide")],
   ['driving_test_passed', uiText("pages.driver.DriverApplicationForm", "Test de conduite réussi")],
   ['training_completed', uiText("pages.driver.DriverApplicationForm", "Formation AutoLink terminée")],
+  ['has_insurance', uiText("pages.driver.DriverApplicationForm", "Assurance véhicule souscrite")],
 ];
 const DOCUMENTS = [
   ['license_document', uiText("pages.driver.DriverApplicationForm", "Copie du permis")],

@@ -1,13 +1,14 @@
 import React from 'react';
 import { Phone, MessageCircle, UserCheck, ShieldCheck, FileText, Thermometer, Star } from 'lucide-react';
 import { getVehicleImage } from '../../utils/carImages';
+import { vehicleCover } from '../../utils/media';
 
 const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 const initialsOf = name => (name || 'C').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
 /* Parties prenantes du dossier : locataire / véhicule / propriétaire. */
 export default function PartiesPanel({ booking: b, vehicle: v }) {
-  const img = v ? (v.image_url || getVehicleImage(v.category)) : getVehicleImage('default');
+  const img = v ? (vehicleCover(v) || getVehicleImage(v.category)) : getVehicleImage('default');
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <div className="flex items-center justify-between mb-4">

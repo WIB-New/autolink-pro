@@ -48,18 +48,21 @@ export default function OwnerDashboard() {
   const [vehicles, setVehicles] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [balance, setBalance] = useState(0);
+  const [stats, setStats] = useState(null);
   const [online, setOnline] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      const [v, b, w] = await Promise.all([
+      const [v, b, w, s] = await Promise.all([
         vehiclesAPI.list({ mine: 1, page_size: 100 }),
-        bookingsAPI.list({ page_size: 50 }),
+        bookingsAPI.list({ page_size: 200 }),
         walletAPI.get(),
+        bookingsAPI.ownerStats(),
       ]);
       setVehicles(v.data.results || v.data || []);
       setBookings(b.data.results || b.data || []);
       setBalance(Number(w.data.balance || 0));
+      setStats(s.data);
       setOnline(true);
     } catch (_) {
       setOnline(false);
@@ -73,20 +76,24 @@ export default function OwnerDashboard() {
   }, [load]);
 
   const pendingCount = bookings.filter(b => b.status === 'pending').length;
-  const activeVehicles = vehicles.filter(v => v.status === 'approved' || v.status === 'rented').length;
-  const totalEarned = bookings.filter(b => b.status === 'completed').reduce((s, b) => s + ownerNet(b), 0);
-  const occupancy = activeVehicles ? Math.min(100, bookedDaysLast30(bookings) / (activeVehicles * 30) * 100) : 0;
-  const last30 = Date.now() - 30 * DAY;
-  const revenuePerDay = bookings
-    .filter(b => BOOKED.includes(b.status) && new Date(b.start_date).getTime() >= last30)
+  const activeVehicles = stats?.vehicles_online ?? vehicles.filter(v => v.status === 'approved' || v.status === 'rented').length;
+  const totalEarned = stats ? Number(stats.revenue_total || 0) : bookings.filter(b => b.status === 'completed').reduce((s, b) => s + ownerNet(b), 0);
+  const occupancy = stats ? Number(stats.occupancy_rate || 0) : (activeVehicles ? Math.min(100, bookedDaysLast30(bookings) / (activeVehicles * 30) * 100) : 0);
+  const revenuePerDay = stats ? Number(stats.revenue_per_day || 0) : bookings
+    .filter(b => BOOKED.includes(b.status) && new Date(b.start_date).getTime() >= Date.now() - 30 * DAY)
     .reduce((s, b) => s + ownerNet(b), 0) / 30;
-  const pendingPayout = bookings.filter(b => ['confirmed', 'active'].includes(b.status)).reduce((s, b) => s + ownerNet(b), 0);
-  const rated = vehicles.filter(v => Number(v.rating_count) > 0);
-  const rating = rated.length
-    ? (rated.reduce((s, v) => s + Number(v.rating) * v.rating_count, 0) / rated.reduce((s, v) => s + v.rating_count, 0)).toFixed(1)
-    : '—';
+  const pendingPayout = stats ? Number(stats.pending_escrow || 0) : bookings.filter(b => ['confirmed', 'active'].includes(b.status)).reduce((s, b) => s + ownerNet(b), 0);
+  const rating = stats ? Number(stats.average_rating || 0).toFixed(1) : '—';
 
-  const series = revenueSeries(bookings);
+  /* Série mensuelle : revenus = payouts réellement versés (owner-stats backend),
+     nombre de locations calculé côté client sur les bookings chargés. */
+  const series = stats?.monthly_series?.length
+    ? stats.monthly_series.map(m => {
+        const [y, mo] = m.month.split('-').map(Number);
+        const count = bookings.filter(b => BOOKED.includes(b.status) && (() => { const d = new Date(b.start_date || b.created_at); return d.getMonth() === mo - 1 && d.getFullYear() === y; })()).length;
+        return { month: MONTHS[(mo || 1) - 1], revenue: Number(m.revenue || 0), count };
+      })
+    : revenueSeries(bookings);
   const spark = series.map((m, i) => ({ i, v: m.revenue / 1000 }));
 
   return (

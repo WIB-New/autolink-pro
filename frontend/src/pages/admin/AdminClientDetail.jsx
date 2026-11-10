@@ -17,6 +17,7 @@ export default function AdminClientDetail() {
   const navigate = useNavigate();
   const [c, setC] = useState(null);
   const [bookings, setBookings] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState('');
   const [notes, setNotes] = useState([
@@ -26,9 +27,11 @@ export default function AdminClientDetail() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [u, b] = await Promise.all([usersAPI.list({ page_size: 100 }), bookingsAPI.list({ page_size: 100 })]);
-      setC((u.data.results || u.data).find(x => String(x.id) === String(id) && x.role === 'CLIENT') || null);
+      const [u, b, d] = await Promise.all([usersAPI.list({ page_size: 100 }), bookingsAPI.list({ page_size: 100 }), usersAPI.documents(id)]);
+      const client = (u.data.results || u.data).find(x => String(x.id) === String(id) && x.role === 'CLIENT') || null;
+      setC(client);
       setBookings(b.data.results || b.data);
+      setDocuments(d.data.results || d.data || []);
     } catch (_) {}
     setLoading(false);
   }, [id]);
@@ -82,10 +85,14 @@ export default function AdminClientDetail() {
               <h3 className="font-black text-slate-900 text-sm flex items-center gap-2 mb-4"><FileText size={15} className="text-teal-600" /> Pièces d'identité &amp; Justificatifs Réglementaires</h3>
               <div className="space-y-2.5">
                 {[
-                  { t: 'CNI Biométrique', d: 'N° 10023489169 · Expire 14/09/2029 · Relevé conforme', s: 'Conforme' },
-                  { t: 'Permis de conduire cat. B', d: `N° DLA-KYC-0825-${c.id} · Vérifié centre d'examen`, s: 'Vérifié' },
-                  { t: 'Justificatif de domicile', d: `${c.city || 'Douala'} — Facture ENEO/CPA du mois`, s: 'Valide' },
-                  { t: "Photo d'identité + Selfie", d: 'Score biométrique 98.4 % — CamCheck conforme', s: 'Validé' },
+                  { t: "Pièce d'identité", d: c.id_document ? `N° ${c.id_document}` : 'Non renseigné', s: c.id_document ? 'Déclaré' : 'Manquant' },
+                  { t: 'Permis de conduire', d: c.license_number ? `N° ${c.license_number}` : 'Non renseigné', s: c.license_number ? 'Déclaré' : 'Manquant' },
+                  ...documents.map(doc => ({
+                    t: doc.name || 'Document déposé',
+                    d: [doc.get_doc_type_display, doc.issued_place, doc.validity ? `valable jusqu'au ${doc.validity}` : null].filter(Boolean).join(' · ') || '—',
+                    s: 'Déposé',
+                    file: doc.file,
+                  })),
                 ].map(d => (
                   <div key={d.t} className="flex items-start gap-2.5 border border-slate-100 rounded-xl p-3">
                     <UserCheck size={14} className="text-teal-600 mt-0.5 shrink-0" />
@@ -93,6 +100,7 @@ export default function AdminClientDetail() {
                       <div className="text-[11px] font-black text-slate-800">{d.t}</div>
                       <div className="text-[9px] text-slate-400">{d.d}</div>
                     </div>
+                    {d.file && <a href={d.file.startsWith('http') ? d.file : `${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/media/${d.file.replace(/^\//, '')}`} target="_blank" rel="noreferrer" className="text-[8px] font-black text-teal-600 hover:underline shrink-0">Voir</a>}
                     <span className="bg-teal-50 text-teal-700 text-[8px] font-black px-1.5 py-0.5 rounded-md shrink-0">{d.s}</span>
                   </div>
                 ))}

@@ -131,6 +131,7 @@ CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:
 CORS_ALLOW_CREDENTIALS = True
 
 COMMISSION_RATE = config('COMMISSION_RATE', default=0.15, cast=float)
+DRIVER_SHARE_RATE = config('DRIVER_SHARE_RATE', default=0.10, cast=float)  # part chauffeur sur le sous-total
 
 # ─── Paiements externes (LIVE) ────────────────────────────────────────────────
 # Les secrets ne sont JAMAIS commités : ils viennent des variables d'env (.env
@@ -147,11 +148,14 @@ PAYPAL_MODE = config('PAYPAL_MODE', default='sandbox')  # 'live' | 'sandbox'
 PAYPAL_PAYOUTS_ENABLED = config('PAYPAL_PAYOUTS_ENABLED', default=False, cast=bool)
 
 # ─── Email (codes de connexion OTP, notifications) ────────────────────────────
-# Dev : console (le code s'affiche dans les logs). Prod : configurez le SMTP
-# via les variables d'environnement (ex. Gmail : EMAIL_HOST_USER=… /
-# EMAIL_HOST_PASSWORD=<mot de passe d'application>).
-EMAIL_BACKEND = config('EMAIL_BACKEND',
-    default='django.core.mail.backends.console.EmailBackend')
+# Dev (DEBUG=True) : console — les codes OTP s'affichent dans le terminal.
+# Prod (DEBUG=False) : SMTP — les codes partent par email. Configurez
+# EMAIL_HOST_USER / EMAIL_HOST_PASSWORD (ex. Gmail : mot de passe d'application).
+# EMAIL_BACKEND reste surchargeable par variable d'environnement.
+EMAIL_BACKEND = config(
+    'EMAIL_BACKEND',
+    default=('config.mail_backends.ConsoleBackend' if DEBUG
+             else 'django.core.mail.backends.smtp.EmailBackend'))
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)

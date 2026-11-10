@@ -248,7 +248,7 @@ export default function Login() {
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="label mb-0">Mot de passe</label>
-                <a href="#" className="text-xs text-teal-600 font-semibold hover:underline">Mot de passe oublié ?</a>
+                <button type="button" onClick={() => { setFp('email'); setFpErr(''); setFpData((d) => ({ ...d, email: form.email })); }} className="text-xs text-teal-600 font-semibold hover:underline">Mot de passe oublié ?</button>
               </div>
               <div className="relative">
                 <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />

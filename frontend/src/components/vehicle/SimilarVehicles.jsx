@@ -1,16 +1,49 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, ArrowRight } from 'lucide-react';
-import { CATALOG_VEHICLES } from '../../utils/carImages';
+import { vehiclesAPI } from '../../services/api';
+import { vehicleCover, mediaUrl } from '../../utils/media';
+import { getVehicleImage } from '../../utils/carImages';
 import { normalizeVehicle } from '../../utils/vehicleMeta';
 
-/* « Véhicules similaires recommandés » — même catégorie, autres modèles */
+const mapApi = (v) => normalizeVehicle({
+  id: v.id,
+  name: `${v.brand} ${v.model} ${v.year}`,
+  category: v.category,
+  tier: v.tier || 'standard',
+  image: vehicleCover(v) || v.image_url || getVehicleImage(v.category),
+  gallery: (v.photos || []).map(p => mediaUrl(p.image)),
+  price: Number(v.daily_rate || v.computed_rate) || 25000,
+  city: v.city,
+  rating: Number(v.rating) || 4.7,
+  reviews: v.rating_count || 0,
+  available: v.status === 'approved',
+  seats: v.seats || 5,
+  fuel: v.fuel || 'Essence',
+  year: v.year,
+  fromApi: true,
+});
+
+/* « Véhicules similaires recommandés » — 100 % BDD : uniquement les véhicules
+   approuvés (disponibles) via GET /vehicles/{id}/similar/. Aucun fallback statique. */
 export default function SimilarVehicles({ vehicle }) {
-  const similar = CATALOG_VEHICLES
-    .filter(v => v.id !== vehicle.id && (v.category === vehicle.category || v.tier === vehicle.tier))
-    .sort((a, b) => Math.abs(a.price - vehicle.price) - Math.abs(b.price - vehicle.price))
-    .slice(0, 3)
-    .map(normalizeVehicle);
+  const [similar, setSimilar] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!vehicle.fromApi || !vehicle.id) { setSimilar([]); return undefined; }
+    vehiclesAPI.similar(vehicle.id)
+      .then(res => {
+        if (!mounted) return;
+        const list = (res.data.results || res.data || [])
+          .filter(v => v.status === 'approved')
+          .slice(0, 3)
+          .map(mapApi);
+        setSimilar(list);
+      })
+      .catch(() => { if (mounted) setSimilar([]); });
+    return () => { mounted = false; };
+  }, [vehicle]);
 
   if (!similar.length) return null;
 
@@ -24,7 +57,7 @@ export default function SimilarVehicles({ vehicle }) {
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {similar.map(s => (
-          <Link key={s.id} to={`/vehicule/${s.id}?src=cat`}
+          <Link key={s.id} to={`/vehicule/${s.id}`}
             className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl transition-all overflow-hidden">
             <div className="h-40 overflow-hidden bg-slate-100">
               <img src={s.image} alt={s.name}
@@ -33,7 +66,7 @@ export default function SimilarVehicles({ vehicle }) {
             </div>
             <div className="p-4">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] text-slate-400">{s.city}, {s.area}</span>
+                <span className="text-[11px] text-slate-400">{s.city}{s.area ? `, ${s.area}` : ''}</span>
                 <span className="flex items-center gap-1 text-[11px] font-bold text-slate-700">
                   <Star size={11} className="text-amber-400 fill-amber-400" />{s.rating}
                 </span>

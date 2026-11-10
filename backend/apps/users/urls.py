@@ -27,6 +27,7 @@ from .views import (
     AgentDetailView,
     UserDocumentListCreateView,
     UserDocumentDetailView,
+    AdminUserDocumentListView,
     KYCUploadView,
     PlatformSettingsView,
     AdminActivityView,
@@ -61,6 +62,7 @@ urlpatterns = [
     path('notifications/<int:pk>/read/', NotificationDetailView.as_view(), name='notification-read'),
     path('agents/', AgentListView.as_view(), name='agent-list'),
     path('agents/<int:pk>/', AgentDetailView.as_view(), name='agent-detail'),
+    path('<int:pk>/documents/', AdminUserDocumentListView.as_view(), name='user-documents'),
     path('<int:pk>/', UserDetailView.as_view(), name='user-detail'),
     path('', UserListView.as_view(), name='user-list'),
 ]

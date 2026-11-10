@@ -259,6 +259,15 @@ class UserDocumentDetailView(generics.RetrieveUpdateDestroyAPIView):
         return self.request.user.extra_documents.all()
 
 
+class AdminUserDocumentListView(generics.ListAPIView):
+    """Documents KYC d'un utilisateur — lecture réservée ADMIN/CONTROLLER."""
+    serializer_class = UserDocumentSerializer
+    permission_classes = [IsAdminRole]
+
+    def get_queryset(self):
+        return UserDocument.objects.filter(user_id=self.kwargs['pk']).select_related('user')
+
+
 class ContactMessageViewSet(ModelViewSet):
     queryset = ContactMessage.objects.all()
     serializer_class = ContactMessageAdminSerializer
@@ -676,17 +685,23 @@ class OTPRequestView(APIView):
 
         code = f'{random.SystemRandom().randint(0, 999999):06d}'
         LoginCode.objects.filter(email=email).delete()
-        LoginCode.objects.create(
+        login_code = LoginCode.objects.create(
             email=email, code=code, first_name=first_name, last_name=last_name,
             expires_at=timezone.now() + timedelta(minutes=10))
-        send_mail(
-            subject=f'AutoLink Pro — Votre code de connexion : {code}',
-            message=f'Votre code de connexion AutoLink Pro : {code} (valable 10 minutes).',
-            from_email=None,  # DEFAULT_FROM_EMAIL
-            recipient_list=[email],
-            html_message=_otp_email_html(code, first_name),
-            fail_silently=False,
-        )
+        try:
+            send_mail(
+                subject=f'AutoLink Pro — Votre code de connexion : {code}',
+                message=f'Votre code de connexion AutoLink Pro : {code} (valable 10 minutes).',
+                from_email=None,  # DEFAULT_FROM_EMAIL
+                recipient_list=[email],
+                html_message=_otp_email_html(code, first_name),
+                fail_silently=False,
+            )
+        except Exception:
+            # Échec SMTP : on libère le code pour ne pas bloquer une nouvelle
+            # tentative (anti-spam 1/min) et on renvoie une erreur propre.
+            login_code.delete()
+            return Response({'detail': 'Envoi de l\'email impossible — réessayez plus tard.'}, status=502)
         return Response({'detail': 'Code envoyé.', 'email': email})
 
 

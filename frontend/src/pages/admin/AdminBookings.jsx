@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import AdminLayout from '../../components/admindash/AdminLayout';
 import { bookingsAPI, vehiclesAPI } from '../../services/api';
 import { getVehicleImage } from '../../utils/carImages';
+import { vehicleCover } from '../../utils/media';
 import {
   Search, ChevronLeft, ChevronRight, Filter,
   CheckCircle2, XCircle, CalendarRange, Car, Wifi, WifiOff, RefreshCw,
@@ -35,6 +36,23 @@ const TABS = [
 const DRIVER_LABEL = { internal: 'Chauffeur AutoLink', owner: 'Chauffeur proprio', none: 'Sans chauffeur' };
 
 const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
+
+/* Export CSV des réservations filtrées (séparateur « ; » pour Excel FR). */
+const exportCsv = (list) => {
+  const head = ['Dossier', 'Créé le', 'Client', 'Téléphone', 'Véhicule', 'Immatriculation', 'Propriétaire', 'Début', 'Fin', 'Jours', 'Montant (FCFA)', 'Caution (FCFA)', 'Caution statut', 'Statut', 'Chauffeur'];
+  const lines = list.map(b => [
+    `ALP-${String(b.id).padStart(4, '0')}`, b.created_at, b.client_name, b.client_phone,
+    b.vehicle_name, b.vehicle_plate, b.owner_name, b.start_date, b.end_date,
+    b.days || '', Math.round(b.subtotal || 0), Math.round(b.deposit_amount || 0),
+    b.escrow_status || '', b.status, DRIVER_LABEL[b.driver_type] || 'Sans chauffeur',
+  ].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';'));
+  const blob = new Blob(['\ufeff' + [head.join(';'), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `autolink-reservations-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
 const shortDate = iso => iso ? new Date(iso).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short' }) : '—';
 const hubOf = b => /yaound|yde/i.test(b.pickup_address || '') ? 'Yaoundé' : 'Douala';
 
@@ -116,8 +134,8 @@ export default function AdminBookings() {
       title={
         <span className="flex items-center justify-between gap-3 flex-wrap">
           <span>Gestion des Réservations</span>
-          <button className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-teal-400 text-slate-600 text-[11px] font-bold px-3.5 py-2 rounded-xl transition-colors">
-            <FileSpreadsheet size={13} className="text-teal-600" /> Export Excel / CSV
+          <button onClick={() => exportCsv(filtered)} className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-teal-400 text-slate-600 text-[11px] font-bold px-3.5 py-2 rounded-xl transition-colors">
+            <FileSpreadsheet size={13} className="text-teal-600" /> Export CSV
           </button>
         </span>
       }
@@ -198,7 +216,7 @@ export default function AdminBookings() {
               {pageItems.map(b => {
                 const v = vehicleById[b.vehicle];
                 const st = STATUS_STYLE[b.status] || STATUS_STYLE.pending;
-                const img = v ? (v.image_url || getVehicleImage(v.category)) : getVehicleImage('default');
+                const img = v ? (vehicleCover(v) || v.image_url || getVehicleImage(v.category)) : getVehicleImage('default');
                 const days = b.days || Math.max(1, Math.round((new Date(b.end_date) - new Date(b.start_date)) / 86400000));
                 return (
                   <tr key={b.id} className="hover:bg-slate-50/60 transition-colors">

@@ -2,12 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Timer, Star, ArrowRight, Loader } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { bookingsAPI } from '../../services/api';
-import { CATALOG_VEHICLES } from '../../utils/carImages';
+import { getVehicleImage } from '../../utils/carImages';
 
-const carImg = (name = '') => {
-  const found = CATALOG_VEHICLES.find(v => name.toLowerCase().includes((v.model || '').toLowerCase()) && v.model);
-  return found?.image || CATALOG_VEHICLES[0].image;
-};
+const carImg = (b) => b.vehicle_image || getVehicleImage('default');
 
 const fmtDate = d => { try { return new Date(d).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short' }); } catch (_) { return d; } };
 
@@ -33,7 +30,7 @@ function RequestCard({ b, onDecide, busy }) {
   const left = useCountdown(b.created_at);
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col sm:flex-row gap-3.5">
-      <img src={carImg(b.vehicle_name)} alt={b.vehicle_name} className="w-full sm:w-24 h-20 sm:h-16 object-cover rounded-xl shrink-0" />
+      <img src={carImg(b)} alt={b.vehicle_name} className="w-full sm:w-24 h-20 sm:h-16 object-cover rounded-xl shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-3 mb-1">
           <h4 className="font-black text-slate-900 text-sm truncate">{b.vehicle_name || 'Véhicule'}</h4>
