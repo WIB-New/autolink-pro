@@ -20,6 +20,7 @@ export default function AdminDisputes() {
   const [motive, setMotive] = useState('');
   const [busy, setBusy] = useState(false);
   const [resolved, setResolved] = useState(false);
+  const [err, setErr] = useState('');
 
   const fetchAll = useCallback(async () => {
     try {
@@ -46,21 +47,23 @@ export default function AdminDisputes() {
 
   const arbitrate = async (final) => {
     if (!b) return;
-    setBusy(true);
+    setBusy(true); setErr('');
     try {
       await bookingsAPI.resolveDispute(b.id, final || decision);
       setResolved(true);
       await fetchAll();
       setSel(null);
       setTimeout(() => setResolved(false), 4000);
-    } catch (_) {}
+    } catch (e) {
+      const d = e?.response?.data;
+      setErr(d?.decision?.[0] || d?.status?.[0] || d?.detail || 'Arbitrage refusé par le serveur.');
+    }
     setBusy(false);
   };
 
   const OPTIONS = [
     { id: 'release', letter: 'A', title: 'Retenue caution & Réparation', desc: `Retenir ${fmt(b?.deposit_amount || 0)} FCFA du locataire au profit du bailleur. Trajets d'huissier et pièces justificatives joints au dossier.` },
     { id: 'refund',  letter: 'B', title: 'Rembourser le locataire (Mauvaise foi)', desc: `Restituer la caution intégrale ${fmt(b?.deposit_amount || 0)} FCFA. Le dossier est clos en faveur du client.` },
-    { id: 'split',   letter: 'C', title: 'Partage Assurance/Franchise', desc: 'Répartition équitable des coûts entre le locataire et le bailleur selon la grille de franchise CEMAC.' },
   ];
 
   return (
@@ -225,8 +228,9 @@ export default function AdminDisputes() {
                 <textarea value={motive} onChange={e => setMotive(e.target.value)} rows={3}
                   placeholder="Considérant que l'expertise technique jointe atteste d'un dommage survenu pendant la période locative ; considérant que la caution COBAC couvre les réparations…"
                   className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-[11px] focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none" />
+                {err && <div className="mt-3 text-[11px] font-bold text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{err}</div>}
                 <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
-                  <span className="text-[9px] text-slate-400">Les deux parties reçoivent la sentence par SMS &amp; email.</span>
+                  <span className="text-[9px] text-slate-400">Les deux parties reçoivent une notification in-app de la sentence.</span>
                   <div className="flex gap-2">
                     <button onClick={() => arbitrate(decision)} disabled={busy}
                       className="text-[10px] font-black px-4 py-2.5 border border-slate-300 text-slate-600 rounded-xl hover:border-teal-400 transition-colors disabled:opacity-50">

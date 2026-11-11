@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import AutoLinkLogo from '../AutoLinkLogo';
-import { NotificationsBell } from '../DashboardLayout';
+import i18next from '../../i18n';
 import {
   LayoutDashboard, Car, FileText, Wallet,
-  Settings, LogOut, Menu, X, ArrowRightLeft, PlusSquare,
-  ChevronDown, User, Sun, Moon,
+  Settings, LogOut, Menu, X, PlusSquare,
+  ChevronDown, User, Moon, MessageSquare, Bell, Globe,
 } from 'lucide-react';
 
 const NAV = [
@@ -15,6 +15,8 @@ const NAV = [
   { icon: PlusSquare,      label: 'Ajouter un véhicule',  path: '/owner/add-vehicle' },
   { icon: FileText,        label: 'Réservations',         path: '/owner/requests', badge: 'demandes' },
   { icon: Wallet,          label: 'Revenus & Finances',   path: '/owner/revenue' },
+  { icon: MessageSquare,   label: 'Messagerie',           path: '/owner/messages', badge: 'msg' },
+  { icon: Bell,            label: 'Notifications',        path: '/owner/notifications', badge: 'notif' },
   { icon: Settings,        label: 'Profil & Paramètres',  path: '/settings' },
 ];
 
@@ -27,52 +29,72 @@ export default function OwnerLayout({ children, badges = {}, balance = null }) {
   const [collapsed, setCollapsed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
-  const toggleDark = () => {
-    const v = !dark;
+  const toggleDark = (v) => {
     setDark(v);
     document.documentElement.classList.toggle('dark', v);
     localStorage.setItem('autolink_theme', v ? 'dark' : 'light');
+  };
+  const [unreadNotif, setUnreadNotif] = useState(0);
+  const [unreadMsg, setUnreadMsg] = useState(0);
+  useEffect(() => {
+    if (!user) return undefined;
+    let alive = true;
+    import('../../services/api').then(({ notificationsAPI, messagingAPI }) => {
+      notificationsAPI.list().then((r) => {
+        const items = r.data?.results || r.data || [];
+        if (alive) setUnreadNotif(items.filter((n) => !n.is_read).length);
+      }).catch(() => {});
+      messagingAPI.unread().then((r) => {
+        if (alive) setUnreadMsg(r.data?.unread ?? r.data?.count ?? 0);
+      }).catch(() => {});
+    });
+    return () => { alive = false; };
+  }, [user]);
+  const setLang = (l) => {
+    i18next.changeLanguage(l);
+    import('../../services/api').then(({ usersAPI }) => usersAPI.updateMe({ language: l }).catch(() => {}));
   };
 
   const handleLogout = () => { logout(); navigate('/'); };
 
   const Sidebar = ({ mini }) => (
-    <div className={`flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 ${mini ? 'w-20' : 'w-60'} transition-all duration-300`}>
-      <div className={`pt-3 pb-3 flex items-center border-b border-slate-100 dark:border-slate-800 ${mini ? 'justify-center px-2' : 'px-4'}`}>
-        <Link to="/" className="flex items-center">
-          <AutoLinkLogo size={mini ? 'xs' : 'xxs'} />
+    <div className={`flex flex-col h-full bg-white dark:bg-slate-900 text-on-surface border-r border-outline-variant/30 transition-[width] duration-300 w-72 ${mini ? 'lg:w-[76px]' : 'lg:w-72'} overflow-hidden`}>
+      <div className={`h-20 px-4 flex items-center shrink-0 border-b border-outline-variant/30 dark:border-slate-800 ${mini ? 'justify-between lg:justify-center' : 'justify-between'}`}>
+        <Link to="/" className="flex items-center gap-2.5 min-w-0">
+          <AutoLinkLogo size="sm" className={`max-w-[180px] ${mini ? 'lg:hidden' : ''}`} />
+          <AutoLinkLogo size="xs" className={`hidden max-w-[40px] ${mini ? 'lg:block' : ''}`} />
         </Link>
+        <button onClick={() => setOpen(false)} className="lg:hidden p-1 opacity-70" aria-label="Fermer le menu"><X size={20} /></button>
       </div>
 
       {!mini && (
-        <div className="px-5 pt-4 pb-2">
+        <div className="px-5 pt-4 pb-1 lg:hidden">
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Espace Propriétaire</span>
         </div>
       )}
-      {mini && <div className="pt-3" />}
 
-      <nav className={`flex-1 space-y-3 overflow-y-auto ${mini ? 'px-2' : 'px-3'}`}>
+      <nav className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-4 flex flex-col gap-1 ${mini ? 'lg:px-3' : ''}`}>
         {NAV.map(({ icon: Icon, label, path, badge }) => {
-          const count = badge ? badges[badge] || 0 : 0;
+          const count = badge === 'msg' ? unreadMsg : badge === 'notif' ? unreadNotif : badge ? badges[badge] || 0 : 0;
           const active = pathname === path || (path !== '/owner/dashboard' && pathname.startsWith(path + '/'));
           return (
             <Link key={label} to={path} onClick={() => { setOpen(false); setCollapsed(true); }} title={mini ? label : undefined}
-              className={`relative flex items-center rounded-xl text-sm font-semibold transition-all ${mini ? 'justify-center px-0 py-3' : 'gap-3 px-3.5 py-2.5'} ${active ? 'bg-teal-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100'}`}>
-              <Icon size={17} />
-              {!mini && <span className="flex-1">{label}</span>}
-              {!mini && count > 0 && (
-                <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center">{count}</span>
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all font-label-lg text-label-lg ${active ? 'bg-primary text-white font-semibold shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface dark:hover:bg-slate-800 dark:hover:text-slate-100'} ${mini ? 'lg:justify-center lg:px-0' : ''}`}>
+              <Icon size={20} className="shrink-0" />
+              <span className={`truncate flex-1 ${mini ? 'lg:hidden' : ''}`}>{label}</span>
+              {count > 0 && (
+                <span className={`px-2 py-0.5 rounded-full bg-error text-on-error font-label-sm text-label-sm font-bold ${mini ? 'lg:hidden' : ''}`}>{count}</span>
               )}
-              {mini && count > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
             </Link>
           );
         })}
       </nav>
 
-      <div className={`border-t border-slate-100 dark:border-slate-800 space-y-1 ${mini ? 'p-2' : 'p-3'}`}>
+      <div className={`p-4 border-t border-outline-variant/30 dark:border-slate-800 shrink-0 ${mini ? 'lg:px-3' : ''}`}>
         <button onClick={handleLogout} title={mini ? 'Déconnexion' : undefined}
-          className={`flex items-center rounded-xl text-[13px] font-semibold text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 w-full transition-colors ${mini ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'}`}>
-          <LogOut size={16} /> {!mini && 'Déconnexion'}
+          className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-label-md text-label-md text-error hover:bg-error-container dark:hover:bg-red-950/40 transition-all ${mini ? 'lg:justify-center lg:px-0' : ''}`}>
+          <LogOut size={18} className="shrink-0" />
+          <span className={mini ? 'lg:hidden' : ''}>Déconnexion</span>
         </button>
       </div>
     </div>
@@ -89,60 +111,75 @@ export default function OwnerLayout({ children, badges = {}, balance = null }) {
 
       {open && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="w-64 bg-white dark:bg-slate-900 shadow-2xl flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
-              <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">Menu Propriétaire</span>
-              <button onClick={() => setOpen(false)} className="p-1.5 text-slate-400"><X size={20} /></button>
-            </div>
-            <Sidebar mini={false} />
-          </div>
+          <div className="h-full max-w-[85vw] shadow-2xl"><Sidebar mini={false} /></div>
           <div className="flex-1 bg-black/50" onClick={() => setOpen(false)} />
         </div>
       )}
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Topbar */}
-        <header className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3 shrink-0">
+        {/* Topbar — même ergonomie que l'espace client */}
+        <header className="h-16 lg:h-20 shrink-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3 z-20">
           <div className="flex items-center gap-3">
-            <button onClick={() => setOpen(true)} className="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100"><Menu size={20} /></button>
-          </div>
-          <div className="flex items-center gap-3 mr-1 sm:mr-3">
-            <button onClick={toggleDark} title={dark ? 'Mode clair' : 'Mode sombre'}
-              className="p-2 text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
-              {dark ? <Sun size={18} /> : <Moon size={18} />}
+            <button onClick={() => setOpen(true)} className="lg:hidden w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Menu">
+              <Menu size={20} />
             </button>
-            <NotificationsBell />
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button onClick={() => navigate('/owner/messages')} title="Messages"
+              className="relative w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <MessageSquare size={20} />
+              {unreadMsg > 0 && <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-teal-600 text-white text-[10px] font-bold flex items-center justify-center">{unreadMsg}</span>}
+            </button>
+            <button onClick={() => navigate('/owner/notifications')} title="Notifications"
+              className="relative w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <Bell size={20} />
+              {unreadNotif > 0 && <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">{unreadNotif}</span>}
+            </button>
 
-            {/* Avatar + dropdown profil */}
+            {/* Pill profil + dropdown — style client */}
             <div className="relative">
               <button onClick={() => setMenuOpen(o => !o)}
-                className="flex items-center gap-2.5 p-1 rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                <span className="hidden sm:block text-right leading-tight">
-                  <span className="block text-xs font-bold text-slate-800 dark:text-slate-100">{user?.firstName} {user?.lastName?.charAt(0)}.</span>
-                  <span className="block text-[10px] text-slate-400 dark:text-slate-500">Partenaire</span>
-                </span>
-                <span className="w-9 h-9 bg-teal-600 rounded-full flex items-center justify-center text-white text-xs font-black">
+                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                <span className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center text-white text-xs font-black">
                   {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
                 </span>
-                <ChevronDown size={13} className={`text-slate-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+                <span className="hidden md:block text-left leading-tight">
+                  <span className="block text-xs font-bold text-slate-800 dark:text-slate-100">{user?.firstName} {user?.lastName?.charAt(0)}.</span>
+                </span>
+                <ChevronDown size={14} className={`text-slate-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
               </button>
               {menuOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-lg py-2 z-20">
-                    <button onClick={() => { navigate('/Nos-vehicules'); setMenuOpen(false); }}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                      <ArrowRightLeft size={14} className="text-teal-600" /> Mode Client
-                    </button>
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl shadow-xl py-2 z-20">
+                    <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800">
+                      <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Espace Propriétaire</div>
+                      <div className="text-sm font-bold text-slate-800 dark:text-slate-100">{user?.firstName} {user?.lastName}</div>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-2">
+                      <span className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400"><Moon size={15} />Thème</span>
+                      <div className="flex rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+                        <button onClick={() => toggleDark(false)} className={`px-2.5 py-1 text-[11px] font-semibold ${!dark ? 'bg-teal-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}>Clair</button>
+                        <button onClick={() => toggleDark(true)} className={`px-2.5 py-1 text-[11px] font-semibold ${dark ? 'bg-teal-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}>Sombre</button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-2">
+                      <span className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400"><Globe size={15} />Langue</span>
+                      <div className="flex rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+                        <button onClick={() => setLang('fr')} className={`px-2.5 py-1 text-[11px] font-semibold ${i18next.language === 'fr' ? 'bg-teal-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}>FR</button>
+                        <button onClick={() => setLang('en')} className={`px-2.5 py-1 text-[11px] font-semibold ${i18next.language === 'en' ? 'bg-teal-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}>EN</button>
+                      </div>
+                    </div>
                     <button onClick={() => { navigate('/settings'); setMenuOpen(false); }}
                       className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                       <User size={14} className="text-teal-600" /> Profil
                     </button>
-                    <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
-                    <button onClick={() => { setMenuOpen(false); handleLogout(); }}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-semibold text-red-500 hover:bg-red-50 transition-colors">
-                      <LogOut size={14} /> Déconnexion
-                    </button>
+                    <div className="border-t border-slate-100 dark:border-slate-800 mt-1 pt-1">
+                      <button onClick={() => { setMenuOpen(false); handleLogout(); }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+                        <LogOut size={14} /> Déconnexion
+                      </button>
+                    </div>
                   </div>
                 </>
               )}

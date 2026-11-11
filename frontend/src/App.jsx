@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ConfirmProvider } from './contexts/ConfirmContext';
 import i18n from './i18n';
 import translateDom, { observeDom } from './i18n/translateDom';
 
@@ -21,6 +22,8 @@ import AddVehicle from './pages/owner/AddVehicle';
 import OwnerRequests from './pages/owner/OwnerRequests';
 import OwnerRevenue from './pages/owner/OwnerRevenue';
 import OwnerMessages from './pages/owner/OwnerMessages';
+import AdminMessages from './pages/admin/AdminMessages';
+import AdminNotifications from './pages/admin/AdminNotifications';
 import OwnerNotifications from './pages/owner/OwnerNotifications';
 import OwnerVehicleDetail from './pages/owner/OwnerVehicleDetail';
 import DriverDashboard from './pages/driver/DriverDashboard';
@@ -140,6 +143,7 @@ function AppRoutes() {
       <Route path="/owner/vehicles" element={<Guard roles={['OWNER']}><MyVehicles /></Guard>} />
       <Route path="/owner/vehicles/:id" element={<Guard roles={['OWNER']}><OwnerVehicleDetail /></Guard>} />
       <Route path="/owner/add-vehicle" element={<Guard roles={['OWNER']}><AddVehicle /></Guard>} />
+      <Route path="/owner/edit-vehicle/:id" element={<Guard roles={['OWNER']}><AddVehicle /></Guard>} />
       <Route path="/owner/requests" element={<Guard roles={['OWNER']}><OwnerRequests /></Guard>} />
       <Route path="/owner/messages" element={<Guard roles={['OWNER']}><OwnerMessages /></Guard>} />
       <Route path="/owner/notifications" element={<Guard roles={['OWNER']}><OwnerNotifications /></Guard>} />
@@ -161,6 +165,8 @@ function AppRoutes() {
       <Route path="/admin/partenaires" element={<Guard roles={['ADMIN']}><AdminPartners /></Guard>} />
       <Route path="/admin/partenaires/:id" element={<Guard roles={['ADMIN']}><AdminPartnerDetail /></Guard>} />
       <Route path="/admin/litiges" element={<Guard roles={['ADMIN']}><AdminDisputes /></Guard>} />
+      <Route path="/admin/messages" element={<Guard roles={['ADMIN']}><AdminMessages /></Guard>} />
+      <Route path="/admin/notifications" element={<Guard roles={['ADMIN']}><AdminNotifications /></Guard>} />
       <Route path="/admin/clients" element={<Guard roles={['ADMIN']}><AdminClients /></Guard>} />
       <Route path="/admin/clients/:id" element={<Guard roles={['ADMIN']}><AdminClientDetail /></Guard>} />
       <Route path="/admin/drivers" element={<Guard roles={['ADMIN']}><DriverRecruitment /></Guard>} />
@@ -203,10 +209,12 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <Router>
-          <GlobalTranslate />
-          <AppRoutes />
-        </Router>
+        <ConfirmProvider>
+          <Router>
+            <GlobalTranslate />
+            <AppRoutes />
+          </Router>
+        </ConfirmProvider>
       </AuthProvider>
     </ThemeProvider>
   );

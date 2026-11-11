@@ -69,7 +69,8 @@ export const vehiclesAPI = {
   detail: (id) => api.get(`/vehicles/${id}/`),
   create: (payload) => api.post('/vehicles/', payload,
     payload instanceof FormData ? { headers: { 'Content-Type': undefined } } : {}),
-  update: (id, payload) => api.patch(`/vehicles/${id}/`, payload),
+  update: (id, payload) => api.patch(`/vehicles/${id}/`, payload,
+    payload instanceof FormData ? { headers: { 'Content-Type': undefined } } : {}),
   delete: (id) => api.delete(`/vehicles/${id}/`),
   uploadMedia: (id, payload) => api.post(`/vehicles/${id}/media/`, payload, {
     headers: { 'Content-Type': 'multipart/form-data' },
@@ -103,6 +104,8 @@ export const bookingsAPI = {
   acceptDriverRide: (id) => api.post(`/bookings/${id}/driver-accept/`),
   refuseDriverRide: (id) => api.post(`/bookings/${id}/driver-refuse/`),
   resetDriverRide: (id) => api.post(`/bookings/${id}/driver-reset/`),
+  availableDrivers: (id) => api.get(`/bookings/${id}/available-drivers/`),
+  assignDriver: (id, driverId) => api.post(`/bookings/${id}/assign-driver/`, { driver_id: driverId }),
   dispute: (id, reason) => api.post(`/bookings/${id}/dispute/`, { reason }),
   resolveDispute: (id, decision) => api.post(`/bookings/${id}/resolve-dispute/`, { decision }),
   disputes: (params) => api.get('/bookings/disputes/', { params }),
@@ -168,6 +171,7 @@ export const notificationsAPI = {
   list: (params) => api.get('/users/notifications/', { params }),
   readAll: () => api.post('/users/notifications/read/'),
   read: (id) => api.post(`/users/notifications/${id}/read/`),
+  unread: (id) => api.post(`/users/notifications/${id}/read/`, { unread: true }),
   remove: (id) => api.delete(`/users/notifications/${id}/`),
 };
 

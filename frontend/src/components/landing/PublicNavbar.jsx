@@ -225,7 +225,7 @@ export default function PublicNavbar() {
               <>
                 <button onClick={() => navigate('/devenir-proprietaire')}
                   className="text-sm font-semibold text-slate-700 border hover:bg-teal-600 border-teal-600 rounded-lg hover:text-white px-3 py-2 transition-colors">
-                  Devenir propreitaire
+                  Devenir propriétaire
                 </button>
                 {/* <button onClick={() => navigate('/register')}
                   className="text-sm font-bold bg-teal-600 hover:bg-teal-500 text-white px-5 py-2.5 rounded-lg transition-colors shadow-sm">

@@ -518,8 +518,11 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save(language=get_request_language(request))
-        send_welcome_email(user)
-        refresh = RefreshToken.for_user(user)
+        try:
+            send_welcome_email(user)
+        except Exception:
+            pass
+        refresh = _safe_refresh(user)
         _record_session(request, user, refresh)
         return Response({
             'user': UserSerializer(user).data,
@@ -534,6 +537,17 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+def _safe_refresh(user):
+    """RefreshToken.for_user écrit dans token_blacklist_outstandingtoken — si la table
+    manque (migrations prod non appliquées), retombe sur un token nu plutôt qu'un 500."""
+    try:
+        return RefreshToken.for_user(user)
+    except Exception:
+        token = RefreshToken()
+        token['user_id'] = user.pk
+        return token
 
 
 def _blacklist_jti(user, jti):
@@ -770,7 +784,7 @@ class OTPVerifyView(APIView):
             return Response({'detail': 'Ce compte a été suspendu.'}, status=403)
         otp.delete()
 
-        refresh = RefreshToken.for_user(user)
+        refresh = _safe_refresh(user)
         _record_session(request, user, refresh)
         return Response({
             'access': str(refresh.access_token),
@@ -853,14 +867,15 @@ class NotificationListView(generics.ListAPIView):
 
 
 class NotificationReadView(APIView):
-    """Marque toutes les notifications (ou une seule) comme lues."""
+    """Marque toutes les notifications (ou une seule) comme lues — ou non lues."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk=None):
-        qs = request.user.notifications.filter(is_read=False)
+        mark_unread = bool(request.data.get('unread'))
+        qs = request.user.notifications.filter(is_read=mark_unread)
         if pk:
             qs = qs.filter(pk=pk)
-        qs.update(is_read=True)
+        qs.update(is_read=not mark_unread)
         return Response({'unread': request.user.notifications.filter(is_read=False).count()})
 
 

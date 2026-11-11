@@ -176,7 +176,7 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 </div>
 <span class="font-label-md text-label-md text-primary font-bold">Incluse</span>
 </div>
-<div class="flex items-center justify-between p-3.5 rounded-lg bg-surface-container-low">
+<div class="flex items-center justify-between p-3.5 rounded-lg bg-surface-container-low" id="opt-driver-conf">
 <div class="flex items-center gap-3">
 <div class="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
 <span class="material-symbols-outlined text-[20px]">person_check</span>
@@ -189,7 +189,7 @@ const HTML = `<div class="flex flex-col w-full pb-16">
 <span class="font-label-md text-label-md text-on-surface font-bold">+10 000 FCFA</span>
 </div>
 <!-- Chauffeur details card -->
-<div class="flex items-center justify-between p-4 rounded-xl bg-surface-container-high/40 mt-1">
+<div class="flex items-center justify-between p-4 rounded-xl bg-surface-container-high/40 mt-1" id="driver-contact-card">
 <div class="flex items-center gap-3.5">
 <div class="w-12 h-12 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-bold text-headline-sm shrink-0">
                   JM
@@ -351,7 +351,13 @@ export default function C2TunnelEtape3Confirmation() {
         .replace('Hub Central AutoLink Akwa (Face Hôtel Douala Bercy) ou Livraison Terminal Douala International (DLA).', esc(b.pickup_address || 'Prise en charge à convenir'))
         .replace('Hub Central AutoLink Akwa (Même point ou dépôt conventionné Yaoundé disponible).', esc(b.dropoff_address || 'Restitution à convenir'))
         .replace('Jean-Pierre M.', esc(b.driver_name || 'Chauffeur AutoLink (assigné par le hub)'))
-        .replace('+237 670 •• •• 12', esc(b.driver_phone || '—'));
+        .replace('+237 670 •• •• 12', esc(b.driver_phone || '—'))
+        .replace('+10 000 FCFA', `+${fmt(b.driver_fee || 0)} FCFA`);
+    }
+    // Masquer les blocs chauffeur quand l'option n'est pas souscrite
+    if (b && (b.driver_type === 'none' || !Number(b.driver_fee))) {
+      h = h.replace('id="opt-driver-conf"', 'id="opt-driver-conf" style="display:none"')
+        .replace('id="driver-contact-card"', 'id="driver-contact-card" style="display:none"');
     }
     if (me) h = h.replace('26 500 FCFA', `${fmt(me.balance)} FCFA`).replace('>votre adresse<', `>${esc(me.email || 'votre adresse')}<`);
     return h;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Camera, ShieldCheck, Zap, CalendarClock, Star, Pencil, MoreHorizontal,
+  Camera, ShieldCheck, Zap, CalendarClock, Star, Pencil, MoreHorizontal, Trash2,
   CalendarRange, Image as ImageIcon, FileText, UserCheck, Navigation,
 } from 'lucide-react';
 import { CATALOG_VEHICLES, getVehicleImage } from '../../utils/carImages';
@@ -58,7 +58,7 @@ const Btn = ({ children, cls = '', ...p }) => (
 );
 
 /* Carte véhicule riche de la page « Mes Véhicules & Flotte ». */
-export default function FleetCard({ v, activeBooking }) {
+export default function FleetCard({ v, activeBooking, onDelete }) {
   const navigate = useNavigate();
   const q = quality(v);
   const city = v.city || 'Douala';
@@ -178,7 +178,10 @@ export default function FleetCard({ v, activeBooking }) {
                 <Btn cls="bg-white border border-slate-200 text-slate-600 hover:border-teal-400"><ImageIcon size={12} /> Photos</Btn>
               </>
             )}
-            <Btn cls="bg-white border border-slate-200 text-slate-400 hover:text-teal-600 !px-2.5"><Pencil size={12} /></Btn>
+            <Btn onClick={() => navigate(`/owner/edit-vehicle/${v.id}`)} title="Modifier" cls="bg-white border border-slate-200 text-slate-400 hover:text-teal-600 !px-2.5"><Pencil size={12} /></Btn>
+            {onDelete && (
+              <Btn onClick={() => onDelete(v)} title="Supprimer" cls="bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-300 !px-2.5"><Trash2 size={12} /></Btn>
+            )}
             <Btn cls="bg-white border border-slate-200 text-slate-400 hover:text-slate-700 !px-2.5"><MoreHorizontal size={12} /></Btn>
           </div>
         </div>

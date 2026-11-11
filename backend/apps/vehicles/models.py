@@ -114,6 +114,13 @@ class Vehicle(models.Model):
         max_length=500, blank=True,
         help_text='Photo réelle du modèle (vignette allégée Wikimedia Commons).')
     mode = models.CharField(max_length=20, choices=Mode.choices)
+    gear = models.CharField(max_length=20, blank=True,
+                            help_text='Boîte de vitesses déclarée par le propriétaire (ex. Automatique).')
+    availability_prefs = models.JSONField(
+        default=dict, blank=True,
+        help_text='Réglages de disponibilité saisis au wizard proprio (étape 5) : '
+                  'jours, horaires de prise en charge, réservation instantanée, '
+                  'préavis, livraison aéroport/hôtel, adresse de retrait, remises.')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     driver_available = models.BooleanField(
         default=True,

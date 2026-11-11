@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { Camera, CheckCircle2, Eye, Trash2, Plus, ImagePlus, Lightbulb, ShieldCheck, UserCheck } from 'lucide-react';
+import { mediaUrl } from '../../utils/media';
 
 export const SLOTS = [
   { id: 'front34',   label: 'Vue 3/4 avant gauche',              sub: 'Photo de couverture — angle valorisant', required: true,  cover: true },
@@ -18,7 +19,7 @@ const TIPS = [
 ];
 
 /* Étape 3 — grille de slots photos + sidebar conseils (maquette). */
-export default function StepPhotos({ photos, setPhotos }) {
+export default function StepPhotos({ photos, setPhotos, existing = [] }) {
   const inputRef = useRef(null);
   const [activeSlot, setActiveSlot] = React.useState(null);
   const done = SLOTS.filter(s => photos[s.id]).length;
@@ -35,6 +36,16 @@ export default function StepPhotos({ photos, setPhotos }) {
     <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
       <div>
+        {existing.length > 0 && (
+          <div className="mb-4 bg-teal-50 border border-teal-100 rounded-xl p-3.5">
+            <div className="text-[11px] font-black text-teal-800 mb-2">Photos actuellement en ligne ({existing.length}) — conservez-les ou remplacez-les ci-dessous.</div>
+            <div className="flex gap-2 flex-wrap">
+              {existing.map((p, i) => (
+                <img key={i} src={mediaUrl(p.image)} alt="" className="w-16 h-12 rounded-lg object-cover bg-white" />
+              ))}
+            </div>
+          </div>
+        )}
         <div className="mb-5">
           <h2 className="text-lg font-black text-slate-900">Étape 3 : Photos de votre véhicule</h2>
           <p className="text-xs text-slate-500 mt-1">Téléversez des photos nettes et lumineuses. Un minimum de 6 photos sous des angles spécifiques est requis pour certifier votre annonce sur le réseau AutoLink Cameroun.</p>

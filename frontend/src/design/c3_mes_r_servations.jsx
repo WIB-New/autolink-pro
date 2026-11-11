@@ -296,12 +296,13 @@ const LINKS = {
 };
 
 export default function C3MesReservations() {
-  const { data } = useApiData(() => bookingsAPI.list(), []);
+  const { data } = useApiData(() => bookingsAPI.list({ page_size: 200 }), []);
   const html = useMemo(() => {
     const items = data?.results || (Array.isArray(data) ? data : []) || [];
+    const apiTotal = typeof data?.count === 'number' ? data.count : items.length;
     const n = (s) => items.filter((b) => b.status === s).length;
     const upcoming = items.filter((b) => ['pending', 'confirmed'].includes(b.status)).length;
-    const counts = { total: items.length, upcoming, active: n('active'), completed: n('completed'), cancelled: n('cancelled'), disputed: n('disputed') };
+    const counts = { total: items.length, apiTotal, upcoming, active: n('active'), completed: n('completed'), cancelled: n('cancelled'), disputed: n('disputed') };
     const rows = items.length
       ? items.map(row).join('')
       : '<tr><td class="px-5 py-12 text-center text-on-surface-variant" colspan="7">Aucune réservation pour le moment.</td></tr>';
@@ -317,7 +318,7 @@ export default function C3MesReservations() {
       .replace('>Terminées (4)<', `>Terminées (${counts.completed})<`)
       .replace('>Annulées (1)<', `>Annulées (${counts.cancelled})<`)
       .replace('Affichage de <span class="font-semibold text-on-surface">4 réservations</span> sur un total de 7 dossiers enregistrés.',
-               `Affichage de <span class="font-semibold text-on-surface">${counts.total} réservations</span> sur un total de ${counts.total} dossiers enregistrés.`)
+               `Affichage de <span class="font-semibold text-on-surface">${counts.total} réservations</span> sur un total de ${apiTotal} dossiers enregistrés.`)
       .replace(/(<option>Annulées[^<]*<\/option>\n)<\/select>/, `$1<option value="disputed">Litiges (${counts.disputed})</option>\n</select>`)
       .replace('Année 2025', `Année ${new Date().getFullYear()}`);
   }, [data]);

@@ -7,7 +7,7 @@ import { vehicleCover } from '../../utils/media';
 import {
   Search, ChevronLeft, ChevronRight, Filter,
   CheckCircle2, XCircle, CalendarRange, Car, Wifi, WifiOff, RefreshCw,
-  FileSpreadsheet, Siren, Wallet, Lock, MapPin, ArrowUpDown,
+  FileSpreadsheet, Siren, Wallet, Lock, MapPin, ArrowUpDown, UserCheck,
 } from 'lucide-react';
 import StatCard from '../../components/StatCard';
 import FilterField from '../../components/FilterField';
@@ -68,6 +68,10 @@ export default function AdminBookings() {
   const [sort, setSort] = useState('depart');
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(null);
+  const [assignFor, setAssignFor] = useState(null);   // réservation ciblée par la modale
+  const [drivers, setDrivers] = useState([]);
+  const [driversLoading, setDriversLoading] = useState(false);
+  const [assignErr, setAssignErr] = useState('');
 
   const fetchAll = useCallback(async () => {
     try {
@@ -96,6 +100,28 @@ export default function AdminBookings() {
   const setStatus = async (b, status) => {
     setBusy(b.id);
     try { await bookingsAPI.updateStatus(b.id, status); await fetchAll(); } catch (_) {}
+    setBusy(null);
+  };
+
+  const openAssign = async (b) => {
+    setAssignFor(b); setDrivers([]); setAssignErr(''); setDriversLoading(true);
+    try {
+      const { data } = await bookingsAPI.availableDrivers(b.id);
+      setDrivers(data || []);
+    } catch (_) { setAssignErr('Impossible de charger les chauffeurs.'); }
+    setDriversLoading(false);
+  };
+
+  const doAssign = async (driverId) => {
+    if (!assignFor) return;
+    setBusy(assignFor.id); setAssignErr('');
+    try {
+      await bookingsAPI.assignDriver(assignFor.id, driverId);
+      setAssignFor(null);
+      await fetchAll();
+    } catch (e) {
+      setAssignErr(e?.response?.data?.driver_id?.[0] || e?.response?.data?.detail || 'Assignation refusée.');
+    }
     setBusy(null);
   };
 
@@ -270,8 +296,16 @@ export default function AdminBookings() {
                         <span className="inline-flex items-center gap-1 text-[9px] font-black text-red-600"><Siren size={11} /> Arbitrage requis</span>
                       )}
                       {b.status === 'confirmed' && (
-                        <button disabled={busy === b.id} onClick={() => setStatus(b, 'active')} title="Démarrer"
-                          className="text-[9px] font-black px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors disabled:opacity-50">Démarrer</button>
+                        <div className="flex justify-end items-center gap-1.5">
+                          <button disabled={busy === b.id} onClick={() => setStatus(b, 'active')} title="Démarrer"
+                            className="text-[9px] font-black px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors disabled:opacity-50">Démarrer</button>
+                          <button disabled={busy === b.id} onClick={() => openAssign(b)} title="Assigner un chauffeur"
+                            className="p-1.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors disabled:opacity-50"><UserCheck size={13} /></button>
+                        </div>
+                      )}
+                      {b.status === 'pending' && (
+                        <button disabled={busy === b.id} onClick={() => openAssign(b)} title="Assigner un chauffeur"
+                          className="mt-1.5 text-[9px] font-black px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 rounded-lg transition-colors disabled:opacity-50">+ Chauffeur</button>
                       )}
                     </td>
                   </tr>
@@ -332,6 +366,42 @@ export default function AdminBookings() {
           <RefreshCw size={11} /> Actualiser
         </button>
       </div>
+
+      {/* Modale assignation chauffeur */}
+      {assignFor && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setAssignFor(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <div className="text-[13px] font-black text-slate-900">Assigner un chauffeur</div>
+                <div className="text-[10px] text-slate-400">#ALP-{String(assignFor.id).padStart(4, '0')} · {assignFor.vehicle_name || ''} · {shortDate(assignFor.start_date)} → {shortDate(assignFor.end_date)}</div>
+              </div>
+              <button onClick={() => setAssignFor(null)} className="p-1.5 text-slate-400 hover:text-slate-600"><XCircle size={18} /></button>
+            </div>
+            <div className="p-5 max-h-80 overflow-y-auto">
+              {driversLoading && <div className="text-center text-[11px] text-slate-400 py-6">Chargement des chauffeurs…</div>}
+              {!driversLoading && drivers.length === 0 && !assignErr && (
+                <div className="text-center text-[11px] text-slate-400 py-6">Aucun chauffeur disponible sur ces dates.</div>
+              )}
+              {assignErr && <div className="mb-3 text-[11px] font-bold text-red-600 bg-red-50 rounded-lg px-3 py-2">{assignErr}</div>}
+              <div className="space-y-2">
+                {drivers.map(d => (
+                  <button key={d.id} disabled={busy === assignFor.id} onClick={() => doAssign(d.id)}
+                    className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-slate-200 hover:border-teal-400 hover:bg-teal-50/40 transition-colors text-left disabled:opacity-50">
+                    <div>
+                      <div className="text-[12px] font-bold text-slate-800">{d.name}</div>
+                      <div className="text-[10px] text-slate-400">{d.phone || d.email}</div>
+                    </div>
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${d.is_online ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                      {d.is_online ? 'En ligne' : 'Hors ligne'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

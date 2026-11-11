@@ -31,6 +31,8 @@ const mapApiVehicle = (v) => normalizeVehicle({
   seats: v.seats || 5,
   fuel: v.fuel || 'Essence',
   year: v.year,
+  gear: v.gear || undefined,
+  availability: v.availability_prefs || {},
   fromApi: true,
 });
 

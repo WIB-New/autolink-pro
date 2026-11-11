@@ -4,6 +4,7 @@ import { PlusCircle, SlidersHorizontal, Car, RefreshCw } from 'lucide-react';
 import { OwnerLayout } from '../../components/ownerdash';
 import { FleetKpis, FleetToolbar, FleetCard, filterByTab } from '../../components/ownerfleet';
 import { vehiclesAPI, bookingsAPI } from '../../services/api';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 const SORTERS = {
   revenue: (a, b) => Number(b.total_earned || 0) - Number(a.total_earned || 0),
@@ -14,6 +15,7 @@ const SORTERS = {
 
 export default function MyVehicles() {
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [vehicles, setVehicles] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [online, setOnline] = useState(true);
@@ -36,6 +38,25 @@ export default function MyVehicles() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const deleteVehicle = async (v) => {
+    if (!(await confirm({
+      title: 'Supprimer ce véhicule ?',
+      message: `${v.brand} ${v.model} ${v.year} (${v.plate}) sera définitivement retiré du catalogue. Cette action est irréversible.`,
+      confirmLabel: 'Supprimer',
+      danger: true,
+    }))) return;
+    try {
+      await vehiclesAPI.delete(v.id);
+      await load();
+    } catch (e) {
+      await confirm({
+        title: 'Suppression impossible',
+        message: e?.response?.data?.detail || 'Le serveur a refusé la suppression.',
+        confirmLabel: 'Compris',
+      });
+    }
+  };
 
   const activeBookingFor = useCallback((v) =>
     bookings.find(b => ['active', 'confirmed'].includes(b.status) && (b.vehicle === v.id || b.vehicle_id === v.id)),
@@ -119,7 +140,7 @@ export default function MyVehicles() {
           </div>
         ) : (
           <div className={grid ? 'grid xl:grid-cols-2 gap-5' : 'space-y-5'}>
-            {visible.map(v => <FleetCard key={v.id} v={v} activeBooking={activeBookingFor(v)} />)}
+            {visible.map(v => <FleetCard key={v.id} v={v} activeBooking={activeBookingFor(v)} onDelete={deleteVehicle} />)}
           </div>
         )}
 

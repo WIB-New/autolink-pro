@@ -129,6 +129,70 @@ class BookingViewSet(viewsets.ModelViewSet):
         booking.save(update_fields=['driver_response', 'updated_at'])
         return Response(self.get_serializer(booking).data)
 
+    @action(detail=True, methods=['get'], url_path='available-drivers')
+    def available_drivers(self, request, pk=None):
+        """Admin : liste des chauffeurs internes libres sur les dates de la réservation."""
+        if request.user.role != 'ADMIN':
+            raise PermissionDenied('Réservé à l\'administration.')
+        from apps.users.models import User
+        booking = self.get_object()
+        busy = Booking.objects.filter(
+            status__in=('confirmed', 'active'),
+            start_date__lte=booking.end_date,
+            end_date__gte=booking.start_date,
+            driver__isnull=False,
+        ).exclude(id=booking.id).values_list('driver_id', flat=True)
+        drivers = (User.objects
+                   .filter(role='DRIVER', is_active=True)
+                   .exclude(id__in=busy)
+                   .select_related('driver_profile')
+                   .order_by('first_name', 'last_name'))
+        return Response([{
+            'id': d.id,
+            'name': d.get_full_name() or d.username,
+            'phone': d.phone or '',
+            'email': d.email,
+            'is_online': getattr(getattr(d, 'driver_profile', None), 'is_online', False),
+        } for d in drivers])
+
+    @action(detail=True, methods=['post'], url_path='assign-driver')
+    def assign_driver(self, request, pk=None):
+        """Admin : assigne (ou réassigne) un chauffeur interne à la réservation."""
+        if request.user.role != 'ADMIN':
+            raise PermissionDenied('Réservé à l\'administration.')
+        booking = self.get_object()
+        if booking.status not in ('pending', 'confirmed'):
+            raise ValidationError({'status': 'Cette réservation ne peut plus recevoir de chauffeur.'})
+        from apps.users.models import User
+        driver_id = request.data.get('driver_id')
+        if not driver_id:
+            raise ValidationError({'driver_id': 'Ce champ est requis.'})
+        driver = User.objects.filter(role='DRIVER', is_active=True, id=driver_id).first()
+        if not driver:
+            raise ValidationError({'driver_id': 'Chauffeur introuvable ou inactif.'})
+        conflict = Booking.objects.filter(
+            status__in=('confirmed', 'active'),
+            start_date__lte=booking.end_date,
+            end_date__gte=booking.start_date,
+            driver_id=driver.id,
+        ).exclude(id=booking.id).exists()
+        if conflict:
+            raise ValidationError({'driver_id': 'Ce chauffeur est déjà engagé sur ces dates.'})
+        previous = booking.driver
+        booking.driver = driver
+        booking.driver_type = 'internal'
+        booking.driver_response = 'offered'
+        booking.save(update_fields=['driver', 'driver_type', 'driver_response', 'updated_at'])
+        label = 'Course réassignée' if previous and previous.id != driver.id else 'Nouvelle course'
+        _notify(driver, label,
+                f'Vous êtes assigné à la location du véhicule {booking.vehicle} '
+                f'du {booking.start_date} au {booking.end_date}. '
+                f'Client : {booking.client.get_full_name()} — {booking.client.phone}')
+        _notify(booking.client, 'Chauffeur assigné',
+                f'{driver.get_full_name() or driver.username} a été assigné comme chauffeur '
+                f'à votre réservation BK-{booking.pk:04d} ({booking.vehicle}).')
+        return Response(self.get_serializer(booking).data)
+
     def _owner_booking(self, user, booking):
         if user.role != 'OWNER' or booking.vehicle.owner_id != user.id:
             raise PermissionDenied('Ce véhicule ne vous appartient pas.')
@@ -1128,6 +1192,19 @@ class BookingViewSet(viewsets.ModelViewSet):
                 payment.escrow_status = 'held'
                 payment.save(update_fields=['escrow_status'])
                 payment.refund_client()
+            elif booking.deposit_amount:
+                # Pas d'objet Payment (résa sans règlement enregistré) :
+                # la caution affichée au séquestre est quand même recréditée.
+                from apps.payments.models import WalletTransaction
+                client = booking.client
+                client.balance = (client.balance or 0) + booking.deposit_amount
+                client.save(update_fields=['balance', 'updated_at'])
+                WalletTransaction.objects.create(
+                    user=client, kind='refund', amount=booking.deposit_amount,
+                    balance_after=client.balance,
+                    reference=f'REFUND-BK-{booking.pk:04d}',
+                    note=f'Caution remboursée — arbitrage litige {booking}',
+                )
             booking.status = Booking.Status.CANCELLED
             _notify(booking.client, 'Litige résolu',
                     f'Votre litige sur {booking} a été tranché en votre faveur. '
@@ -1139,6 +1216,18 @@ class BookingViewSet(viewsets.ModelViewSet):
             if payment:
                 payment.escrow_status = 'held'
                 payment.save(update_fields=['escrow_status'])
+            elif booking.deposit_amount:
+                # Caution sans Payment : versée au propriétaire comme dédommagement.
+                from apps.payments.models import WalletTransaction
+                owner = booking.vehicle.owner
+                owner.balance = (owner.balance or 0) + booking.deposit_amount
+                owner.save(update_fields=['balance', 'updated_at'])
+                WalletTransaction.objects.create(
+                    user=owner, kind='topup', amount=booking.deposit_amount,
+                    balance_after=owner.balance,
+                    reference=f'DISPUTE-BK-{booking.pk:04d}',
+                    note=f'Caution retenue — arbitrage litige {booking} en votre faveur',
+                )
             booking.status = Booking.Status.COMPLETED
             _notify(booking.vehicle.owner, 'Litige résolu',
                     f'Le litige sur votre véhicule {booking.vehicle} a été tranché '
