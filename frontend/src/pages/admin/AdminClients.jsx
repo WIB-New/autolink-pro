@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admindash/AdminLayout';
 import { usersAPI, bookingsAPI } from '../../services/api';
 import {
-  Users, UserCheck, Clock, Flag, Eye,
+  Users, UserCheck, Clock, Flag, Eye, Star,
 } from 'lucide-react';
 import StatCard from '../../components/StatCard';
 import DataTable from '../../components/DataTable';
@@ -62,9 +62,11 @@ export default function AdminClients() {
         columns={[
           { label: 'Client', render: c => (
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-teal-700 rounded-lg flex items-center justify-center text-white text-[10px] font-black shrink-0">
-                {initialsOf(`${c.first_name} ${c.last_name}`)}
-              </div>
+              {c.avatar
+                ? <img src={c.avatar} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0" />
+                : <div className="w-8 h-8 bg-teal-700 rounded-lg flex items-center justify-center text-white text-[10px] font-black shrink-0">
+                    {initialsOf(`${c.first_name} ${c.last_name}`)}
+                  </div>}
               <div className="min-w-0">
                 <div className="text-[11px] font-black text-slate-900 truncate">{c.first_name} {c.last_name}</div>
                 <div className="text-[9px] text-slate-400 truncate">{c.email || '—'}</div>
@@ -73,6 +75,12 @@ export default function AdminClients() {
           )},
           { label: 'Ville', render: c => <span className="text-[10px] font-semibold text-slate-500">{c.city || 'Douala'}</span> },
           { label: 'Locations', render: c => <span className="text-[11px] font-black text-slate-800">{bookingsOf(c).length}</span> },
+          { label: 'Note reçue', render: c => c.client_rating != null ? (
+            <span className="inline-flex items-center gap-1 text-[11px] font-black text-slate-800">
+              <Star size={11} className="text-amber-500 fill-amber-500" />{Number(c.client_rating).toFixed(1)}
+              <span className="text-[9px] font-semibold text-slate-400">({c.client_rating_count})</span>
+            </span>
+          ) : <span className="text-[10px] text-slate-400">—</span> },
           { label: 'Statut', render: c => (
             <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${c.is_verified !== false ? 'bg-teal-100 text-teal-700' : 'bg-amber-100 text-amber-700'}`}>
               {c.is_verified !== false ? 'Vérifié' : 'KYC en revue'}

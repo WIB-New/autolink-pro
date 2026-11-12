@@ -5,7 +5,7 @@ import { TechSheet, HubReport, PhotoChecklist, DocsPanel, PricingPanel, Homologa
 import { vehiclesAPI } from '../../services/api';
 import {
   ChevronRight, ChevronLeft, Hourglass, XCircle, MessageSquare,
-  Rocket, Loader, Phone, MessageCircle,
+  Rocket, Loader, Phone, MessageCircle, Star,
 } from 'lucide-react';
 
 const STATUS_BAND = {
@@ -19,6 +19,7 @@ export default function AdminVehicleDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [vehicle, setVehicle] = useState(null);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -31,6 +32,7 @@ export default function AdminVehicleDetail() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { vehiclesAPI.reviews(id).then(({ data }) => setReviews(data || [])).catch(() => {}); }, [id]);
 
   const setStatus = async (status) => {
     setBusy(true);
@@ -150,6 +152,26 @@ export default function AdminVehicleDetail() {
         <div className="space-y-5">
           <HubReport vehicle={v} />
           <PricingPanel vehicle={v} onSave={savePricing} />
+          {/* Avis clients */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+            <h3 className="font-black text-slate-900 text-sm flex items-center gap-2 mb-3">
+              <Star size={15} className="text-amber-500" /> Avis clients
+              {v.rating_count > 0 && <span className="ml-auto text-amber-600 font-black">{Number(v.rating).toFixed(1)}/5 ({v.rating_count})</span>}
+            </h3>
+            <div className="space-y-2.5">
+              {reviews.map(r => (
+                <div key={r.id} className="border border-slate-100 rounded-xl p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-bold text-slate-800">{r.client}</span>
+                    <span className="flex items-center gap-0.5 text-[11px] font-black text-amber-500"><Star size={11} className="fill-amber-500" />{r.rating}/5</span>
+                  </div>
+                  {r.review && <p className="text-[10px] text-slate-500 leading-snug">« {r.review} »</p>}
+                  <div className="text-[8px] text-slate-400 mt-1">{r.date ? new Date(r.date).toLocaleDateString('fr-FR') : ''}</div>
+                </div>
+              ))}
+              {!reviews.length && <p className="text-[10px] text-slate-400 text-center py-3">Aucun avis pour ce véhicule.</p>}
+            </div>
+          </div>
           <InternalNotes vehicle={v} />
         </div>
       </div>

@@ -7,7 +7,7 @@ import {
   LayoutDashboard, CalendarCheck, Car, Building2, Users, UserCheck,
   Landmark, AlertTriangle, Wrench, Settings, UserIcon,
   LogOut, Search, Bell, Menu, X,
-  ChevronDown, Moon, MessageSquare, FileSearch, Globe,
+  ChevronDown, Moon, MessageSquare, FileSearch, Globe, ShieldCheck,
 } from 'lucide-react';
 
 const ITEMS = [
@@ -17,6 +17,7 @@ const ITEMS = [
   { to: '/admin/partenaires', icon: Building2,       label: 'Propriétaires',    badge: 'owners' },
   { to: '/admin/clients',     icon: Users,           label: 'Clients',          badge: 'clients' },
   { to: '/admin/drivers',     icon: UserCheck,       label: 'Chauffeurs',       badge: null },
+  { to: '/admin/kyc',         icon: ShieldCheck,     label: 'KYC & Documents',  badge: 'kyc' },
   { to: '/admin/finance',     icon: Landmark,        label: 'Finances',         badge: 'finances' },
   { to: '/admin/litiges',     icon: AlertTriangle,   label: 'Litiges',          badge: 'disputes' },
   { to: '/admin/inspections', icon: Wrench,          label: 'Maintenance',      badge: null },
@@ -30,7 +31,18 @@ const ITEMS = [
 export default function AdminLayout({ title, subtitle, children, badges = {}, fluid = false }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
+  // Nom tolérant aux deux schémas du user stocké (firstName ou first_name).
+  const firstName = user?.firstName || user?.first_name || '';
+  const lastName = user?.lastName || user?.last_name || '';
+  const nameRetried = useRef(false);
+  useEffect(() => {
+    if (user && !firstName && !nameRetried.current) {
+      nameRetried.current = true;
+      refreshUser();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -92,7 +104,7 @@ export default function AdminLayout({ title, subtitle, children, badges = {}, fl
     return () => clearTimeout(t);
   }, [query]);
 
-  const initials = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`.toUpperCase() || 'A';
+  const initials = `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase() || 'A';
 
   const renderSidebar = (mini) => (
     <div className={`flex flex-col h-full bg-white dark:bg-slate-900 text-on-surface border-r border-outline-variant/30 transition-[width] duration-300 w-72 ${mini ? 'lg:w-[76px]' : 'lg:w-72'} overflow-hidden`}>
@@ -154,11 +166,11 @@ export default function AdminLayout({ title, subtitle, children, badges = {}, fl
       {/* Utilisateur */}
       <div className={`p-4 border-t border-outline-variant/30 dark:border-slate-800 shrink-0 ${mini ? 'lg:px-3' : ''}`}>
         <div className={`flex items-center gap-3 ${mini ? 'lg:justify-center' : 'bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl p-3'}`}>
-          <div className="w-9 h-9 bg-teal-600 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0" title={`${user?.first_name} ${user?.last_name || ''}`}>
+          <div className="w-9 h-9 bg-teal-600 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0" title={`${firstName} ${lastName}`}>
             {initials}
           </div>
           <div className={`min-w-0 flex-1 ${mini ? 'lg:hidden' : ''}`}>
-            <div className="text-[12px] font-black text-slate-900 dark:text-slate-100 truncate">{user?.first_name} {user?.last_name?.[0]}.</div>
+            <div className="text-[12px] font-black text-slate-900 dark:text-slate-100 truncate">{firstName} {lastName[0] || ''}{lastName ? '.' : ''}</div>
             <div className="text-[10px] text-slate-400">Super Admin</div>
           </div>
         </div>
@@ -278,7 +290,7 @@ export default function AdminLayout({ title, subtitle, children, badges = {}, fl
                     {initials}
                   </span>
                   <span className="hidden md:block text-left leading-tight">
-                    <span className="block text-xs font-bold text-slate-800 dark:text-slate-100">{user?.first_name} {user?.last_name?.[0]}.</span>
+                    <span className="block text-xs font-bold text-slate-800 dark:text-slate-100">{firstName} {lastName[0] || ''}{lastName ? '.' : ''}</span>
                   </span>
                   <ChevronDown size={14} className={`text-slate-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
                 </button>
@@ -288,7 +300,7 @@ export default function AdminLayout({ title, subtitle, children, badges = {}, fl
                     <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl shadow-xl py-2 z-20">
                       <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800">
                         <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Espace Admin</div>
-                        <div className="text-sm font-bold text-slate-800 dark:text-slate-100">{user?.first_name} {user?.last_name}</div>
+                        <div className="text-sm font-bold text-slate-800 dark:text-slate-100">{firstName} {lastName}</div>
                       </div>
                       <div className="flex items-center justify-between px-4 py-2">
                         <span className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400"><Moon size={15} />Thème</span>

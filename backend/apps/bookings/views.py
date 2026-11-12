@@ -201,28 +201,97 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def rate(self, request, pk=None):
-        """Avis client sur une location terminée : met à jour la note moyenne du véhicule."""
+        """Avis client : note du véhicule (rating/review) et/ou du chauffeur
+        (driver_rating). Chaque note n'est attribuable qu'une seule fois."""
         booking = self.get_object()
         if booking.client_id != request.user.id:
             raise PermissionDenied('Cette réservation ne vous appartient pas.')
-        if booking.client_rating:
-            raise ValidationError({'detail': 'Vous avez déjà évalué cette location.'})
+
+        def _note(key):
+            try:
+                v = int(request.data.get(key))
+            except (TypeError, ValueError):
+                return None
+            if not 1 <= v <= 5:
+                raise ValidationError({key: 'La note doit être comprise entre 1 et 5.'})
+            return v
+
+        rating = _note('rating')
+        driver_rating = _note('driver_rating')
+        saved = []
+
+        if rating is not None:
+            if booking.client_rating:
+                raise ValidationError({'detail': 'Vous avez déjà évalué cette location.'})
+            booking.client_rating = rating
+            booking.client_review = (request.data.get('review') or '').strip()[:2000]
+            saved += ['client_rating', 'client_review']
+
+        if driver_rating is not None:
+            if not booking.driver_id:
+                raise ValidationError({'driver_rating': 'Aucun chauffeur sur cette réservation.'})
+            if booking.driver_rating:
+                raise ValidationError({'detail': 'Vous avez déjà noté ce chauffeur.'})
+            booking.driver_rating = driver_rating
+            saved.append('driver_rating')
+
+        if not saved:
+            raise ValidationError({'rating': 'La note doit être comprise entre 1 et 5.'})
+
+        booking.save(update_fields=saved + ['updated_at'])
+
+        if rating is not None:
+            vehicle = booking.vehicle
+            ratings = Booking.objects.filter(vehicle=vehicle, client_rating__isnull=False)
+            vehicle.rating = Decimal(str(round(ratings.aggregate(v=Avg('client_rating'))['v'] or 0, 2)))
+            vehicle.rating_count = ratings.count()
+            vehicle.save(update_fields=['rating', 'rating_count', 'updated_at'])
+            _notify(vehicle.owner, 'Nouvel avis client',
+                    f'{booking.client.get_full_name()} a noté votre {vehicle} {rating}/5.')
+
+        if driver_rating is not None:
+            from apps.drivers.models import DriverProfile
+            profile, _ = DriverProfile.objects.get_or_create(driver_id=booking.driver_id)
+            dqs = Booking.objects.filter(driver_id=booking.driver_id, driver_rating__isnull=False)
+            profile.rating = Decimal(str(round(dqs.aggregate(v=Avg('driver_rating'))['v'] or 0, 2)))
+            profile.rating_count = dqs.count()
+            profile.save(update_fields=['rating', 'rating_count'])
+            comment = booking.client_review or (request.data.get('driver_review') or '').strip()[:2000]
+            _notify(
+                booking.driver, 'Nouvel avis client',
+                f'{booking.client.get_full_name()} vous a noté {driver_rating}/5 '
+                f'pour la course {booking}.'
+                + (f'\n« {comment} »' if comment else ''),
+            )
+
+        return Response(self.get_serializer(booking).data)
+
+    @action(detail=True, methods=['post'], url_path='rate-client')
+    def rate_client(self, request, pk=None):
+        """Le propriétaire note le locataire après une location terminée."""
+        booking = self.get_object()
+        if request.user.role != 'OWNER' or booking.vehicle.owner_id != request.user.id:
+            raise PermissionDenied('Ce véhicule ne vous appartient pas.')
+        if booking.status != 'completed':
+            raise ValidationError({'detail': 'Le client ne peut être noté qu\'après la fin de la location.'})
+        if booking.owner_rating:
+            raise ValidationError({'detail': 'Vous avez déjà évalué ce locataire.'})
         try:
             rating = int(request.data.get('rating'))
         except (TypeError, ValueError):
             rating = 0
         if not 1 <= rating <= 5:
             raise ValidationError({'rating': 'La note doit être comprise entre 1 et 5.'})
-        booking.client_rating = rating
-        booking.client_review = (request.data.get('review') or '').strip()[:2000]
-        booking.save(update_fields=['client_rating', 'client_review', 'updated_at'])
-        vehicle = booking.vehicle
-        ratings = Booking.objects.filter(vehicle=vehicle, client_rating__isnull=False)
-        vehicle.rating = Decimal(str(round(ratings.aggregate(v=Avg('client_rating'))['v'] or 0, 2)))
-        vehicle.rating_count = ratings.count()
-        vehicle.save(update_fields=['rating', 'rating_count', 'updated_at'])
-        _notify(vehicle.owner, 'Nouvel avis client',
-                f'{booking.client.get_full_name()} a noté votre {vehicle} {rating}/5.')
+        booking.owner_rating = rating
+        booking.owner_review = (request.data.get('review') or '').strip()[:2000]
+        booking.save(update_fields=['owner_rating', 'owner_review', 'updated_at'])
+        comment = booking.owner_review
+        _notify(
+            booking.client, 'Avis du propriétaire',
+            f'{booking.vehicle.owner.get_full_name()} vous a noté {rating}/5 '
+            f'pour la location {booking}.'
+            + (f'\n« {comment} »' if comment else ''),
+        )
         return Response(self.get_serializer(booking).data)
 
     @action(detail=False, methods=['get'], url_path='owner-requests')
@@ -308,7 +377,8 @@ class BookingViewSet(viewsets.ModelViewSet):
         end = dtc.combine(booking.end_date, booking.end_time or tz(0, 0))
         hours = max(1, (end - start).total_seconds() / 3600)
         booking.days = max(1, -(-int(hours * 60) // (24 * 60)))
-        booking.driver_fee = (Decimal('10000') * booking.days) if booking.driver_type == 'internal' else Decimal('0')
+        from apps.users.models import PlatformSettings
+        booking.driver_fee = (Decimal(str(PlatformSettings.current().driver_daily_fee or 10000)) * booking.days) if booking.driver_type != Booking.DriverType.NONE else Decimal('0')
         if delta < 0:
             from apps.payments.models import WalletTransaction
             cl = booking.client
@@ -697,9 +767,12 @@ class BookingViewSet(viewsets.ModelViewSet):
         _s = dtc.combine(merged['start_date'], merged['start_time'] or tz(0, 0))
         _e = dtc.combine(merged['end_date'], merged['end_time'] or tz(0, 0))
         probe.days = max(1, -(-int((_e - _s).total_seconds() / 60) // 1440))
-        probe.driver_fee = (Decimal('10000') * probe.days) if merged['driver_type'] != Booking.DriverType.NONE else Decimal('0')
-        probe.delivery_fee = Decimal('5000') if booking.delivery_requested else Decimal('0')
-        gross = probe.daily_rate * probe.days * Decimal(100 - (booking.discount_percent or 0)) / 100
+        from apps.users.models import PlatformSettings
+        _ps = PlatformSettings.current()
+        probe.driver_fee = (Decimal(str(_ps.driver_daily_fee or 10000)) * probe.days) if merged['driver_type'] != Booking.DriverType.NONE else Decimal('0')
+        probe.delivery_fee = Decimal(str(_ps.delivery_fee or 5000)) if booking.delivery_requested else Decimal('0')
+        probe.discount_percent = 10 if probe.days >= 30 else 5 if probe.days > 3 else 0
+        gross = probe.daily_rate * probe.days * Decimal(100 - probe.discount_percent) / 100
         new_subtotal = (gross + probe.driver_fee + probe.delivery_fee).quantize(Decimal('0.01'))
         delta = new_subtotal - booking.subtotal
         from apps.payments.models import WalletTransaction
@@ -1053,7 +1126,7 @@ class BookingViewSet(viewsets.ModelViewSet):
             'ongoing': qs.filter(status='active').count(),
             'completed': completed,
             'cancelled': cancelled,
-            'average_rating': qs.aggregate(v=Avg('client_rating'))['v'] or 0,
+            'average_rating': qs.aggregate(v=Avg('owner_rating'))['v'] or 0,
             'trust_score': round(trust, 1),
             'monthly': list(monthly),
             'driver_split': list(driver_split),
@@ -1065,8 +1138,8 @@ class BookingViewSet(viewsets.ModelViewSet):
             raise PermissionDenied('Réservé aux clients.')
         bookings = Booking.objects.filter(client=request.user)
         return Response({
-            'average_rating': bookings.aggregate(value=Avg('client_rating'))['value'] or 0,
-            'rated_count': bookings.exclude(client_rating__isnull=True).count(),
+            'average_rating': bookings.aggregate(value=Avg('owner_rating'))['value'] or 0,
+            'rated_count': bookings.exclude(owner_rating__isnull=True).count(),
             'distinct_vehicles': bookings.values('vehicle_id').distinct().count(),
             'bookings_total': bookings.count(),
             'total_spent': bookings.exclude(status='cancelled').aggregate(

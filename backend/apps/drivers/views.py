@@ -48,7 +48,8 @@ def _promote_to_driver(app):
             last_name=parts[1] if len(parts) > 1 else '',
             role='DRIVER',
         )
-        user.phone = app.phone or ''
+        from apps.users.serializers import phone_taken
+        user.phone = '' if phone_taken(app.phone, exclude=user) else (app.phone or '')
         user.set_unusable_password()
         user.save(update_fields=['phone', 'password'])
         app.applicant = user
@@ -100,6 +101,28 @@ def _promote_to_driver(app):
         )
 
 
+def _send_application_received_email(app):
+    """Accusé de réception envoyé au candidat dès le dépôt de sa candidature."""
+    from django.core.mail import send_mail
+    recipient = (app.applicant.email if app.applicant else None) or app.email
+    if not recipient:
+        return
+    name = (app.full_name or '').strip() or (app.applicant.get_full_name() if app.applicant else '') or 'chauffeur'
+    send_mail(
+        subject='AutoLink Pro — Candidature chauffeur reçue',
+        message=(
+            f'Bonjour {name},\n\n'
+            'Nous avons bien reçu votre candidature chauffeur AutoLink Pro.\n'
+            'Notre équipe l\'examine et vous informera par email dès qu\'elle sera validée '
+            '(ou si nous avons besoin d\'informations complémentaires).\n\n'
+            '— L\'équipe AutoLink Pro'
+        ),
+        from_email=None,
+        recipient_list=[recipient],
+        fail_silently=True,
+    )
+
+
 class IsAdminRole(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated and request.user.role == 'ADMIN'
@@ -129,11 +152,12 @@ class DriverApplicationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if self.request.user.role == 'ADMIN':
-            return DriverApplication.objects.all()
-        return DriverApplication.objects.filter(applicant=self.request.user)
+            return DriverApplication.objects.select_related('applicant').order_by('-applied_at')
+        return DriverApplication.objects.filter(applicant=self.request.user).order_by('-applied_at')
 
     def perform_create(self, serializer):
-        serializer.save(applicant=self.request.user if self.request.user.is_authenticated else None)
+        app = serializer.save(applicant=self.request.user if self.request.user.is_authenticated else None)
+        _send_application_received_email(app)
 
     def perform_update(self, serializer):
         if self.request.user.role == 'ADMIN':

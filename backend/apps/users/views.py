@@ -11,7 +11,7 @@ import logging
 from urllib.parse import urlencode
 from django.core import signing
 from django.core.mail import get_connection, EmailMultiAlternatives
-from django.db.models import Count
+from django.db.models import Count, Avg
 from django.db.models.deletion import ProtectedError
 from django.urls import reverse
 from django.utils.html import escape, strip_tags
@@ -27,7 +27,7 @@ from .email_utils import (
 )
 from rest_framework.parsers import FormParser, MultiPartParser
 from .models import Agent, ContactMessage, NewsletterCampaign, Offer, PlatformSettings, User, Notification, LoginCode, UserDocument, UserSession
-from .serializers import AgentSerializer, ContactMessageAdminSerializer, ContactMessageSerializer, NewsletterCampaignSerializer, NewsletterSendSerializer, UserSerializer, RegisterSerializer, LoginSerializer, AdminUserSerializer, AdminUserCreateSerializer, GoogleAuthSerializer, NotificationSerializer, KYCUploadSerializer, PlatformSettingsSerializer, UserDocumentSerializer, OfferSerializer, UserSessionSerializer
+from .serializers import AgentSerializer, ContactMessageAdminSerializer, ContactMessageSerializer, NewsletterCampaignSerializer, NewsletterSendSerializer, UserSerializer, RegisterSerializer, LoginSerializer, AdminUserSerializer, AdminUserCreateSerializer, GoogleAuthSerializer, NotificationSerializer, KYCUploadSerializer, PlatformSettingsSerializer, UserDocumentSerializer, AdminDocumentSerializer, OfferSerializer, UserSessionSerializer
 
 
 logger = logging.getLogger(__name__)
@@ -266,6 +266,55 @@ class AdminUserDocumentListView(generics.ListAPIView):
 
     def get_queryset(self):
         return UserDocument.objects.filter(user_id=self.kwargs['pk']).select_related('user')
+
+
+class AdminDocumentListView(generics.ListAPIView):
+    """Tous les documents déposés par les utilisateurs (tous rôles) — console KYC admin."""
+    serializer_class = AdminDocumentSerializer
+    permission_classes = [IsAdminRole]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'user__first_name', 'user__last_name', 'user__email', 'user__username']
+    ordering_fields = ['created_at', 'validity', 'status']
+
+    def get_queryset(self):
+        qs = UserDocument.objects.select_related('user').order_by('-created_at')
+        status_param = self.request.query_params.get('status')
+        role = self.request.query_params.get('role')
+        if status_param in ('pending', 'verified', 'rejected'):
+            qs = qs.filter(status=status_param)
+        if role:
+            qs = qs.filter(user__role=role)
+        return qs
+
+
+class AdminDocumentVerifyView(generics.UpdateAPIView):
+    """Marque un document conforme ou refusé + notification du déposant."""
+    serializer_class = AdminDocumentSerializer
+    permission_classes = [IsAdminRole]
+    http_method_names = ['patch']
+
+    def get_queryset(self):
+        return UserDocument.objects.select_related('user')
+
+    def perform_update(self, serializer):
+        new_status = serializer.validated_data.get('status')
+        if new_status not in ('pending', 'verified', 'rejected'):
+            raise ValidationError({'status': 'Statut invalide.'})
+        doc = serializer.instance
+        note = self.request.data.get('verification_note', doc.verification_note)
+        doc.status = new_status
+        doc.verification_note = (note or '')[:255]
+        doc.verified_by = self.request.user
+        doc.verified_at = timezone.now() if new_status != 'pending' else None
+        doc.save(update_fields=['status', 'verification_note', 'verified_by', 'verified_at'])
+        if new_status == 'verified':
+            title, msg = 'Document validé', f'Votre document « {doc.name} » a été vérifié et est conforme.'
+        elif new_status == 'rejected':
+            title = 'Document refusé'
+            msg = f'Votre document « {doc.name} » a été refusé.' + (f' Motif : {doc.verification_note}' if doc.verification_note else '')
+        else:
+            title, msg = 'Document repassé en attente', f'Votre document « {doc.name} » est de nouveau en cours de vérification.'
+        Notification.objects.create(user=doc.user, title=title, message=msg)
 
 
 class ContactMessageViewSet(ModelViewSet):
@@ -809,6 +858,8 @@ class UserListView(generics.ListCreateAPIView):
             bookings_count=Count('bookings', distinct=True),
             vehicles_count=Count('vehicles', distinct=True),
             trips_count=Count('driven_bookings', distinct=True),
+            client_rating=Avg('bookings__owner_rating'),
+            client_rating_count=Count('bookings__owner_rating', distinct=True),
         ).order_by('-created_at')
 
     def get_serializer_class(self):
@@ -825,6 +876,8 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
             bookings_count=Count('bookings', distinct=True),
             vehicles_count=Count('vehicles', distinct=True),
             trips_count=Count('driven_bookings', distinct=True),
+            client_rating=Avg('bookings__owner_rating'),
+            client_rating_count=Count('bookings__owner_rating', distinct=True),
         )
 
     def perform_update(self, serializer):

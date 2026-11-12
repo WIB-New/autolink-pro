@@ -1,3 +1,4 @@
+import re
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -7,6 +8,21 @@ from .email_utils import (
     send_welcome_email,
 )
 from .models import Agent, ContactMessage, NewsletterCampaign, Offer, PlatformSettings, User, Notification, UserDocument, UserSession
+
+
+def _phone_digits(value):
+    return re.sub(r'\D', '', value or '')
+
+
+def phone_taken(value, exclude=None):
+    """True si un autre utilisateur possède déjà ce numéro (chiffres identiques)."""
+    digits = _phone_digits(value)
+    if not digits:
+        return False
+    qs = User.objects.exclude(phone='').exclude(phone__isnull=True)
+    if exclude is not None and getattr(exclude, 'pk', None):
+        qs = qs.exclude(pk=exclude.pk)
+    return any(_phone_digits(u.phone) == digits for u in qs.only('phone'))
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -24,6 +40,13 @@ class UserSerializer(serializers.ModelSerializer):
             email__iexact=value.strip(),
         ).exclude(pk=self.instance.pk).exists():
             raise serializers.ValidationError('Cet email est déjà utilisé par un autre compte.')
+        return value
+
+    def validate_phone(self, value):
+        """Un numéro de téléphone ne peut appartenir qu'à un seul compte
+        (comparaison sur les chiffres : +237 6… et 6… sont le même numéro)."""
+        if phone_taken(value, exclude=self.instance):
+            raise serializers.ValidationError('Ce numéro de téléphone est déjà associé à un compte.')
         return value
 
 
@@ -50,8 +73,32 @@ class KYCUploadSerializer(serializers.ModelSerializer):
 class UserDocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserDocument
-        fields = ['id', 'name', 'doc_type', 'issued_place', 'validity', 'file', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        fields = ['id', 'name', 'doc_type', 'issued_place', 'validity', 'file',
+                  'status', 'verification_note', 'verified_at', 'created_at']
+        read_only_fields = ['id', 'created_at', 'status', 'verification_note', 'verified_at']
+
+
+class AdminDocumentSerializer(UserDocumentSerializer):
+    """Document enrichi des infos du déposant — console KYC admin."""
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+    user_name = serializers.SerializerMethodField()
+    user_role = serializers.CharField(source='user.role', read_only=True)
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    user_avatar = serializers.SerializerMethodField()
+
+    class Meta(UserDocumentSerializer.Meta):
+        fields = UserDocumentSerializer.Meta.fields + ['user_id', 'user_name', 'user_role', 'user_email', 'user_avatar']
+        read_only_fields = ['id', 'created_at', 'verified_at', 'verification_note']
+
+    def get_user_name(self, obj):
+        return obj.user.get_full_name() or obj.user.username
+
+    def get_user_avatar(self, obj):
+        if not obj.user.avatar:
+            return None
+        request = self.context.get('request')
+        url = obj.user.avatar.url
+        return request.build_absolute_uri(url) if request else url
 
 
 class UserSessionSerializer(serializers.ModelSerializer):
@@ -139,15 +186,35 @@ class AdminUserSerializer(serializers.ModelSerializer):
     bookings_count = serializers.IntegerField(read_only=True)
     vehicles_count = serializers.IntegerField(read_only=True)
     trips_count = serializers.IntegerField(read_only=True)
+    client_rating = serializers.FloatField(read_only=True)
+    client_rating_count = serializers.IntegerField(read_only=True)
+    driver_rating = serializers.SerializerMethodField()
+    driver_rating_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'phone', 'balance',
+                  'whatsapp', 'payment_method', 'payment_phone',
                   'is_active', 'is_verified', 'id_document_verified', 'is_staff', 'created_at',
-                  'city', 'id_document', 'driving_license', 'driving_license_expires_at',
+                  'city', 'avatar', 'id_document', 'driving_license', 'driving_license_expires_at',
+                  'address_proof', 'insurance',
                   'kyc_status', 'kyc_note', 'kyc_submitted_at',
-                  'bookings_count', 'vehicles_count', 'trips_count']
+                  'bookings_count', 'vehicles_count', 'trips_count',
+                  'client_rating', 'client_rating_count', 'driver_rating', 'driver_rating_count']
         read_only_fields = ['id', 'created_at', 'id_document', 'driving_license', 'kyc_submitted_at']
+
+    def get_driver_rating(self, obj):
+        p = getattr(obj, 'driver_profile', None)
+        return float(p.rating) if p and p.rating_count else None
+
+    def get_driver_rating_count(self, obj):
+        p = getattr(obj, 'driver_profile', None)
+        return p.rating_count if p else 0
+
+    def validate_phone(self, value):
+        if phone_taken(value, exclude=self.instance):
+            raise serializers.ValidationError('Ce numéro de téléphone est déjà associé à un compte.')
+        return value
 
 
 class AdminUserCreateSerializer(serializers.ModelSerializer):
@@ -156,6 +223,11 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['username', 'email', 'first_name', 'last_name', 'role', 'phone', 'password']
+
+    def validate_phone(self, value):
+        if phone_taken(value):
+            raise serializers.ValidationError('Ce numéro de téléphone est déjà associé à un compte.')
+        return value
 
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
@@ -184,6 +256,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         attrs['email'] = email
         if attrs.get('role') not in self.PUBLIC_ROLES:
             attrs['role'] = 'CLIENT'
+        if phone_taken(attrs.get('phone')):
+            raise serializers.ValidationError({'phone': 'Ce numéro de téléphone est déjà associé à un compte.'})
         code = attrs.get('agent_code', '').strip()
         if code:
             from apps.affiliates.models import Agent

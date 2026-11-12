@@ -43,12 +43,12 @@ import DriverRecruitment from './pages/admin/DriverRecruitment';
 import Finance from './pages/admin/Finance';
 import VehicleInspection from './pages/admin/VehicleInspection';
 import ManageUsers from './pages/admin/ManageUsers';
+import AdminKyc from './pages/admin/AdminKyc';
 import ControllerDashboard from './pages/controller/ControllerDashboard';
 import CatalogManager from './pages/admin/CatalogManager';
 import AgentsManager from './pages/admin/AgentsManager';
 import Profile from './pages/Profile';
-import ProfileMoko from './pages/ProfileMoko';
-import SettingsMoko from './pages/SettingsMoko';
+import OP from './design/owner_profile';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import Disputes from './pages/admin/Disputes';
@@ -99,12 +99,12 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   return children;
 };
 
-// Rend la bonne interface selon le rôle : Yves pour CLIENT/DRIVER,
-// Moko (dev_back) pour OWNER/ADMIN/CONTROLLER/INTERMEDIARY.
-const RolePage = ({ yves, moko }) => {
+// Rend la bonne interface selon le rôle : yves pour CLIENT,
+// driver pour DRIVER (fallback yves), moko pour OWNER/ADMIN/CONTROLLER/INTERMEDIARY.
+const RolePage = ({ yves, moko, driver }) => {
   const { user } = useAuth();
-  const isYvesUi = ['CLIENT', 'DRIVER'].includes(user?.role);
-  return isYvesUi ? yves : moko;
+  if (user?.role === 'DRIVER') return driver || yves;
+  return user?.role === 'CLIENT' ? yves : moko;
 };
 
 const Guard = ({ roles, children }) => <ProtectedRoute allowedRoles={roles}>{children}</ProtectedRoute>;
@@ -170,6 +170,7 @@ function AppRoutes() {
       <Route path="/admin/clients" element={<Guard roles={['ADMIN']}><AdminClients /></Guard>} />
       <Route path="/admin/clients/:id" element={<Guard roles={['ADMIN']}><AdminClientDetail /></Guard>} />
       <Route path="/admin/drivers" element={<Guard roles={['ADMIN']}><DriverRecruitment /></Guard>} />
+      <Route path="/admin/kyc" element={<Guard roles={['ADMIN']}><AdminKyc /></Guard>} />
       <Route path="/admin/finance" element={<Guard roles={['ADMIN']}><Finance /></Guard>} />
       <Route path="/admin/inspections" element={<Guard roles={['ADMIN', 'CONTROLLER']}><VehicleInspection /></Guard>} />
       <Route path="/admin/users" element={<Guard roles={['ADMIN']}><ManageUsers /></Guard>} />
@@ -180,8 +181,12 @@ function AppRoutes() {
       <Route path="/controller/dashboard" element={<Guard roles={['ADMIN', 'CONTROLLER']}><ControllerDashboard /></Guard>} />
 
       {/* Pages communes à tous les rôles connectés */}
-      <Route path="/profile" element={<Guard><RolePage yves={<D9 />} moko={<ProfileMoko />} /></Guard>} />
-      <Route path="/settings" element={<Guard><RolePage yves={<Parametres />} moko={<SettingsMoko />} /></Guard>} />
+      <Route path="/owner/profile" element={<Guard roles={['OWNER']}><OP /></Guard>} />
+      <Route path="/owner/settings" element={<Guard roles={['OWNER']}><Parametres role="owner" /></Guard>} />
+
+      {/* Pages communes à tous les rôles connectés */}
+      <Route path="/profile" element={<Guard><RolePage yves={<D9 />} driver={<DP />} moko={<OP />} /></Guard>} />
+      <Route path="/settings" element={<Guard><RolePage yves={<Parametres />} driver={<Parametres role="driver" />} moko={<Parametres role="owner" />} /></Guard>} />
       <Route path="/messages" element={<Guard roles={['CLIENT', 'DRIVER']}><D7 /></Guard>} />
       <Route path="/notifications" element={<Guard roles={['CLIENT', 'DRIVER']}><D8 /></Guard>} />
 

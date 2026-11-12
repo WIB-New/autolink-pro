@@ -41,7 +41,7 @@ const HTML = `<div class="w-full px-gutter py-space-lg flex flex-col gap-space-l
 <span class="w-11 h-11 rounded-xl bg-green-100 flex items-center justify-center text-green-600 shrink-0"><span class="material-symbols-outlined text-[22px]">star</span></span>
 <div class="flex flex-col min-w-0">
 <span class="font-headline-lg text-headline-lg font-bold text-on-surface leading-none">4.9</span>
-<span class="font-label-md text-label-md text-on-surface-variant mt-1">Score Confiance</span>
+<span class="font-label-md text-label-md text-on-surface-variant mt-1">Votre score de confiance</span>
 </div>
 <span class="absolute top-0 bottom-0 right-0 w-1.5 bg-green-600"></span>
 </div>
@@ -122,7 +122,7 @@ const HTML = `<div class="w-full px-gutter py-space-lg flex flex-col gap-space-l
 <!-- Courbe sparkline : score confiance -->
 <div class="lg:col-span-4 flex flex-col p-space-lg rounded-xl bg-surface-container-lowest text-on-surface shadow-sm">
 <div class="flex items-center justify-between pb-space-md">
-<span class="font-headline-sm text-headline-sm font-bold text-on-surface">Score Confiance</span>
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">Votre score de confiance</span>
 <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm font-bold"><span class="material-symbols-outlined text-[14px]">military_tech</span>Top 5 %</span>
 </div>
 <svg class="w-full h-24" viewBox="0 0 300 80" preserveAspectRatio="none">
@@ -130,7 +130,7 @@ const HTML = `<div class="w-full px-gutter py-space-lg flex flex-col gap-space-l
 <circle cx="300" cy="15" r="5" fill="#0d9488" stroke="#fff" stroke-width="2"/>
 </svg>
 <div class="flex items-end justify-between pt-space-sm border-t border-outline-variant/30">
-<div class="flex flex-col"><span class="font-label-sm text-label-sm text-on-surface-variant">Note actuelle</span><span class="font-headline-lg text-headline-lg font-bold text-on-surface">4.9 / 5</span></div>
+<div class="flex flex-col"><span class="font-label-sm text-label-sm text-on-surface-variant">Note des propriétaires</span><span class="font-headline-lg text-headline-lg font-bold text-on-surface">4.9 / 5</span></div>
 <div class="flex flex-col items-end"><span class="font-label-sm text-label-sm text-on-surface-variant">Annulations</span><span class="font-label-lg text-label-lg font-bold text-primary">0</span></div>
 </div>
 </div>
@@ -167,7 +167,7 @@ export default function C1TableauDeBordClient() {
         .replace('>45 000 <span class="font-label-sm text-label-sm text-on-surface-variant font-normal">FCFA</span></span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">Solde disponible<', `>${fmt(d.balance)} <span class="font-label-sm text-label-sm text-on-surface-variant font-normal">FCFA</span></span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">Solde disponible<`)
         .replace('>6</span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">Locations<', `>${fmt(d.bookings_total)}</span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">Locations<`)
         .replace('>150 000 <span class="font-label-sm text-label-sm text-on-surface-variant font-normal">FCFA</span></span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">Caution bloquée<', `>${fmt(d.held_deposit)} <span class="font-label-sm text-label-sm text-on-surface-variant font-normal">FCFA</span></span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">Caution bloquée<`)
-        .replace('>4.9</span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">Score Confiance<', `>${d.trust_score}</span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">Score Confiance<`);
+        .replace('>4.9</span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">Votre score de confiance<', `>${d.trust_score}</span>\n<span class="font-label-md text-label-md text-on-surface-variant mt-1">Votre score de confiance<`);
 
       // --- Graphique dépenses : courbe réelle sur 6 mois ---
       const MN = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sept', 'Oct', 'Nov', 'Déc'];

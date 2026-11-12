@@ -102,9 +102,14 @@ class BookingFlowTests(APITestCase):
         self.client_user.refresh_from_db()
         total = booking.subtotal + booking.deposit_amount
         self.assertEqual(self.client_user.balance, Decimal('5000000') - total)
-        # commission 15 % — le propriétaire touche 85 %
+        # commission AutoLink sur la location seule — le reste (frais
+        # chauffeur/livraison) n'est pas commissionné
         self.assertEqual(pay.commission + pay.owner_payout, pay.amount)
-        self.assertEqual(booking.commission_amount, (booking.subtotal * Decimal('0.15')).quantize(Decimal('0.01')))
+        from apps.users.models import PlatformSettings
+        rental = booking.subtotal - booking.driver_fee - booking.delivery_fee
+        rate = Decimal(str(PlatformSettings.current().commission_rate))
+        self.assertEqual(booking.commission_amount, (rental * rate).quantize(Decimal('0.01')))
+        self.assertEqual(booking.owner_amount, rental - booking.commission_amount)
 
     def test_client_stats_sum_non_cancelled_subtotals(self):
         first = self._confirmed_booking()
@@ -347,7 +352,7 @@ class BookingEditAndReceiptTests(APITestCase):
         self.assertEqual(response.status_code, 200, response.data)
         self.client_user.refresh_from_db()
         self.assertEqual(self.client_user.balance, Decimal('75000'))
-        transaction = WalletTransaction.objects.get(reference=f'BK-EDIT-{booking.pk}')
+        transaction = WalletTransaction.objects.get(reference=f'BK-{booking.pk:04d}-EXTRA')
         self.assertEqual(transaction.kind, 'debit')
         self.assertEqual(transaction.amount, Decimal('25000'))
 
@@ -363,8 +368,16 @@ class BookingEditAndReceiptTests(APITestCase):
         )
         self.assertEqual(response.status_code, 200, response.data)
         self.client_user.refresh_from_db()
+        # Le trop-perçu n'est remboursé qu'à la validation du propriétaire
+        self.assertEqual(self.client_user.balance, Decimal('100000'))
+        booking.refresh_from_db()
+        self.assertEqual(Decimal(booking.modification['delta']), Decimal('-45000.00'))
+        self.client.force_authenticate(self.owner)
+        response = self.client.post(f'/api/bookings/{booking.pk}/owner-accept/')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.client_user.refresh_from_db()
         self.assertEqual(self.client_user.balance, Decimal('145000'))
-        transaction = WalletTransaction.objects.get(reference=f'BK-EDIT-{booking.pk}')
+        transaction = WalletTransaction.objects.get(reference=f'BK-{booking.pk:04d}-MODREF')
         self.assertEqual(transaction.kind, 'refund')
         self.assertEqual(transaction.amount, Decimal('45000'))
 

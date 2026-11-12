@@ -116,7 +116,8 @@ export const bookingsAPI = {
   contract: (id) => api.get(`/bookings/${id}/contract/`, { responseType: 'blob' }),
   confirmationEmail: (id) => api.post(`/bookings/${id}/confirmation-email/`),
   emailReceipt: (id) => api.post(`/bookings/${id}/receipt/email/`),
-  rate: (id, rating, review) => api.post(`/bookings/${id}/rate/`, { rating, review }),
+  rate: (id, rating, review, driver_rating, driver_review) => api.post(`/bookings/${id}/rate/`, { rating, review, driver_rating, driver_review }),
+  rateClient: (id, rating, review) => api.post(`/bookings/${id}/rate-client/`, { rating, review }),
   ownerRequests: (params) => api.get('/bookings/owner-requests/', { params }),
   ownerAccept: (id) => api.post(`/bookings/${id}/owner-accept/`),
   ownerRefuse: (id, reason) => api.post(`/bookings/${id}/owner-refuse/`, { reason }),
@@ -213,6 +214,12 @@ export const usersAPI = {
     payload instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
   referral: () => api.get('/users/me/referral/'),
   documents: (userId) => api.get(`/users/${userId}/documents/`),
+};
+
+// Console KYC admin — tous les documents de tous les utilisateurs
+export const adminDocsAPI = {
+  list: (params) => api.get('/users/documents/', { params }),
+  verify: (id, status, verification_note) => api.patch(`/users/documents/${id}/`, { status, verification_note }),
 };
 
 // Agents / parrainage — admin uniquement

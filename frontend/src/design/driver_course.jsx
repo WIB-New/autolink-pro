@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import DesignShell from './DesignShell';
 import useApiData from '../utils/useApiData';
-import { bookingsAPI, vehiclesAPI } from '../services/api';
+import { bookingsAPI, vehiclesAPI, messagingAPI } from '../services/api';
 import Icon from '../components/Icon';
 
 const STATUS_META = {
@@ -177,7 +177,11 @@ export default function DriverCourse() {
                   {b.driver_response === 'refused' && (
                     <button onClick={() => act('pending', 'Annuler votre refus ?')} className="w-full py-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant font-label-md text-label-md font-semibold">Annuler le refus</button>
                   )}
-                  <button onClick={() => navigate('/driver/messages')} className="w-full py-2.5 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md font-semibold inline-flex items-center justify-center gap-1"><Icon name="chat" size={16} />Messagerie</button>
+                  <button onClick={() => {
+                    messagingAPI.open({ booking: b?.id || id })
+                      .then(({ data: conv }) => navigate(`/driver/messages?conv=${conv.id}`))
+                      .catch(() => navigate('/driver/messages'));
+                  }} className="w-full py-2.5 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md font-semibold inline-flex items-center justify-center gap-1"><Icon name="chat" size={16} />Messagerie</button>
                 </div>
               </div>
             )}

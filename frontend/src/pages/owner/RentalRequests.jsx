@@ -97,6 +97,32 @@ export default function RentalRequests() {
     setBusy(false);
   };
 
+  const [rateVal, setRateVal] = useState(0);
+  const [rateText, setRateText] = useState('');
+  const selectedKey = selected?.id;
+  useEffect(() => { setRateVal(0); setRateText(''); }, [selectedKey]);
+
+  const rateClient = async () => {
+    if (!rateVal) return;
+    setBusy(true);
+    try {
+      await bookingsAPI.rateClient(selected.id, rateVal, rateText);
+      setRateVal(0); setRateText('');
+      await load();
+    } catch (e) { setError(e.response?.data?.detail || e.response?.data?.rating?.[0] || t('Notation impossible.')); }
+    setBusy(false);
+  };
+
+  const Stars = ({ value, onPick }) => (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button key={n} type="button" disabled={!onPick} onClick={() => onPick?.(n)} className={onPick ? 'hover:scale-110 transition-transform' : 'cursor-default'}>
+          <Icon name="star" size={22} className={n <= value ? 'text-amber-500' : 'text-outline'} />
+        </button>
+      ))}
+    </div>
+  );
+
   const gross = (b) => Number(b.daily_rate) * Number(b.days);
   const pending = tab === 'pending';
 
@@ -267,6 +293,28 @@ export default function RentalRequests() {
                     <div className="flex justify-between pt-2 border-t border-outline-variant/40 font-headline-sm text-headline-sm text-primary"><dt>{t('Gain net')}</dt><dd>{formatNumber(selected.owner_amount)} FCFA</dd></div>
                   </dl>
                 </div>
+                {selected.status === 'completed' && (
+                  <div>
+                    <div className="overline mb-2">{t('Évaluer le locataire')}</div>
+                    <div className="p-3 rounded-xl bg-surface-container-low dark:bg-slate-900 flex flex-col gap-2">
+                      {selected.owner_rating ? (
+                        <>
+                          <Stars value={selected.owner_rating} />
+                          {selected.owner_review && <p className="font-body-sm text-body-sm text-on-surface-variant italic">« {selected.owner_review} »</p>}
+                        </>
+                      ) : (
+                        <>
+                          <Stars value={rateVal} onPick={setRateVal} />
+                          <textarea rows={2} value={rateText} onChange={(e) => setRateText(e.target.value)}
+                            placeholder={t('Ponctualité, état du véhicule, respect… (optionnel)')} className="input-field" />
+                          <button disabled={busy || !rateVal} onClick={rateClient} className="btn-primary self-start disabled:opacity-40">
+                            <Icon name="send" size={16} />{t('Publier la note')}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
               {pending && (
                 <div className="p-5 border-t border-outline-variant/30 dark:border-slate-700 flex flex-col gap-2">

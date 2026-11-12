@@ -131,8 +131,31 @@ export default function PlatformSettings() {
                 <span className="font-label-lg text-label-lg text-on-surface dark:text-white">{t('Exemple sur 100 000 FCFA')}</span>
                 <div className="flex justify-between font-body-md text-body-md"><span>{t('Commission AutoLink')}</span><strong>{formatNumber(1000 * commissionPercent)} F</strong></div>
                 <div className="flex justify-between font-body-md text-body-md"><span>{t('Part propriétaire')}</span><strong className="text-primary">{formatNumber(100000 - 1000 * commissionPercent)} F</strong></div>
-                <p className="font-body-sm text-body-sm text-on-surface-variant">{t('La part chauffeur est déduite de la commission AutoLink.')}</p>
+                <div className="flex justify-between font-body-md text-body-md"><span>{t('Chauffeur')}</span><strong>{formatNumber(form.driver_daily_fee || 0)} F/j</strong></div>
+                <p className="font-body-sm text-body-sm text-on-surface-variant">{t('Le chauffeur reçoit le forfait journalier complet, versé sur son solde à la clôture.')}</p>
               </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <label className="p-4 rounded-xl bg-surface-container-low dark:bg-slate-900 flex flex-col gap-2">
+                <span className="font-label-lg text-label-lg text-on-surface dark:text-white">{t('Tarif chauffeur / jour')}</span>
+                <span className="font-body-sm text-body-sm text-on-surface-variant">{t('Facturé au client pour l\'option « Chauffeur AutoLink ».')}</span>
+                <span className="flex items-center gap-2 px-3 rounded-lg bg-surface-container-lowest dark:bg-slate-800">
+                  <input type="number" min={0} step={500} value={Math.round(Number(form.driver_daily_fee || 0))}
+                    onChange={(e) => set('driver_daily_fee')(e.target.value)}
+                    className="w-full bg-transparent py-2 font-headline-md text-headline-md focus:outline-none dark:text-white" />
+                  <span className="font-headline-sm text-headline-sm text-on-surface-variant">FCFA</span>
+                </span>
+              </label>
+              <label className="p-4 rounded-xl bg-surface-container-low dark:bg-slate-900 flex flex-col gap-2">
+                <span className="font-label-lg text-label-lg text-on-surface dark:text-white">{t('Frais de livraison')}</span>
+                <span className="font-body-sm text-body-sm text-on-surface-variant">{t('Facturés au client pour la remise du véhicule à domicile.')}</span>
+                <span className="flex items-center gap-2 px-3 rounded-lg bg-surface-container-lowest dark:bg-slate-800">
+                  <input type="number" min={0} step={500} value={Math.round(Number(form.delivery_fee || 0))}
+                    onChange={(e) => set('delivery_fee')(e.target.value)}
+                    className="w-full bg-transparent py-2 font-headline-md text-headline-md focus:outline-none dark:text-white" />
+                  <span className="font-headline-sm text-headline-sm text-on-surface-variant">FCFA</span>
+                </span>
+              </label>
             </div>
             <div className="mt-4 p-4 rounded-xl bg-secondary-fixed/40 dark:bg-slate-900 flex items-start gap-2 font-body-sm text-body-sm text-on-secondary-fixed-variant dark:text-slate-300">
               <Icon name="info" size={18} />{t('Les réservations existantes conservent la commission calculée lors de leur création.')}

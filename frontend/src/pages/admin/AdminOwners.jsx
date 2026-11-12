@@ -183,7 +183,9 @@ export default function AdminOwners() {
                   <button key={owner.id} onClick={() => setSelectedId(owner.id)}
                     className={`text-left p-3 rounded-xl border-l-4 transition-all ${active ? 'border-primary bg-surface-container-low shadow-sm dark:bg-slate-900' : 'border-transparent hover:bg-surface-container-low/60 dark:hover:bg-slate-900/60'}`}>
                     <div className="flex items-center gap-3">
-                      <span className="w-11 h-11 rounded-full bg-secondary-fixed text-secondary flex items-center justify-center font-label-lg text-label-lg shrink-0">{initialsOf(owner)}</span>
+                      {owner.avatar
+                        ? <img src={owner.avatar} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" />
+                        : <span className="w-11 h-11 rounded-full bg-secondary-fixed text-secondary flex items-center justify-center font-label-lg text-label-lg shrink-0">{initialsOf(owner)}</span>}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-label-lg text-label-lg text-on-surface dark:text-white truncate">{fullName(owner)}</span>
@@ -209,7 +211,9 @@ export default function AdminOwners() {
               <section className="card flex flex-col gap-5">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <span className="w-16 h-16 rounded-xl bg-primary text-on-primary flex items-center justify-center font-headline-lg text-headline-lg">{initialsOf(selected)}</span>
+                    {selected.avatar
+                      ? <img src={selected.avatar} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                      : <span className="w-16 h-16 rounded-xl bg-primary text-on-primary flex items-center justify-center font-headline-lg text-headline-lg">{initialsOf(selected)}</span>}
                     <div>
                       <h3 className="font-headline-lg text-headline-lg text-on-surface dark:text-white">{fullName(selected)}</h3>
                       <span className={kyc.cls}><Icon name={kyc.icon} size={14} />{t(kyc.label)}</span>

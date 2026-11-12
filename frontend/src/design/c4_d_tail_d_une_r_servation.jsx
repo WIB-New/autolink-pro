@@ -413,12 +413,15 @@ export default function C4DetailReservation() {
   useEffect(() => {
     const click = (e) => {
       // Etoiles : clic direct sur un <span> (avant le filtre button,a)
-      const star = e.target.closest('.rate-star');
+      const star = e.target.closest('.rate-star, .driver-rate-star');
       if (star) {
         e.preventDefault();
-        window._rating = Number(star.dataset.r);
-        document.querySelectorAll('.rate-star').forEach((s) => {
-          const on = Number(s.dataset.r) <= window._rating;
+        const isDriver = star.classList.contains('driver-rate-star');
+        if (isDriver) window._driverRating = Number(star.dataset.r);
+        else window._rating = Number(star.dataset.r);
+        const val = isDriver ? window._driverRating : window._rating;
+        document.querySelectorAll(isDriver ? '.driver-rate-star' : '.rate-star').forEach((s) => {
+          const on = Number(s.dataset.r) <= val;
           s.classList.toggle('text-yellow-500', on);
           s.classList.toggle('text-surface-dim', !on);
         });
@@ -466,9 +469,9 @@ export default function C4DetailReservation() {
       }
       if (el.closest('#review-submit')) {
         e.preventDefault();
-        if (!window._rating) { alert('Choisissez d\'abord une note en cliquant sur une étoile.'); return; }
+        if (!window._rating && !window._driverRating) { alert('Choisissez d\'abord une note en cliquant sur une étoile.'); return; }
         const review = document.getElementById('review-text')?.value || '';
-        bookingsAPI.rate(id, window._rating, review)
+        bookingsAPI.rate(id, window._rating || null, review, window._driverRating || null, review)
           .then(() => window.location.reload())
           .catch((err) => alert(err?.response?.data?.detail || 'Impossible d\'enregistrer l\'avis.'));
       }
@@ -569,6 +572,10 @@ export default function C4DetailReservation() {
       .replace(/\+237 670 42 18 90|\+237 699 12 34 56/g, esc(drvPhone || b.owner_phone || ''))
       .replace(/tel:\+237670421890/g, `tel:+${phoneDigits}`)
       .replace(/wa\.me\/237670421890/g, `wa.me/${phoneDigits}`)
+      .replace(/<img class="w-14 h-14 rounded-full object-cover ring-2 ring-primary"[^>]*>/,
+        b.driver_avatar
+          ? `<img class="w-14 h-14 rounded-full object-cover ring-2 ring-primary" src="${esc(b.driver_avatar)}" alt="${esc(drvName || 'Chauffeur')}">`
+          : `<div class="w-14 h-14 rounded-full ring-2 ring-primary bg-primary text-on-primary flex items-center justify-center font-bold">${esc((drvName || 'C').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase())}</div>`)
       .replace('Annulation 100% gratuite', beforeStart ? 'Annulation avant le départ' : 'Annulation en cours de location')
       .replace('18h restantes', beforeStart ? `${hoursLeft}h restantes` : 'En cours')
       .replace('Jusqu\'au 28 Oct à 08:30', beforeStart ? `Jusqu'au ${dmy(b.start_date)} à ${sTime}` : `${remainingDays} jour(s) restants remboursés`)
@@ -578,21 +585,23 @@ export default function C4DetailReservation() {
           : 'Annulation pendant la location : caution remboursée à 100 %, seuls les jours restants sont remboursés (le jour d\u2019annulation est dû).'}</p>`)
       .replace('width: 32%;', `width: ${Math.min(100, stepsDone * 20)}%;`)
       .replace(/<div class="p-4 rounded-xl bg-surface-container-low flex items-center gap-3 text-on-surface-variant">[\s\S]*?verified_user[\s\S]*?<\/div>\n<\/div>/, '');
-    // Avis : etoiles cliquables a tout statut, ou avis deja donne
-    const stars = [1, 2, 3, 4, 5].map((n) => {
-      const filled = Number(b.client_rating || 0) >= n;
-      return `<span class="material-symbols-outlined text-[22px] ${filled ? 'text-yellow-500' : 'text-surface-dim'} rate-star cursor-pointer hover:text-yellow-500 transition-colors" data-r="${n}">${filled ? 'star' : 'star'}</span>`;
+    // Avis : etoiles cliquables tant que la note n'est pas donnee (vehicule + chauffeur)
+    const mkStars = (val, cls, interactive) => [1, 2, 3, 4, 5].map((n) => {
+      const filled = Number(val || 0) >= n;
+      return `<span class="material-symbols-outlined text-[22px] ${filled ? 'text-yellow-500' : 'text-surface-dim'} ${interactive ? `${cls} cursor-pointer hover:text-yellow-500 transition-colors` : ''}" data-r="${n}">star</span>`;
     }).join('');
+    const allRated = !!b.client_rating && (!drvName || !!b.driver_rating);
     h = h.replace(/<div class="flex items-center gap-2 text-on-surface-variant">(\s*<span class="material-symbols-outlined text-\[22px\] text-surface-dim">star<\/span>)+\s*<\/div>/,
-      `<div class="flex items-center gap-2 text-on-surface-variant">${stars}</div>
-<div id="review-form" class="flex flex-col gap-2" style="display:none">
+      `<div class="flex items-center justify-between"><span class="font-label-sm text-[11px] text-on-surface-variant">Véhicule</span><div class="flex items-center gap-1 text-on-surface-variant">${mkStars(b.client_rating, 'rate-star', !b.client_rating)}</div></div>
+${drvName ? `<div class="flex items-center justify-between mt-1"><span class="font-label-sm text-[11px] text-on-surface-variant">Chauffeur — ${esc(drvName)}</span><div class="flex items-center gap-1 text-on-surface-variant">${mkStars(b.driver_rating, 'driver-rate-star', !b.driver_rating)}</div></div>` : ''}
+<div id="review-form" class="flex flex-col gap-2 mt-2" style="display:none">
   <textarea id="review-text" rows="3" placeholder="Votre commentaire sur la location (optionnel)…" class="w-full px-3 py-2 rounded-lg bg-surface-container-low text-on-surface border border-outline-variant/30 font-body-sm"></textarea>
   <button id="review-submit" type="button" class="self-start px-4 py-2 rounded-lg bg-primary text-on-primary font-label-md font-bold">Publier mon avis</button>
 </div>`)
-      .replace('Verrouillé', b.client_rating ? 'Votre avis' : 'Disponible')
+      .replace('Verrouillé', allRated ? 'Votre avis' : 'Disponible')
       .replace(/L'évaluation du véhicule et du chauffeur [^<]* sera déverrouillée[^<]*\./,
-        b.client_rating ? `Votre évaluation : ${b.client_rating}/5${b.client_review ? ` — ${esc(b.client_review)}` : ''}`
-          : `Cliquez sur une étoile pour évaluer ${drvName ? `le véhicule et ${esc(drvName)}` : 'ce véhicule'}.`);
+        allRated ? `Véhicule : ${b.client_rating}/5${b.driver_rating ? ` • Chauffeur : ${b.driver_rating}/5` : ''}${b.client_review ? ` — ${esc(b.client_review)}` : ''}`
+          : `Cliquez sur une étoile pour évaluer ${drvName ? 'le véhicule et/ou le chauffeur' : 'ce véhicule'}.`);
     if (veh) {
       h = h
         .replace('250 km inclus', `${fmt(veh.km_included_per_day)} km inclus`)

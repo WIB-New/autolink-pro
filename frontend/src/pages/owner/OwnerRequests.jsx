@@ -104,7 +104,7 @@ export default function OwnerRequests() {
               <RequestCard key={b.id} b={b} selected={selected?.id === b.id} onSelect={setSelected} />
             ))}
           </div>
-          <RequestDetail b={selected || visible[0]} onComplete={complete} busy={busy} />
+          <RequestDetail b={selected || visible[0]} onComplete={complete} busy={busy} onRefresh={load} />
         </div>
       </div>
     </OwnerLayout>

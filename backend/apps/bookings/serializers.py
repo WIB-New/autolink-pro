@@ -20,7 +20,7 @@ class BookingSerializer(serializers.ModelSerializer):
     owner_name = serializers.SerializerMethodField()
     owner_phone = serializers.CharField(source='vehicle.owner.phone', read_only=True)
     driver_name = serializers.SerializerMethodField()
-    driver_phone = serializers.SerializerMethodField()
+    driver_avatar = serializers.SerializerMethodField()
     driver_phone = serializers.CharField(source='driver.phone', read_only=True)
     payment_method = serializers.CharField(source='payment.method', read_only=True)
     payment_status = serializers.CharField(source='payment.status', read_only=True)
@@ -47,6 +47,12 @@ class BookingSerializer(serializers.ModelSerializer):
     def get_client_name(self, obj): return obj.client.get_full_name()
     def get_vehicle_name(self, obj): return str(obj.vehicle)
     def get_driver_name(self, obj): return obj.driver.get_full_name() if obj.driver else None
+
+    def get_driver_avatar(self, obj):
+        if not obj.driver or not obj.driver.avatar:
+            return None
+        request = self.context.get('request')
+        return request.build_absolute_uri(obj.driver.avatar.url) if request else obj.driver.avatar.url
     def get_driver_phone(self, obj): return (obj.driver.phone or None) if obj.driver else None
     def get_vehicle_rating(self, obj): return float(obj.vehicle.rating or 0)
     def get_owner_name(self, obj): return obj.vehicle.owner.get_full_name()

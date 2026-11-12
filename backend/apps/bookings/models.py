@@ -87,6 +87,8 @@ class Booking(models.Model):
     client_rating = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)])
     client_review = models.TextField(blank=True)
     driver_rating = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)])
+    owner_rating = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)])
+    owner_review = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -107,11 +109,16 @@ class Booking(models.Model):
         # Tarification dynamique : dégressivité longue durée
         self.discount_percent = 0 if timed else 10 if self.days >= 30 else 5 if self.days > 3 else 0
         gross = self.daily_rate * self.days
-        self.driver_fee = Decimal('10000') * self.days if timed and self.driver_type != self.DriverType.NONE else Decimal('0')
-        self.delivery_fee = Decimal('5000') if timed and self.delivery_requested else Decimal('0')
-        self.subtotal = (gross * Decimal(100 - self.discount_percent) / 100 + self.driver_fee + self.delivery_fee).quantize(Decimal('0.01'))
-        self.commission_amount = (self.subtotal * commission_rate()).quantize(Decimal('0.01'))
-        self.owner_amount = self.subtotal - self.commission_amount
+        from apps.users.models import PlatformSettings
+        ps = PlatformSettings.current()
+        self.driver_fee = Decimal(str(ps.driver_daily_fee or 10000)) * self.days if timed and self.driver_type != self.DriverType.NONE else Decimal('0')
+        self.delivery_fee = Decimal(str(ps.delivery_fee or 5000)) if timed and self.delivery_requested else Decimal('0')
+        # La commission ne s'applique que sur la location : les frais chauffeur
+        # reviennent au chauffeur, les frais de livraison à la plateforme.
+        rental = (gross * Decimal(100 - self.discount_percent) / 100).quantize(Decimal('0.01'))
+        self.subtotal = (rental + self.driver_fee + self.delivery_fee).quantize(Decimal('0.01'))
+        self.commission_amount = (rental * commission_rate()).quantize(Decimal('0.01'))
+        self.owner_amount = rental - self.commission_amount
 
     def save(self, *args, **kwargs):
         self.calculate_price()
@@ -150,11 +157,15 @@ class Booking(models.Model):
             self.updated_at = booking.updated_at
 
     def _record_driver_earning(self):
+        """Crédite le chauffeur : forfait journalier × jours, versé sur son solde AutoLink."""
         if not self.driver_id:
             return
         from apps.drivers.models import DriverEarning, DriverProfile
+        from apps.payments.models import WalletTransaction
+        from apps.users.models import PlatformSettings
 
-        amount = (self.subtotal * Decimal(str(settings.DRIVER_SHARE_RATE))).quantize(Decimal('0.01'))
+        daily = Decimal(str(PlatformSettings.current().driver_daily_fee or 10000))
+        amount = (daily * (self.days or 1)).quantize(Decimal('0.01'))
         DriverProfile.objects.get_or_create(driver_id=self.driver_id)
         profile = DriverProfile.objects.select_for_update().get(driver_id=self.driver_id)
         _, created = DriverEarning.objects.get_or_create(
@@ -165,6 +176,14 @@ class Booking(models.Model):
             DriverProfile.objects.filter(pk=profile.pk).update(
                 total_earned=F('total_earned') + amount,
                 total_trips=F('total_trips') + 1,
+            )
+            driver = self.driver.__class__.objects.select_for_update().get(pk=self.driver_id)
+            driver.balance = (driver.balance or 0) + amount
+            driver.save(update_fields=['balance', 'updated_at'])
+            WalletTransaction.objects.create(
+                user=driver, kind='topup', method='wallet', amount=amount,
+                balance_after=driver.balance, reference=f'DRV-{self.pk:04d}',
+                note=f'Rémunération chauffeur — {self}',
             )
 
     def _release_escrow(self):

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import DesignShell from './DesignShell';
+import OwnerLayout from '../components/ownerdash/OwnerLayout';
 import { usersAPI, authAPI } from '../services/api';
 import useApiData from '../utils/useApiData';
 
@@ -40,6 +41,9 @@ const Opt = ({ label, active, onClick }) => (
     {label}
   </button>
 );
+
+/* Chrome adaptatif : OwnerLayout pour le propriétaire, DesignShell sinon. */
+const Shell = ({ role, children }) => (role === 'owner' ? <OwnerLayout>{children}</OwnerLayout> : <DesignShell role={role}>{children}</DesignShell>);
 
 export default function Parametres({ role = 'client' }) {
   const { i18n } = useTranslation();
@@ -108,7 +112,7 @@ export default function Parametres({ role = 'client' }) {
   };
 
   return (
-    <DesignShell role={role}>
+    <Shell role={role}>
       <div className="max-w-[860px] mx-auto flex flex-col gap-space-lg pt-4 sm:pt-6 pb-12">
         <div className="flex flex-col gap-space-xs">
           <span className="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold">Compte &amp; Application</span>
@@ -296,6 +300,6 @@ export default function Parametres({ role = 'client' }) {
           </form>
         </div>
       )}
-    </DesignShell>
+    </Shell>
   );
 }

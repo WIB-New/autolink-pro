@@ -82,11 +82,14 @@ export default function DesignShell({ children, role = 'client' }) {
   const profileRef = useRef(null);
   const navigate = useNavigate();
   const { logout, user: authUser } = useAuth();
+  // Nom tolérant aux deux schémas du user stocké (firstName ou first_name).
+  const fn = authUser?.first_name || authUser?.firstName || '';
+  const ln = authUser?.last_name || authUser?.lastName || '';
   const realUser = authUser ? {
     ...user,
-    init: `${(authUser.first_name || authUser.username || 'U')[0]}${(authUser.last_name || ' ')[0] || ''}`.toUpperCase(),
-    name: `${authUser.first_name || ''} ${authUser.last_name || ''}`.trim() || authUser.username,
-    short: authUser.first_name ? `${authUser.first_name} ${(authUser.last_name || '')[0] || ''}.` : authUser.username,
+    init: `${(fn || authUser.username || 'U')[0]}${(ln || ' ')[0] || ''}`.toUpperCase(),
+    name: `${fn} ${ln}`.trim() || authUser.username,
+    short: fn ? `${fn} ${(ln || '')[0] || ''}.` : authUser.username,
     email: authUser.email || user.email,
   } : user;
   const displayUser = realUser;

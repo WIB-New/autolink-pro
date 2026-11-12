@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import DesignPage from './DesignPage';
 import DesignShell from './DesignShell';
+import OwnerLayout from '../components/ownerdash/OwnerLayout';
 import useApiData from '../utils/useApiData';
 import { authAPI, kycAPI, usersAPI, documentsAPI } from '../services/api';
 
@@ -247,6 +248,9 @@ const LINKS = {};
 const DOC_TYPES = { id: "Pièce d'identité", license: 'Permis de conduire', address: 'Justificatif de domicile', insurance: 'Assurance', other: 'Autre' };
 const FIELD_LABELS = { id_document: "Pièce d'Identité Officielle", driving_license: 'Permis de Conduire (Cat. B)', address_proof: 'Justificatif de Domicile', insurance: 'Assurance Complémentaire' };
 
+/* Chrome adaptatif : OwnerLayout pour le propriétaire, DesignShell sinon. */
+const Shell = ({ role, children }) => (role === 'owner' ? <OwnerLayout>{children}</OwnerLayout> : <DesignShell role={role}>{children}</DesignShell>);
+
 export default function C9ProfilEtParametres({ role = 'client' }) {
   const { data: me } = useApiData(() => authAPI.me(), []);
   const { data: docs } = useApiData(() => documentsAPI.list(), []);
@@ -391,7 +395,7 @@ ${docRows}
       </div>
     );
     return (
-      <DesignShell role={role}>
+      <Shell role={role}>
         <form onSubmit={save} className="max-w-2xl mx-auto w-full p-6 flex flex-col gap-5">
           <button type="button" onClick={() => setEditing(false)} className="self-start inline-flex items-center gap-1 font-label-md text-label-md text-primary font-bold"><span className="material-symbols-outlined text-[18px]">arrow_back</span>Retour au profil</button>
           <h2 className="font-headline-md text-headline-md text-on-surface font-bold">Modifier mon profil</h2>
@@ -423,7 +427,7 @@ ${docRows}
             <button type="submit" disabled={saving} className="flex-1 py-3 rounded-xl bg-primary text-on-primary font-label-md font-bold disabled:opacity-60">{saving ? 'Enregistrement…' : 'Enregistrer'}</button>
           </div>
         </form>
-      </DesignShell>
+      </Shell>
     );
   }
   return (

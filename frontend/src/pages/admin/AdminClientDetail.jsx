@@ -20,10 +20,7 @@ export default function AdminClientDetail() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState('');
-  const [notes, setNotes] = useState([
-    { by: 'Audrey S. (Lead Arbitrage)', at: '22/09/2025', txt: 'Client à surveiller : deux annulations tardives le mois dernier. Exiger caution renforcée sur véhicules Premium.' },
-    { by: 'Marc K. (Support Client Assuré)', at: '11/10/2025', txt: 'Aucun incident majeur sur les 6 derniers trajets. Très bonne tenue du véhicule — candidat statut Privilège.' },
-  ]);
+  const [notes, setNotes] = useState([]);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -63,12 +60,16 @@ export default function AdminClientDetail() {
           {/* En-tête */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
             <div className="flex flex-wrap items-center gap-4">
-              <div className="w-14 h-14 bg-teal-700 rounded-2xl flex items-center justify-center text-white text-lg font-black">{initialsOf(`${c.first_name} ${c.last_name}`)}</div>
+              {c.avatar
+                ? <img src={c.avatar} alt="" className="w-14 h-14 rounded-2xl object-cover shrink-0" />
+                : <div className="w-14 h-14 bg-teal-700 rounded-2xl flex items-center justify-center text-white text-lg font-black">{initialsOf(`${c.first_name} ${c.last_name}`)}</div>}
               <div className="flex-1 min-w-[180px]">
                 <div className="flex items-center gap-2">
                   <h2 className="text-lg font-black text-slate-900">{c.first_name} {c.last_name}</h2>
                   {c.is_verified !== false && <span className="bg-teal-600 text-white text-[8px] font-black px-2 py-0.5 rounded-md">Client Vérifié</span>}
-                  <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1"><Star size={10} className="text-amber-400 fill-amber-400" /> 4.95 (12 avis)</span>
+                  {c.client_rating != null
+                    ? <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1"><Star size={10} className="text-amber-400 fill-amber-400" /> {Number(c.client_rating).toFixed(1)} ({c.client_rating_count} avis proprios)</span>
+                    : <span className="text-[10px] font-semibold text-slate-400">Pas encore noté</span>}
                 </div>
                 <div className="text-[10px] text-slate-400 mt-0.5">Inscrit {c.date_joined ? new Date(c.date_joined).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { month: 'long', year: 'numeric' }) : 'Fév. 2023'} · {c.email} · {c.phone || '+237 6·· ·· ·· 90'}</div>
               </div>
@@ -85,12 +86,15 @@ export default function AdminClientDetail() {
               <h3 className="font-black text-slate-900 text-sm flex items-center gap-2 mb-4"><FileText size={15} className="text-teal-600" /> Pièces d'identité &amp; Justificatifs Réglementaires</h3>
               <div className="space-y-2.5">
                 {[
-                  { t: "Pièce d'identité", d: c.id_document ? `N° ${c.id_document}` : 'Non renseigné', s: c.id_document ? 'Déclaré' : 'Manquant' },
-                  { t: 'Permis de conduire', d: c.license_number ? `N° ${c.license_number}` : 'Non renseigné', s: c.license_number ? 'Déclaré' : 'Manquant' },
+                  { t: "Pièce d'identité", d: c.id_document ? (c.id_document_verified ? 'Vérifiée' : 'Déposée') : 'Non renseigné', s: c.id_document ? (c.id_document_verified ? 'Conforme' : 'Déposé') : 'Manquant', cls: c.id_document ? (c.id_document_verified ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-600') : 'bg-slate-100 text-slate-400', file: c.id_document },
+                  { t: 'Permis de conduire', d: c.driving_license ? (c.driving_license_expires_at ? `Expire le ${new Date(c.driving_license_expires_at).toLocaleDateString('fr-FR')}` : 'Déposé') : 'Non renseigné', s: c.driving_license ? 'Déposé' : 'Manquant', cls: c.driving_license ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-400', file: c.driving_license },
+                  { t: 'Justificatif de domicile', d: c.address_proof ? 'Déposé' : 'Non renseigné', s: c.address_proof ? 'Déposé' : 'Manquant', cls: c.address_proof ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-400', file: c.address_proof },
+                  { t: "Attestation d'assurance", d: c.insurance ? 'Déposée' : 'Non renseignée', s: c.insurance ? 'Déposé' : 'Manquant', cls: c.insurance ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-400', file: c.insurance },
                   ...documents.map(doc => ({
                     t: doc.name || 'Document déposé',
                     d: [doc.get_doc_type_display, doc.issued_place, doc.validity ? `valable jusqu'au ${doc.validity}` : null].filter(Boolean).join(' · ') || '—',
-                    s: 'Déposé',
+                    s: { pending: 'En attente', verified: 'Conforme', rejected: 'Refusé' }[doc.status] || 'Déposé',
+                    cls: doc.status === 'verified' ? 'bg-teal-50 text-teal-700' : doc.status === 'rejected' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600',
                     file: doc.file,
                   })),
                 ].map(d => (
@@ -101,7 +105,7 @@ export default function AdminClientDetail() {
                       <div className="text-[9px] text-slate-400">{d.d}</div>
                     </div>
                     {d.file && <a href={d.file.startsWith('http') ? d.file : `${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/media/${d.file.replace(/^\//, '')}`} target="_blank" rel="noreferrer" className="text-[8px] font-black text-teal-600 hover:underline shrink-0">Voir</a>}
-                    <span className="bg-teal-50 text-teal-700 text-[8px] font-black px-1.5 py-0.5 rounded-md shrink-0">{d.s}</span>
+                    <span className={`${d.cls || 'bg-teal-50 text-teal-700'} text-[8px] font-black px-1.5 py-0.5 rounded-md shrink-0`}>{d.s}</span>
                   </div>
                 ))}
               </div>
@@ -113,11 +117,12 @@ export default function AdminClientDetail() {
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div className="bg-teal-50 border border-teal-100 rounded-xl p-3.5">
                   <div className="text-[8px] font-black uppercase tracking-widest text-teal-600">Solde client</div>
-                  <div className="text-xl font-black text-slate-900 mt-1">{fmt(spent || 65000)} <span className="text-[10px]">FCFA</span></div>
+                  <div className="text-xl font-black text-slate-900 mt-1">{fmt(c.balance)} <span className="text-[10px]">FCFA</span></div>
+                  <div className="text-[9px] text-teal-600 mt-0.5">Dépensé au total : {fmt(spent)} F</div>
                 </div>
                 <div className="bg-slate-900 rounded-xl p-3.5">
                   <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">Caution séquestre en cours</div>
-                  <div className="text-xl font-black text-white mt-1">{fmt(escrow || 150000)} <span className="text-[10px]">FCFA</span></div>
+                  <div className="text-xl font-black text-white mt-1">{fmt(escrow)} <span className="text-[10px]">FCFA</span></div>
                 </div>
               </div>
               <div className="space-y-1.5">
@@ -163,7 +168,7 @@ export default function AdminClientDetail() {
                 <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 text-center">
                   <CheckCircle2 size={20} className="mx-auto mb-2 text-emerald-500" />
                   <div className="text-[11px] font-black text-emerald-800">Aucun litige ouvert</div>
-                  <div className="text-[9px] text-emerald-600 mt-1">Incident aéroport résolu à l'amiable (2024) · Score de crédibilité client : <strong>95/100</strong></div>
+                  <div className="text-[9px] text-emerald-600 mt-1">{cBookings.filter(b => b.status === 'completed').length} location(s) terminée(s) · {cBookings.filter(b => b.status === 'cancelled').length} annulée(s)</div>
                 </div>
               ) : (
                 cBookings.filter(b => b.status === 'disputed').map(b => (
@@ -174,8 +179,45 @@ export default function AdminClientDetail() {
                 ))
               )}
               <div className="mt-4 bg-slate-50 rounded-xl p-3 text-[9px] text-slate-500">
-                <strong className="text-slate-700">Comportement observé :</strong> restitutions ponctuelles 11/12, paiement MoMo sans échec, caution toujours débloquée sans friction.
+                <strong className="text-slate-700">Activité réelle :</strong> {cBookings.length} location(s) · {cBookings.filter(b => b.status === 'completed').length} terminée(s) · {cBookings.filter(b => b.status === 'cancelled').length} annulée(s) · {cBookings.filter(b => b.status === 'disputed').length} litige(s).
               </div>
+            </div>
+          </div>
+
+          {/* Notes & avis reçus / donnés */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+            <h3 className="font-black text-slate-900 text-sm flex items-center gap-2 mb-3"><Star size={15} className="text-amber-500" /> Notes &amp; avis par location</h3>
+            <div className="space-y-2">
+              {cBookings.filter(b => b.owner_rating || b.client_rating || b.driver_rating).map(b => (
+                <div key={b.id} className="border border-slate-100 rounded-xl px-3.5 py-2.5">
+                  <div className="text-[10px] font-bold text-slate-700 mb-1">#ALP-{String(b.id).padStart(4, '0')} · {b.vehicle_name}</div>
+                  <div className="space-y-1">
+                    {b.owner_rating && (
+                      <div className="flex items-center gap-2 text-[10px]">
+                        <span className="text-slate-400 w-32 shrink-0">Propriétaire → client</span>
+                        <span className="flex items-center gap-0.5 font-black text-amber-500"><Star size={10} className="fill-amber-500" />{b.owner_rating}/5</span>
+                        {b.owner_review && <span className="text-slate-500 italic truncate">« {b.owner_review} »</span>}
+                      </div>
+                    )}
+                    {b.client_rating && (
+                      <div className="flex items-center gap-2 text-[10px]">
+                        <span className="text-slate-400 w-32 shrink-0">Client → véhicule</span>
+                        <span className="flex items-center gap-0.5 font-black text-amber-500"><Star size={10} className="fill-amber-500" />{b.client_rating}/5</span>
+                        {b.client_review && <span className="text-slate-500 italic truncate">« {b.client_review} »</span>}
+                      </div>
+                    )}
+                    {b.driver_rating && (
+                      <div className="flex items-center gap-2 text-[10px]">
+                        <span className="text-slate-400 w-32 shrink-0">Client → chauffeur{b.driver_name ? ` (${b.driver_name})` : ''}</span>
+                        <span className="flex items-center gap-0.5 font-black text-amber-500"><Star size={10} className="fill-amber-500" />{b.driver_rating}/5</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {!cBookings.some(b => b.owner_rating || b.client_rating || b.driver_rating) && (
+                <p className="text-[10px] text-slate-400 text-center py-4">Aucune note enregistrée pour ce client.</p>
+              )}
             </div>
           </div>
 

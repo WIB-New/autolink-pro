@@ -63,18 +63,23 @@ class DriverApplication(models.Model):
         return f'{name} — {self.status}'
 
     @property
-    def compliance_score(self):
-        checks = [
-            self.has_valid_license,
-            self.has_clean_criminal_record,
-            self.has_medical_certificate,
-            self.driving_test_passed,
-            self.training_completed,
-            bool(self.license_document),
-            bool(self.criminal_record_document),
-            bool(self.medical_certificate_document),
-            self.experience_years >= 2,
+    def compliance_checks(self):
+        """Critères du score de conformité — chacun vaut 1/9 du total."""
+        return [
+            {'key': 'valid_license', 'label': 'Permis déclaré valide', 'ok': self.has_valid_license},
+            {'key': 'license_doc', 'label': 'Document permis déposé', 'ok': bool(self.license_document)},
+            {'key': 'clean_record', 'label': 'Casier vierge déclaré', 'ok': self.has_clean_criminal_record},
+            {'key': 'criminal_doc', 'label': 'Document casier déposé', 'ok': bool(self.criminal_record_document)},
+            {'key': 'medical_cert', 'label': 'Certificat médical déclaré', 'ok': self.has_medical_certificate},
+            {'key': 'medical_doc', 'label': 'Document médical déposé', 'ok': bool(self.medical_certificate_document)},
+            {'key': 'driving_test', 'label': 'Test de conduite réussi', 'ok': self.driving_test_passed},
+            {'key': 'training', 'label': 'Formation AutoLink suivie', 'ok': self.training_completed},
+            {'key': 'experience', 'label': 'Expérience ≥ 2 ans', 'ok': self.experience_years >= 2},
         ]
+
+    @property
+    def compliance_score(self):
+        checks = [c['ok'] for c in self.compliance_checks]
         return round((sum(checks) / len(checks)) * 100)
 
 

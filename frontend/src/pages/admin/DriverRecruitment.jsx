@@ -17,10 +17,14 @@ const shortDate = iso => iso ? new Date(iso).toLocaleDateString('fr-FR', { day: 
 const bool = v => v ? <CheckCircle size={14} className="text-emerald-500 inline" /> : <XCircle size={14} className="text-slate-300 inline" />;
 
 /* Modale de détail : affiche la candidature réelle + actions admin. */
-function ApplicationModal({ app, onClose, onDecision, onToggleActive, busy }) {
+function ApplicationModal({ app, onClose, onDecision, onToggleActive, onSaveNotes, busy }) {
   const st = STATUS_CONFIG[app.status] || STATUS_CONFIG.pending;
   const decided = ['approved', 'rejected'].includes(app.status);
   const isApproved = app.status === 'approved';
+  const checks = app.compliance_checks || [];
+  const checksOk = checks.filter(c => c.ok).length;
+  const [notes, setNotes] = useState(app.reviewer_notes || '');
+  const stats = app.driver_stats;
   const rows = [
     ['Téléphone', app.phone || '—'],
     ['Email', app.email || '—'],
@@ -39,9 +43,16 @@ function ApplicationModal({ app, onClose, onDecision, onToggleActive, busy }) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4 py-8 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-auto">
         <div className="flex items-center justify-between p-6 border-b border-slate-100">
-          <div>
-            <h3 className="font-bold text-slate-900 text-lg">{app.applicant_name || app.full_name}</h3>
-            <p className="text-sm text-slate-500">Postulé le {shortDate(app.applied_at)} · <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg ${st.cls}`}>{st.label}</span></p>
+          <div className="flex items-center gap-3">
+            {app.applicant_avatar
+              ? <img src={app.applicant_avatar} alt="" className="w-11 h-11 rounded-xl object-cover" />
+              : <div className="w-11 h-11 bg-teal-700 rounded-xl flex items-center justify-center text-white font-black">{(app.applicant_name || app.full_name || '?').charAt(0)}</div>}
+            <div>
+              <h3 className="font-bold text-slate-900 text-lg">{app.applicant_name || app.full_name}</h3>
+              <p className="text-sm text-slate-500">Postulé le {shortDate(app.applied_at)} · <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg ${st.cls}`}>{st.label}</span>
+                {app.driver_rating != null && <span className="ml-2 text-amber-600 font-black">★ {Number(app.driver_rating).toFixed(1)} ({app.driver_rating_count} avis)</span>}
+              </p>
+            </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100"><X size={20} /></button>
         </div>
@@ -52,9 +63,42 @@ function ApplicationModal({ app, onClose, onDecision, onToggleActive, busy }) {
               <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
                 <div className={`h-full rounded-full ${app.compliance_score >= 60 ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${app.compliance_score ?? 0}%` }} />
               </div>
-              <p className="text-sm text-slate-500 mt-1">Score de conformité</p>
+              <p className="text-sm text-slate-500 mt-1">Score de conformité — <strong>{checksOk}/{checks.length || 9} critères validés</strong> (chaque critère vaut ~11 %)</p>
             </div>
           </div>
+          {checks.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+              {checks.map(c => (
+                <div key={c.key} className={`rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 ${c.ok ? 'bg-emerald-50' : 'bg-slate-50'}`}>
+                  {bool(c.ok)}
+                  <span className={`text-[9px] font-black ${c.ok ? 'text-emerald-700' : 'text-slate-400'}`}>{c.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {stats && (
+            <div className="bg-slate-50 rounded-xl p-3.5">
+              <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Activité chauffeur</div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                {[
+                  ['Courses', stats.total_trips ?? 0],
+                  ['Gains cumulés', `${Math.round(stats.total_earned || 0).toLocaleString('fr-FR')} F`],
+                  ['Acceptation', stats.acceptance_rate != null ? `${stats.acceptance_rate} %` : '—'],
+                  ['Ponctualité', stats.on_time_rate != null ? `${stats.on_time_rate} %` : '—'],
+                  ['Solde wallet', `${Math.round(stats.balance || 0).toLocaleString('fr-FR')} F`],
+                  ['Statut', stats.is_online ? 'En ligne' : 'Hors ligne'],
+                  ['Certifié le', stats.certified_at ? shortDate(stats.certified_at) : '—'],
+                  ['Compte', stats.is_active ? 'Actif' : 'Suspendu'],
+                ].map(([l, v]) => (
+                  <div key={l} className="bg-white rounded-lg py-2 px-1">
+                    <div className="text-[12px] font-black text-slate-800 truncate">{v}</div>
+                    <div className="text-[8px] font-bold text-slate-400 uppercase">{l}</div>
+                  </div>
+                ))}
+              </div>
+              {stats.assigned_vehicle && <div className="text-[10px] text-slate-500 mt-2">Véhicule assigné : <strong>{stats.assigned_vehicle}</strong></div>}
+            </div>
+          )}
           <div className="space-y-2">
             {rows.map(([l, v]) => (
               <div key={l} className="flex justify-between gap-4 text-[12px] border-b border-slate-50 pb-2">
@@ -63,20 +107,11 @@ function ApplicationModal({ app, onClose, onDecision, onToggleActive, busy }) {
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
-            {[
-              ['Permis valide', app.has_valid_license],
-              ['Casier vierge', app.has_clean_criminal_record],
-              ['Certif. médical', app.has_medical_certificate],
-              ['Test conduit', app.driving_test_passed],
-              ['Formation', app.training_completed],
-              ['Assurance', app.has_insurance],
-            ].map(([l, v]) => (
-              <div key={l} className="bg-slate-50 rounded-xl px-3 py-2 text-center">
-                <div className="mb-1">{bool(v)}</div>
-                <div className="text-[9px] font-black text-slate-500">{l}</div>
-              </div>
-            ))}
+          {app.driving_test_score != null && (
+            <div className="text-[11px] font-bold text-slate-600">Score au test de conduite : <strong>{app.driving_test_score}/100</strong></div>
+          )}
+          <div className="bg-slate-50 rounded-xl p-3.5">
+            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Assurance déclarée : {app.has_insurance ? 'Oui' : 'Non'} · Garantie : {app.guarantee_type || '—'}</div>
           </div>
           <div className="space-y-2">
             {[
@@ -93,6 +128,17 @@ function ApplicationModal({ app, onClose, onDecision, onToggleActive, busy }) {
                 <FileText size={13} /> {label} — non déposé
               </div>
             ))}
+          </div>
+          <div className="pt-1">
+            <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Notes d'examen (visibles par l'équipe seulement)</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+              placeholder="Observations sur le dossier, pièces à demander…"
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] focus:outline-none focus:ring-2 focus:ring-teal-500" />
+            {notes !== (app.reviewer_notes || '') && (
+              <button disabled={busy} onClick={() => onSaveNotes(notes)}
+                className="mt-1.5 text-[10px] font-black text-white bg-teal-600 hover:bg-teal-700 px-3.5 py-2 rounded-xl disabled:opacity-50">
+                Enregistrer les notes
+              </button>)}
           </div>
         </div>
         <div className="p-6 border-t border-slate-100 flex gap-3">
@@ -161,6 +207,16 @@ export default function DriverRecruitment() {
     setBusy(false);
   };
 
+  const saveNotes = async (reviewer_notes) => {
+    setBusy(true);
+    try {
+      await driversAPI.update(selected.id, { reviewer_notes });
+      await load();
+      setSelected(s => ({ ...s, reviewer_notes }));
+    } catch (_) {}
+    setBusy(false);
+  };
+
   const toggleActive = async () => {
     if (!selected?.applicant) return;
     setBusy(true);
@@ -207,7 +263,9 @@ export default function DriverRecruitment() {
           columns={[
             { label: 'Candidat', render: c => (
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 bg-teal-700 rounded-lg flex items-center justify-center text-white text-[10px] font-black shrink-0">{(c.applicant_name || c.full_name || '?').charAt(0)}</div>
+                {c.applicant_avatar
+                  ? <img src={c.applicant_avatar} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0" />
+                  : <div className="w-8 h-8 bg-teal-700 rounded-lg flex items-center justify-center text-white text-[10px] font-black shrink-0">{(c.applicant_name || c.full_name || '?').charAt(0)}</div>}
                 <div className="min-w-0">
                   <div className="text-[11px] font-black text-slate-900 truncate">{c.applicant_name || c.full_name}</div>
                   <div className="text-[9px] text-slate-400 truncate flex items-center gap-1"><MapPin size={8} />{c.city || '—'} · {c.experience_years ?? 0} ans d'exp.</div>
@@ -246,7 +304,7 @@ export default function DriverRecruitment() {
         />
       </div>
 
-      {selected && <ApplicationModal app={{ ...selected, driver_active: driverActive }} onClose={() => setSelected(null)} onDecision={decide} onToggleActive={toggleActive} busy={busy} />}
+      {selected && <ApplicationModal app={{ ...selected, driver_active: driverActive }} onClose={() => setSelected(null)} onDecision={decide} onToggleActive={toggleActive} onSaveNotes={saveNotes} busy={busy} />}
     </AdminLayout>
   );
 }

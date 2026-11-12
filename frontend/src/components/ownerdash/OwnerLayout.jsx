@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import AutoLinkLogo from '../AutoLinkLogo';
@@ -17,12 +17,24 @@ const NAV = [
   { icon: Wallet,          label: 'Revenus & Finances',   path: '/owner/revenue' },
   { icon: MessageSquare,   label: 'Messagerie',           path: '/owner/messages', badge: 'msg' },
   { icon: Bell,            label: 'Notifications',        path: '/owner/notifications', badge: 'notif' },
-  { icon: Settings,        label: 'Profil & Paramètres',  path: '/settings' },
+  { icon: User,            label: 'Profil & Documents',   path: '/profile' },
+  { icon: Settings,        label: 'Paramètres',           path: '/settings' },
 ];
 
 /* Layout de l'espace propriétaire — sidebar claire auto-repliable (survol) + topbar. */
 export default function OwnerLayout({ children, badges = {}, balance = null }) {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
+  // Nom tolérant aux deux schémas du user stocké (firstName ou first_name).
+  const firstName = user?.firstName || user?.first_name || '';
+  const lastName = user?.lastName || user?.last_name || '';
+  const nameRetried = useRef(false);
+  useEffect(() => {
+    if (user && !firstName && !nameRetried.current) {
+      nameRetried.current = true;
+      refreshUser();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -141,10 +153,10 @@ export default function OwnerLayout({ children, badges = {}, balance = null }) {
               <button onClick={() => setMenuOpen(o => !o)}
                 className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                 <span className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center text-white text-xs font-black">
-                  {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                  {firstName.charAt(0)}{lastName.charAt(0)}
                 </span>
                 <span className="hidden md:block text-left leading-tight">
-                  <span className="block text-xs font-bold text-slate-800 dark:text-slate-100">{user?.firstName} {user?.lastName?.charAt(0)}.</span>
+                  <span className="block text-xs font-bold text-slate-800 dark:text-slate-100">{firstName} {lastName.charAt(0)}{lastName ? '.' : ''}</span>
                 </span>
                 <ChevronDown size={14} className={`text-slate-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -154,7 +166,7 @@ export default function OwnerLayout({ children, badges = {}, balance = null }) {
                   <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl shadow-xl py-2 z-20">
                     <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800">
                       <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Espace Propriétaire</div>
-                      <div className="text-sm font-bold text-slate-800 dark:text-slate-100">{user?.firstName} {user?.lastName}</div>
+                      <div className="text-sm font-bold text-slate-800 dark:text-slate-100">{firstName} {lastName}</div>
                     </div>
                     <div className="flex items-center justify-between px-4 py-2">
                       <span className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400"><Moon size={15} />Thème</span>
@@ -170,7 +182,7 @@ export default function OwnerLayout({ children, badges = {}, balance = null }) {
                         <button onClick={() => setLang('en')} className={`px-2.5 py-1 text-[11px] font-semibold ${i18next.language === 'en' ? 'bg-teal-600 text-white' : 'text-slate-500 dark:text-slate-400'}`}>EN</button>
                       </div>
                     </div>
-                    <button onClick={() => { navigate('/settings'); setMenuOpen(false); }}
+                    <button onClick={() => { navigate('/profile'); setMenuOpen(false); }}
                       className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                       <User size={14} className="text-teal-600" /> Profil
                     </button>

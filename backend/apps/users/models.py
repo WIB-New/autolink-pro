@@ -73,6 +73,12 @@ class PlatformSettings(models.Model):
     cancel_deposit_keep_percent = models.DecimalField(
         max_digits=5, decimal_places=2, default=10,
         help_text="% de la caution conservé par AutoLink en cas d'annulation client avant le début de la location.")
+    driver_daily_fee = models.DecimalField(
+        max_digits=12, decimal_places=2, default=10000,
+        help_text='Tarif par jour facturé au client pour l\'option chauffeur AutoLink.')
+    delivery_fee = models.DecimalField(
+        max_digits=12, decimal_places=2, default=5000,
+        help_text='Frais de livraison du véhicule facturés au client.')
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -221,12 +227,21 @@ class UserDocument(models.Model):
         INSURANCE = 'insurance', 'Assurance'
         OTHER = 'other', 'Autre'
 
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'En attente'
+        VERIFIED = 'verified', 'Conforme'
+        REJECTED = 'rejected', 'Refusé'
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='extra_documents')
     name = models.CharField(max_length=200)
     doc_type = models.CharField(max_length=20, choices=DocType.choices, default=DocType.OTHER)
     issued_place = models.CharField(max_length=200, blank=True)
     validity = models.DateField(null=True, blank=True)
     file = models.FileField(upload_to='docs/')
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    verification_note = models.CharField(max_length=255, blank=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

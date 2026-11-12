@@ -1,7 +1,8 @@
-import React from 'react';
-import { Phone, Mail, MapPin, StickyNote, UserCheck, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import React, { useState } from 'react';
+import { Phone, Mail, MapPin, StickyNote, UserCheck, CheckCircle2, AlertTriangle, Clock, Star, Send } from 'lucide-react';
 import { STATUS, DRIVER_LABEL } from './RequestCard';
 import { COMMISSION_LABEL, ownerNet } from '../../utils/commission';
+import { bookingsAPI } from '../../services/api';
 
 const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 
@@ -12,9 +13,64 @@ const Row = ({ icon: Icon, children }) => (
   </div>
 );
 
+/* Note propriétaire -> client, sur les locations terminées. */
+function RateClient({ b, onDone }) {
+  const [val, setVal] = useState(0);
+  const [text, setText] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  const submit = async () => {
+    if (!val) return;
+    setSaving(true); setErr('');
+    try {
+      await bookingsAPI.rateClient(b.id, val, text);
+      setVal(0); setText('');
+      onDone?.();
+    } catch (e) {
+      setErr(e.response?.data?.detail || e.response?.data?.rating?.[0] || 'Notation impossible.');
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div>
+      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Évaluer le locataire</span>
+      <div className="mt-2.5 space-y-2">
+        {b.owner_rating ? (
+          <>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map(n => <Star key={n} size={18} className={n <= b.owner_rating ? 'text-amber-500 fill-amber-500' : 'text-slate-300'} />)}
+            </div>
+            {b.owner_review && <p className="text-[11px] text-slate-500 italic">« {b.owner_review} »</p>}
+          </>
+        ) : (
+          <>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map(n => (
+                <button key={n} type="button" onClick={() => setVal(n)} className="hover:scale-110 transition-transform">
+                  <Star size={22} className={n <= val ? 'text-amber-500 fill-amber-500' : 'text-slate-300'} />
+                </button>
+              ))}
+            </div>
+            <textarea rows={2} value={text} onChange={e => setText(e.target.value)}
+              placeholder="Ponctualité, état du véhicule, respect… (optionnel)"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[11px] text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500" />
+            {err && <p className="text-[10px] text-red-500 font-bold">{err}</p>}
+            <button onClick={submit} disabled={saving || !val}
+              className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-black px-4 py-2 rounded-xl transition-colors disabled:opacity-40">
+              <Send size={12} /> Publier la note
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* Panneau droit — dossier de la réservation, décomposition financière et
    seule action propriétaire autorisée par le backend : confirmer la restitution. */
-export default function RequestDetail({ b, onComplete, busy }) {
+export default function RequestDetail({ b, onComplete, busy, onRefresh }) {
   if (!b) return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 text-center text-slate-400 text-sm sticky top-4">
       Sélectionnez une réservation pour consulter le dossier.
@@ -78,6 +134,8 @@ export default function RequestDetail({ b, onComplete, busy }) {
           <p className="text-[10px] text-slate-400 pt-1">Versé sur votre solde à la clôture de la location.</p>
         </div>
       </div>
+
+      {b.status === 'completed' && <RateClient key={b.id} b={b} onDone={onRefresh} />}
 
       {canComplete && (
         <button onClick={() => onComplete(b.id)} disabled={busy === b.id}

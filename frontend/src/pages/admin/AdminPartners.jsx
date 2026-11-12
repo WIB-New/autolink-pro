@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admindash/AdminLayout';
-import { usersAPI, vehiclesAPI, bookingsAPI } from '../../services/api';
+import { usersAPI, vehiclesAPI, bookingsAPI, withdrawalsAPI } from '../../services/api';
 import {
   BadgeCheck, Building2,
   Car, Zap, Eye, Wallet,
@@ -20,17 +20,20 @@ export default function AdminPartners() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
+  const [pendingWd, setPendingWd] = useState(0);
 
   const fetchAll = useCallback(async () => {
     try {
-      const [u, v, b] = await Promise.all([
+      const [u, v, b, w] = await Promise.all([
         usersAPI.list({ page_size: 100 }),
         vehiclesAPI.list({ page_size: 100 }),
         bookingsAPI.list({ page_size: 100 }),
+        withdrawalsAPI.list({ status: 'pending', page_size: 100 }),
       ]);
       setOwners((u.data.results || u.data).filter(x => x.role === 'OWNER'));
       setVehicles(v.data.results || v.data);
       setBookings(b.data.results || b.data);
+      setPendingWd((w.data.results || w.data || []).reduce((s, x) => s + Number(x.amount || 0), 0));
     } catch (_) {}
     setLoading(false);
   }, []);
@@ -44,7 +47,11 @@ export default function AdminPartners() {
     (filter === 'all' || (filter === 'validated' && o.is_verified !== false) || (filter === 'pending' && o.is_verified === false))
   ), [owners, query, filter]);
 
-  const balance = bookings.filter(b => ['completed', 'active'].includes(b.status)).reduce((s, b) => s + Number(b.owner_amount || 0), 0);
+  // Taux de demandes répondues en moins de 4h par les propriétaires.
+  const responded = bookings.filter(b => b.owner_responded_at && b.created_at);
+  const fastRate = responded.length
+    ? Math.round(responded.filter(b => (new Date(b.owner_responded_at) - new Date(b.created_at)) <= 4 * 3600 * 1000).length / responded.length * 1000) / 10
+    : null;
 
   return (
     <AdminLayout
@@ -56,8 +63,8 @@ export default function AdminPartners() {
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
         <StatCard icon={Building2} iconCls="bg-blue-50 text-blue-600" value={owners.length} unit={`· ${owners.filter(x => x.is_verified === false).length} en attente`} label="Partenaires actifs" />
         <StatCard icon={Car} iconCls="bg-emerald-50 text-emerald-600" value={vehicles.length} unit={`· ${vehicles.filter(v => v.status === 'approved').length} homologués`} label="Flotte sous contrôle" />
-        <StatCard icon={Zap} iconCls="bg-amber-50 text-amber-600" value="94,2" unit="% en 4h" label="Taux réponse bailleurs" />
-        <StatCard icon={Wallet} iconCls="bg-violet-50 text-violet-600" value={fmt(balance)} unit="FCFA" label="Retraits à valider" />
+        <StatCard icon={Zap} iconCls="bg-amber-50 text-amber-600" value={fastRate === null ? '—' : String(fastRate).replace('.', ',')} unit="% en 4h" label="Taux réponse bailleurs" />
+        <StatCard icon={Wallet} iconCls="bg-violet-50 text-violet-600" value={fmt(pendingWd)} unit="FCFA" label="Retraits à valider" />
       </div>
 
       {/* Table des partenaires — composant DataTable réutilisable */}
@@ -72,7 +79,10 @@ export default function AdminPartners() {
         columns={[
           { label: 'Partenaire', render: p => (
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center text-white text-[10px] font-black shrink-0">
+              {p.avatar
+                ? <img src={p.avatar} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0" onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }} />
+                : null}
+              <div className={`w-8 h-8 bg-slate-800 rounded-lg items-center justify-center text-white text-[10px] font-black shrink-0 ${p.avatar ? 'hidden' : 'flex'}`}>
                 {initialsOf(`${p.first_name} ${p.last_name}`)}
               </div>
               <div className="min-w-0">

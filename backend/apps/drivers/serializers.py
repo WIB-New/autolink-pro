@@ -6,7 +6,12 @@ class DriverApplicationSerializer(serializers.ModelSerializer):
     applicant_name = serializers.SerializerMethodField()
     applicant_email = serializers.EmailField(source='applicant.email', read_only=True)
     applicant_phone = serializers.CharField(source='applicant.phone', read_only=True)
+    applicant_avatar = serializers.SerializerMethodField()
+    driver_rating = serializers.SerializerMethodField()
+    driver_rating_count = serializers.SerializerMethodField()
+    driver_stats = serializers.SerializerMethodField()
     compliance_score = serializers.ReadOnlyField()
+    compliance_checks = serializers.ReadOnlyField()
 
     class Meta:
         model = DriverApplication
@@ -24,6 +29,39 @@ class DriverApplicationSerializer(serializers.ModelSerializer):
 
     def get_applicant_name(self, obj):
         return obj.applicant.get_full_name() if obj.applicant else obj.full_name
+
+    def get_applicant_avatar(self, obj):
+        if obj.applicant_id and obj.applicant.avatar:
+            request = self.context.get('request')
+            url = obj.applicant.avatar.url
+            return request.build_absolute_uri(url) if request else url
+        return None
+
+    def get_driver_rating(self, obj):
+        p = getattr(obj.applicant, 'driver_profile', None) if obj.applicant_id else None
+        return float(p.rating) if p and p.rating_count else None
+
+    def get_driver_rating_count(self, obj):
+        p = getattr(obj.applicant, 'driver_profile', None) if obj.applicant_id else None
+        return p.rating_count if p else 0
+
+    def get_driver_stats(self, obj):
+        """Statistiques d'activité du chauffeur (identiques à son tableau de bord)."""
+        p = getattr(obj.applicant, 'driver_profile', None) if obj.applicant_id else None
+        u = obj.applicant
+        if not u:
+            return None
+        return {
+            'total_trips': p.total_trips if p else 0,
+            'total_earned': float(p.total_earned) if p else 0,
+            'acceptance_rate': p.acceptance_rate if p else None,
+            'on_time_rate': p.on_time_rate if p else None,
+            'is_online': p.is_online if p else False,
+            'certified_at': p.certified_at if p else None,
+            'assigned_vehicle': str(p.assigned_vehicle) if p and p.assigned_vehicle_id else None,
+            'balance': float(u.balance or 0),
+            'is_active': u.is_active,
+        }
 
     def validate(self, attrs):
         user = self.context['request'].user

@@ -184,7 +184,7 @@ export default function ClientDashboard() {
               {[
                 { value: stats.bookings_total, label: 'Locations', sub: t('{{n}} véhicule(s)', { n: stats.distinct_vehicles }) },
                 { value: `${formatNumber(Number(stats.total_spent || 0))}`, label: 'FCFA dépensés', sub: t('au total') },
-                { value: Number(stats.average_rating || 0).toFixed(1), label: 'Note donnée', sub: t('{{n}} avis', { n: stats.rated_count || 0 }) },
+                { value: Number(stats.average_rating || 0).toFixed(1), label: 'Note des propriétaires', sub: t('{{n}} avis reçus', { n: stats.rated_count || 0 }) },
               ].map((item) => (
                 <div key={item.label} className="rounded-xl bg-surface-container-low dark:bg-slate-900 p-3 text-center">
                   <div className="font-headline-sm text-headline-sm text-on-surface dark:text-white truncate">{item.value}</div>

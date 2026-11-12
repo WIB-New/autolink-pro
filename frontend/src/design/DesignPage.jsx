@@ -3,12 +3,16 @@ import i18n from '../i18n';
 import translateDom, { observeDom } from '../i18n/translateDom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DesignShell from './DesignShell';
+import OwnerLayout from '../components/ownerdash/OwnerLayout';
 
 // Page maquette : HTML Stitch injecté dans DesignShell.
 // - `links` : { 'Texte bouton': '/route' | 'modal' | 'close-modal' }
 // - interactions génériques reproduisant les micro-scripts du design :
 //   onglets/filtres, montants, suppression favoris, compteur comparaison,
 //   copie presse-papier, réponses rapides + envoi de message, téléchargements.
+/* Chrome adaptatif : OwnerLayout pour le propriétaire, DesignShell sinon. */
+const Shell = ({ role, children }) => (role === 'owner' ? <OwnerLayout>{children}</OwnerLayout> : <DesignShell role={role}>{children}</DesignShell>);
+
 export default function DesignPage({ html, links = {}, modalHtml = null, role = 'client' }) {
   const ref = useRef(null);
   const modalRef = useRef(null);
@@ -492,13 +496,13 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
   }, [modalOpen]);
 
   return (
-    <DesignShell role={role}>
+    <Shell role={role}>
       <div ref={ref} className="pt-4 sm:pt-6 px-4 sm:px-6 lg:px-8" dangerouslySetInnerHTML={{ __html: html }} />
       {modalHtml && modalOpen && (
         <div className="fixed inset-0 z-[80] overflow-y-auto" ref={modalRef}>
           <div dangerouslySetInnerHTML={{ __html: modalHtml }} />
         </div>
       )}
-    </DesignShell>
+    </Shell>
   );
 }
