@@ -1,3 +1,5 @@
+import secrets
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
@@ -58,6 +60,23 @@ class User(AbstractUser):
 
     def __str__(self):
         return f'{self.get_full_name()} ({self.role})'
+
+    def _new_referral_code(self):
+        while True:
+            code = f'ALP-{(self.username or "U").upper()[:8]}-{secrets.token_hex(3).upper()}'
+            if not User.objects.filter(referral_code=code).exists():
+                return code
+
+    def save(self, *args, **kwargs):
+        # Un code parrainage est attribué dès la création : la colonne porte
+        # une contrainte unique en base, insérer '' deux fois lève une
+        # IntegrityError (cause du 500 à l'inscription).
+        if not self.referral_code:
+            self.referral_code = self._new_referral_code()
+            update_fields = kwargs.get('update_fields')
+            if update_fields is not None:
+                kwargs['update_fields'] = set(update_fields) | {'referral_code'}
+        super().save(*args, **kwargs)
 
 
 class PlatformSettings(models.Model):
