@@ -1,6 +1,8 @@
 import random
+from io import BytesIO
 from django.conf import settings
 from django.core.mail import send_mail
+from django.http import HttpResponse
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework import filters, generics, permissions, status
@@ -761,6 +763,108 @@ class MeReferralView(APIView):
                 for u in referred
             ],
         })
+
+
+class MeDataExportView(APIView):
+    """Export PDF des données personnelles (portabilité CEMAC) : profil,
+    réservations, transactions wallet, documents et parrainage."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                        Table, TableStyle)
+        from apps.payments.models import WalletTransaction
+
+        user = request.user
+        teal = colors.HexColor('#0d7a6f')
+        ink = colors.HexColor('#1f2937')
+        mute = colors.HexColor('#6b7280')
+        h1 = ParagraphStyle('h1', fontName='Helvetica-Bold', fontSize=18, textColor=teal)
+        h2 = ParagraphStyle('h2', fontName='Helvetica-Bold', fontSize=11, textColor=teal, spaceBefore=14)
+        body = ParagraphStyle('body', fontName='Helvetica', fontSize=9, textColor=ink, leading=13)
+        small = ParagraphStyle('small', fontName='Helvetica', fontSize=8, textColor=mute)
+
+        def table(headers, rows, widths=None):
+            t = Table([headers] + rows, colWidths=widths, repeatRows=1)
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), teal),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f0f7f6')]),
+                ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#cbd5e1')),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ]))
+            return t
+
+        story = [
+            Paragraph('AutoLink Pro — Export de mes données', h1),
+            Paragraph(f'Généré le {timezone.localtime():%d/%m/%Y à %H:%M} — conformité portabilité des données CEMAC.', small),
+            Spacer(1, 8),
+            Paragraph('1. Profil', h2),
+            table(['Champ', 'Valeur'], [
+                ['Nom complet', user.get_full_name() or '—'],
+                ['Nom d\u2019utilisateur', user.username],
+                ['Email', user.email or '—'],
+                ['Téléphone', user.phone or '—'],
+                ['Rôle', user.get_role_display()],
+                ['Ville', user.city or '—'],
+                ['Statut KYC', user.get_kyc_status_display()],
+                ['Solde portefeuille', f'{user.balance or 0} FCFA'],
+                ['Inscrit le', f'{user.created_at:%d/%m/%Y}' if user.created_at else '—'],
+            ], widths=[160, 340]),
+        ]
+
+        bookings = list(user.bookings.select_related('vehicle').order_by('-created_at'))
+        story += [Paragraph(f'2. Réservations ({len(bookings)})', h2)]
+        if bookings:
+            story.append(table(
+                ['Réf.', 'Véhicule', 'Période', 'Statut', 'Montant'],
+                [[f'BK-{b.pk:04d}', str(b.vehicle), f'{b.start_date:%d/%m/%y} → {b.end_date:%d/%m/%y}',
+                  b.get_status_display(), f'{b.subtotal} F'] for b in bookings],
+                widths=[60, 180, 120, 80, 70]))
+        else:
+            story.append(Paragraph('Aucune réservation.', body))
+
+        txs = list(WalletTransaction.objects.filter(user=user).order_by('-created_at'))
+        story += [Paragraph(f'3. Transactions portefeuille ({len(txs)})', h2)]
+        if txs:
+            story.append(table(
+                ['Date', 'Type', 'Référence', 'Montant', 'Solde après'],
+                [[f'{t.created_at:%d/%m/%y %H:%M}', t.get_kind_display(), t.reference,
+                  f'{t.amount} F', f'{t.balance_after} F'] for t in txs],
+                widths=[80, 90, 150, 80, 80]))
+        else:
+            story.append(Paragraph('Aucune transaction.', body))
+
+        docs = list(UserDocument.objects.filter(user=user).order_by('-created_at'))
+        kyc_files = [label for label, f in (
+            ('CNI', user.id_document), ('Permis', user.driving_license),
+            ('Justificatif de domicile', user.address_proof), ('Assurance', user.insurance)) if f]
+        story += [Paragraph('4. Documents', h2),
+                  Paragraph(f'Fichiers KYC du compte : {", ".join(kyc_files) if kyc_files else "aucun"}.', body)]
+        if docs:
+            story.append(table(
+                ['Document', 'Type', 'Statut', 'Déposé le'],
+                [[d.name, d.doc_type or '—', d.get_status_display(),
+                  f'{d.created_at:%d/%m/%y}'] for d in docs],
+                widths=[170, 110, 90, 90]))
+
+        story += [Paragraph('5. Parrainage', h2),
+                  Paragraph(f'Code : {user.referral_code or "—"} · Filleuls : {user.referrals.count()} · Crédits : {user.referral_credits or 0} FCFA', body)]
+
+        buffer = BytesIO()
+        SimpleDocTemplate(buffer, pagesize=A4, leftMargin=40, rightMargin=40,
+                          topMargin=40, bottomMargin=40,
+                          title='Export données AutoLink Pro').build(story)
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="autolink-mes-donnees-{user.username}.pdf"'
+        return response
 
 
 # ─── Connexion par code email (OTP) ───────────────────────────────────────────

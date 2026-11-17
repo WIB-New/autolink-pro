@@ -395,3 +395,44 @@ class NewsletterTests(APITestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, [subscriber.email])
         self.assertIn('Unsubscribe:', mail.outbox[0].body)
+
+
+class MeDataExportTests(APITestCase):
+    def test_export_returns_pdf_for_authenticated_user(self):
+        from apps.bookings.models import Booking
+        from apps.payments.models import WalletTransaction
+        from apps.vehicles.models import Vehicle
+
+        from datetime import date
+        from decimal import Decimal
+
+        user = User.objects.create_user(username='export-user', email='export@example.com', password='SecurePass2026!')
+        owner = User.objects.create_user(username='export-owner', email='owner@example.com', password='SecurePass2026!', role='OWNER')
+        start = date.today()
+        vehicle = Vehicle.objects.create(
+            owner=owner, brand='Toyota', model='Corolla', year=2020, plate='TST-EXP-01',
+            category='Berline', fuel='essence', seats=5, color='Blanc', mode='home',
+            status='approved', daily_rate=25000, insurance_type='standard',
+            insurance_expiry=start + timedelta(days=300), market_value=15_000_000,
+            mileage=60000, condition_score=80, city='Douala')
+        booking = Booking.objects.create(
+            client=user, vehicle=vehicle, status='confirmed',
+            start_date=start, end_date=start + timedelta(days=2),
+            daily_rate=Decimal('25000'), days=2, subtotal=50000,
+            commission_amount=0, owner_amount=0, deposit_amount=0,
+        )
+        WalletTransaction.objects.create(user=user, kind='topup', amount=10000, balance_after=10000, reference='TX-EXP-1')
+
+        self.client.force_authenticate(user)
+        response = self.client.get('/api/users/me/export/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertIn('attachment;', response['Content-Disposition'])
+        self.assertTrue(response.content.startswith(b'%PDF'))
+        self.assertGreater(len(response.content), 500)
+        self.assertEqual(booking.client, user)
+
+    def test_export_requires_authentication(self):
+        response = self.client.get('/api/users/me/export/')
+        self.assertEqual(response.status_code, 401)

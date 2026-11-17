@@ -213,6 +213,7 @@ export const usersAPI = {
   updateMe: (payload) => api.patch('/users/me/', payload,
     payload instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
   referral: () => api.get('/users/me/referral/'),
+  exportData: () => api.get('/users/me/export/', { responseType: 'blob' }),
   documents: (userId) => api.get(`/users/${userId}/documents/`),
 };
 

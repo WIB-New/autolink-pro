@@ -73,6 +73,27 @@ export default function Parametres({ role = 'client' }) {
   const [sessList, setSessList] = useState([]);
   const [sessBusy, setSessBusy] = useState(false);
   const [sessErr, setSessErr] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+
+  const exportData = async () => {
+    setExporting(true); setExportError('');
+    try {
+      const res = await usersAPI.exportData();
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `autolink-mes-donnees-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setExportError("L'export a échoué — réessayez dans un instant.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const parseAgent = (ua = '') => {
     const b = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Navigateur';
@@ -167,8 +188,11 @@ export default function Parametres({ role = 'client' }) {
             <span className="material-symbols-outlined text-tertiary text-[20px]">download</span> Données personnelles
           </h2>
           <Row icon="folder_shared" title="Exporter mes données (CEMAC)" desc="Historique réservations, factures et documents">
-            <button type="button" className="px-3.5 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md transition-colors" onClick={() => window.print()}>PDF</button>
+            <button type="button" disabled={exporting} className="px-3.5 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md transition-colors disabled:opacity-50" onClick={exportData}>
+              {exporting ? 'Export…' : 'PDF'}
+            </button>
           </Row>
+          {exportError && <p className="font-label-md text-label-md text-error">{exportError}</p>}
           <Row icon="delete_forever" title="Supprimer mon compte" desc="Irréversible — exportez vos données d'abord">
             <button type="button" className="px-3.5 py-1.5 rounded-lg bg-error-container text-error hover:bg-error hover:text-on-error font-label-md text-label-md font-semibold transition-colors" onClick={save}>Supprimer</button>
           </Row>
