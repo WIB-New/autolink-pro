@@ -1,7 +1,7 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.conf import settings
-from django.conf.urls.static import static
+from django.views.static import serve
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.http import JsonResponse
 from apps.users.views import ContactAPIView, ContactMessageViewSet, SiteConfigAPIView
@@ -31,4 +31,7 @@ urlpatterns = [
     path('api/inspections/', include('apps.inspections.urls')),
     path('api/affiliates/', include('apps.affiliates.urls')),
     path('api/messaging/', include('apps.messaging.urls')),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Médias uploadés : servis par Django quel que soit DEBUG
+    # (static() ne s'enregistre qu'en DEBUG — tout /media/ renvoyait 404 en prod).
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+]

@@ -39,6 +39,8 @@ services:
       PAYPAL_MODE: ${PAYPAL_MODE:-sandbox}
       PAYPAL_PAYOUTS_ENABLED: ${PAYPAL_PAYOUTS_ENABLED:-false}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      # Uploads persistants : le volume /app/data survit aux redéploiements.
+      MEDIA_ROOT: /app/data/media
     volumes:
       - autolink-db:/app/data
 
