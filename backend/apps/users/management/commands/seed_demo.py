@@ -18,6 +18,14 @@ ADMIN_USERNAME = config('ADMIN_USERNAME', default='admin')
 ADMIN_EMAIL = config('ADMIN_EMAIL', default='admin@autolink.com')
 ADMIN_PASSWORD = config('ADMIN_PASSWORD', default='')
 
+# Propriétaire de la flotte plateforme — les véhicules seedés et tous ceux
+# encore rattachés à un compte ADMIN lui sont réassignés pour que la flotte
+# soit gérable depuis l'espace propriétaire. Identifiants configurables via
+# OWNER_USERNAME / OWNER_EMAIL / OWNER_PASSWORD dans Dokploy.
+OWNER_USERNAME = config('OWNER_USERNAME', default='proprietaire')
+OWNER_EMAIL = config('OWNER_EMAIL', default='proprietaire@autolink.cm')
+OWNER_PASSWORD = config('OWNER_PASSWORD', default='')
+
 # Anciens comptes démo — supprimés au démarrage : en production, chaque
 # utilisateur doit être une personne réelle enregistrée via le site/l'app.
 DEMO_IDENTITIES = [
@@ -186,16 +194,49 @@ class Command(BaseCommand):
                 is_active=False, is_staff=False, is_superuser=False)
         self.stdout.write(f'Admin: {admin.username} ready')
 
-        # Nettoyage des anciens comptes démo : les véhicules sont réassignés à
-        # l'admin AVANT (FK protégée), puis les réservations/paiements/payouts
-        # démo liés (PROTECT) sont supprimés, puis les comptes eux-mêmes.
+        # Compte propriétaire de la flotte plateforme.
+        owner, owner_created = User.objects.get_or_create(
+            username=OWNER_USERNAME,
+            defaults=dict(
+                email=OWNER_EMAIL, first_name='Propriétaire', last_name='AutoLink',
+                role='OWNER', is_verified=True,
+            ),
+        )
+        if owner.pk == admin.pk:
+            # Cas dégénéré : OWNER_USERNAME == ADMIN_USERNAME → pas de compte
+            # séparé, la flotte reste au compte admin.
+            owner = admin
+        else:
+            fixed = False
+            for attr, val in (('role', 'OWNER'), ('email', OWNER_EMAIL),
+                              ('is_verified', True), ('is_active', True)):
+                if getattr(owner, attr) != val:
+                    setattr(owner, attr, val)
+                    fixed = True
+            if OWNER_PASSWORD:
+                owner.set_password(OWNER_PASSWORD)
+                fixed = True
+            elif owner_created:
+                generated = secrets.token_urlsafe(16)
+                owner.set_password(generated)
+                self.stdout.write(self.style.WARNING(
+                    f'OWNER_PASSWORD non défini — mot de passe généré : {generated}\n'
+                    'Définissez OWNER_PASSWORD dans Dokploy puis redéployez.'))
+                fixed = True
+            if fixed:
+                owner.save()
+        self.stdout.write(f'Owner: {owner.username} ready')
+
+        # Nettoyage des anciens comptes démo : les véhicules sont réassignés au
+        # compte propriétaire AVANT (FK protégée), puis les réservations/
+        # paiements/payouts démo liés (PROTECT) sont supprimés, puis les comptes.
         from apps.bookings.models import Booking
         from apps.payments.models import Payment, Payout
         demo_qs = User.objects.filter(
             Q(username__in=DEMO_IDENTITIES) | Q(email__in=DEMO_IDENTITIES)
-        ).exclude(pk=admin.pk)
+        ).exclude(pk__in=(admin.pk, owner.pk))
         if demo_qs.exists():
-            Vehicle.objects.filter(owner__in=demo_qs).update(owner=admin)
+            Vehicle.objects.filter(owner__in=demo_qs).update(owner=owner)
             Booking.objects.filter(Q(client__in=demo_qs) | Q(driver__in=demo_qs)).delete()
             Payment.objects.filter(payer__in=demo_qs).delete()
             Payout.objects.filter(recipient__in=demo_qs).delete()
@@ -203,7 +244,12 @@ class Command(BaseCommand):
             demo_qs.delete()
             self.stdout.write(f'Demo cleanup: {count} comptes supprimés')
 
-        owner = admin  # la flotte plateforme appartient au compte admin
+        # Tous les véhicules rattachés à un compte ADMIN passent au compte
+        # propriétaire — ils deviennent éditables depuis l'espace propriétaire.
+        reassigned = (Vehicle.objects.filter(owner__role='ADMIN')
+                      .exclude(owner__pk=owner.pk).update(owner=owner))
+        if reassigned:
+            self.stdout.write(f'Vehicles reassignés au propriétaire : {reassigned}')
         # Photos réelles par modèle (vignettes allégées Wikimedia Commons)
         images = {}
         img_path = os.path.join(

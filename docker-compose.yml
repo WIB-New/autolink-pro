@@ -39,6 +39,11 @@ services:
       PAYPAL_MODE: ${PAYPAL_MODE:-sandbox}
       PAYPAL_PAYOUTS_ENABLED: ${PAYPAL_PAYOUTS_ENABLED:-false}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      # Compte propriétaire de la flotte plateforme (créé/maj par seed_demo
+      # au démarrage — toutes les voitures lui sont réassignées).
+      OWNER_USERNAME: ${OWNER_USERNAME:-proprietaire}
+      OWNER_EMAIL: ${OWNER_EMAIL:-proprietaire@autolink.cm}
+      OWNER_PASSWORD: ${OWNER_PASSWORD:-}
       # Uploads persistants : le volume /app/data survit aux redéploiements.
       MEDIA_ROOT: /app/data/media
     volumes:
