@@ -17,6 +17,11 @@ const GoogleIcon = () => (
 );
 
 let gsiPromise = null;
+let gsiReady = false;
+// Handler credential du bouton qui a déclenché le flux en cours (la page peut
+// monter plusieurs instances du bouton — Google n'accepte qu'un seul callback).
+let gsiHandler = null;
+
 const loadGsi = () => {
   if (!gsiPromise) {
     gsiPromise = new Promise((resolve, reject) => {
@@ -29,11 +34,25 @@ const loadGsi = () => {
   return gsiPromise;
 };
 
+// google.accounts.id.initialize() ne doit être appelé qu'une seule fois pour
+// toute la page (sinon warning GSI et seule la dernière config est utilisée).
+const ensureInit = () => {
+  if (gsiReady || !window.google) return;
+  window.google.accounts.id.initialize({
+    client_id: CLIENT_ID,
+    use_fedcm_for_prompt: true,
+    callback: (resp) => { if (gsiHandler) gsiHandler(resp.credential); },
+  });
+  gsiReady = true;
+};
+
 /* Bouton « Continuer avec Google » stylisé maison.
    Le clic déclenche google.accounts.id.prompt() (même flux credential que
    le bouton officiel). Si le prompt est bloqué (cooldown après refus),
-   on bascule sur le bouton officiel Google en secours. */
-export default function GoogleAuthButton({ label = 'Continuer avec Google' }) {
+   on bascule sur le bouton officiel Google en secours.
+   `role` (CLIENT/OWNER/DRIVER) n'est transmis qu'à l'inscription — sur la page
+   de connexion le compte existant garde son rôle. */
+export default function GoogleAuthButton({ label = 'Continuer avec Google', role }) {
   const { googleLogin, getDashboardPath } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -43,22 +62,26 @@ export default function GoogleAuthButton({ label = 'Continuer avec Google' }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [official, setOfficial] = useState(false); // fallback bouton Google
+  const roleRef = useRef(role);
+  roleRef.current = role;
+
+  const handleCredential = async (credential) => {
+    setBusy(true); setError('');
+    const res = await googleLogin({
+      credential,
+      ...(roleRef.current ? { role: roleRef.current } : {}),
+    });
+    setBusy(false);
+    if (res.success) navigate(next || getDashboardPath(res.user.role));
+    else setError(res.error || 'Connexion Google impossible.');
+  };
 
   useEffect(() => {
     if (!CLIENT_ID) return;
     let cancelled = false;
     loadGsi().then(() => {
       if (cancelled || !window.google) return;
-      window.google.accounts.id.initialize({
-        client_id: CLIENT_ID,
-        callback: async (resp) => {
-          setBusy(true); setError('');
-          const res = await googleLogin({ credential: resp.credential });
-          setBusy(false);
-          if (res.success) navigate(next || getDashboardPath(res.user.role));
-          else setError(res.error || 'Connexion Google impossible.');
-        },
-      });
+      ensureInit();
       setReady(true);
     }).catch(() => setError('Impossible de charger Google Sign-In.'));
     return () => { cancelled = true; };
@@ -68,15 +91,18 @@ export default function GoogleAuthButton({ label = 'Continuer avec Google' }) {
   // Rendu du bouton officiel en cas de besoin (prompt bloqué par Google)
   useEffect(() => {
     if (!official || !window.google || !btnRef.current) return;
+    gsiHandler = handleCredential;
     window.google.accounts.id.renderButton(btnRef.current, {
       theme: 'outline', size: 'large', shape: 'rectangular',
       text: 'continue_with', locale: 'fr', width: 550,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [official]);
 
   const handleClick = () => {
     if (!ready || !window.google || busy) return;
     setError('');
+    gsiHandler = handleCredential;
     window.google.accounts.id.prompt((notification) => {
       if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
         setOfficial(true); // prompt refusé → bouton officiel en secours
@@ -96,7 +122,7 @@ export default function GoogleAuthButton({ label = 'Continuer avec Google' }) {
   return (
     <div className="w-full">
       {busy ? (
-        <div className="w-full flex items-center justify-center gap-2 bg-white border-2 border-slate-200 rounded-xl py-3.5 text-sm font-bold text-slate-500 shadow-sm">
+        <div className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-200 rounded-xl py-3.5 text-sm font-bold text-slate-500 shadow-sm">
           <Loader size={16} className="animate-spin text-teal-600" /> Connexion Google…
         </div>
       ) : official ? (

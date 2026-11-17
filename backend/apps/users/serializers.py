@@ -300,8 +300,15 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError('Email ou mot de passe incorrect.')
         if not user.check_password(attrs['password']) or not user.is_active:
             raise serializers.ValidationError('Email ou mot de passe incorrect.')
-        send_login_notification(user)
-        refresh = RefreshToken.for_user(user)
+        try:
+            send_login_notification(user)
+        except Exception:
+            pass
+        try:
+            refresh = RefreshToken.for_user(user)
+        except Exception:
+            refresh = RefreshToken()
+            refresh['user_id'] = user.pk
         return {
             'access': str(refresh.access_token),
             'refresh': str(refresh),
@@ -316,6 +323,11 @@ class GoogleAuthSerializer(serializers.Serializer):
     first_name = serializers.CharField(required=False, allow_blank=True, default='')
     last_name = serializers.CharField(required=False, allow_blank=True, default='')
     google_id = serializers.CharField(required=False, allow_blank=True, default='')
+    # Rôle demandé à l'inscription (CLIENT/OWNER/DRIVER) — appliqué uniquement
+    # à la création du compte ; un compte existant conserve son rôle.
+    role = serializers.ChoiceField(
+        choices=RegisterSerializer.PUBLIC_ROLES,
+        required=False, allow_blank=True, write_only=True)
 
     def validate(self, attrs):
         email = attrs['email'].strip().lower()
@@ -333,7 +345,7 @@ class GoogleAuthSerializer(serializers.Serializer):
                 email=email,
                 first_name=attrs.get('first_name', ''),
                 last_name=attrs.get('last_name', ''),
-                role='CLIENT',
+                role=attrs.get('role') or 'CLIENT',
                 is_verified=True,
                 language=get_request_language(self.context.get('request')),
             )
@@ -341,10 +353,17 @@ class GoogleAuthSerializer(serializers.Serializer):
             user.save()
         if not user.is_active:
             raise serializers.ValidationError('Ce compte a été suspendu.')
-        if created:
-            send_welcome_email(user)
-        send_login_notification(user)
-        refresh = RefreshToken.for_user(user)
+        try:
+            if created:
+                send_welcome_email(user)
+            send_login_notification(user)
+        except Exception:
+            pass
+        try:
+            refresh = RefreshToken.for_user(user)
+        except Exception:
+            refresh = RefreshToken()
+            refresh['user_id'] = user.pk
         return {
             'access': str(refresh.access_token),
             'refresh': str(refresh),

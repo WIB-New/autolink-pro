@@ -58,6 +58,7 @@ export default function Register() {
         email: form.email.trim(),
         first_name: parts[0] || '',
         last_name: parts.slice(1).join(' ') || '',
+        role: form.role,
       });
       return true;
     } catch (_) { return false; }
@@ -258,7 +259,7 @@ export default function Register() {
             <span className="text-xs text-slate-400 font-medium">ou</span>
             <div className="flex-1 h-px bg-slate-200" />
           </div>
-          <GoogleAuthButton label="S'inscrire avec Google" />
+          <GoogleAuthButton label="S'inscrire avec Google" role={form.role} />
         </form>
 
         <p className="text-center text-sm text-slate-500 mt-5">

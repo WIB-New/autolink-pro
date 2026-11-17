@@ -163,6 +163,7 @@ class LoginCode(models.Model):
     code = models.CharField(max_length=6)
     first_name = models.CharField(max_length=80, blank=True)
     last_name = models.CharField(max_length=80, blank=True)
+    role = models.CharField(max_length=20, blank=True, default='')
     expires_at = models.DateTimeField()
     attempts = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)

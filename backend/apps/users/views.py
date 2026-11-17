@@ -11,6 +11,7 @@ import logging
 from urllib.parse import urlencode
 from django.core import signing
 from django.core.mail import get_connection, EmailMultiAlternatives
+from django.db import IntegrityError
 from django.db.models import Count, Avg
 from django.db.models.deletion import ProtectedError
 from django.urls import reverse
@@ -548,6 +549,7 @@ class GoogleAuthView(APIView):
                 'first_name': info.get('given_name', ''),
                 'last_name': info.get('family_name', ''),
                 'google_id': info.get('sub', ''),
+                'role': request.data.get('role') or '',
             })
             serializer.is_valid(raise_exception=True)
             return Response(serializer.validated_data)
@@ -566,7 +568,18 @@ class RegisterView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.save(language=get_request_language(request))
+        try:
+            user = serializer.save(language=get_request_language(request))
+        except IntegrityError:
+            logger.exception('Registration integrity error for %s', request.data.get('email'))
+            return Response(
+                {'detail': 'Un compte existe déjà avec ces informations.'},
+                status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            logger.exception('Registration failed for %s', request.data.get('email'))
+            return Response(
+                {'detail': "Inscription impossible pour le moment — réessayez dans quelques instants."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         try:
             send_welcome_email(user)
         except Exception:
@@ -657,7 +670,9 @@ class MePasswordView(APIView):
         current = request.data.get('current_password') or ''
         new = request.data.get('new_password') or ''
         confirm = request.data.get('new_password2') or request.data.get('confirm') or ''
-        if not user.check_password(current):
+        # Comptes créés via Google/OTP : aucun mot de passe utilisable → première
+        # définition libre (le mot de passe actuel ne peut pas être vérifié).
+        if user.has_usable_password() and not user.check_password(current):
             return Response({'detail': 'Mot de passe actuel incorrect.'}, status=status.HTTP_400_BAD_REQUEST)
         if len(new) < 6:
             return Response({'detail': 'Le nouveau mot de passe doit contenir au moins 6 caractères.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -746,11 +761,14 @@ class OTPRequestView(APIView):
         if recent:
             return Response({'detail': 'Un code vient déjà d\'être envoyé. Patientez une minute.'}, status=429)
 
+        role = request.data.get('role') or ''
+        if role not in RegisterSerializer.PUBLIC_ROLES:
+            role = ''
         code = f'{random.SystemRandom().randint(0, 999999):06d}'
         LoginCode.objects.filter(email=email).delete()
         login_code = LoginCode.objects.create(
             email=email, code=code, first_name=first_name, last_name=last_name,
-            expires_at=timezone.now() + timedelta(minutes=10))
+            role=role, expires_at=timezone.now() + timedelta(minutes=10))
         try:
             send_mail(
                 subject=f'AutoLink Pro — Votre code de connexion : {code}',
@@ -823,10 +841,13 @@ class OTPVerifyView(APIView):
             while User.objects.filter(username=username).exists():
                 i += 1
                 username = f'{base}{i}'
+            role = otp.role or request.data.get('role')
+            if role not in RegisterSerializer.PUBLIC_ROLES:
+                role = 'CLIENT'
             user = User.objects.create_user(
                 username=username, email=email,
                 first_name=otp.first_name, last_name=otp.last_name,
-                role='CLIENT', is_verified=True)
+                role=role, is_verified=True)
             user.set_unusable_password()
             user.save()
         if not user.is_active:
