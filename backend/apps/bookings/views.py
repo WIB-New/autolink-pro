@@ -520,17 +520,29 @@ class BookingViewSet(viewsets.ModelViewSet):
                     url = self._pay_external(booking, payment_method, request)
                     self._last_payment_url = url
                     return
-                if payment_method in ('mtn', 'orange'):
-                    url, reference = self._pay_mobile(booking, payment_method, request)
-                    if url:
-                        self._last_payment_url = url
-                    self._last_payment_reference = str(booking.pk)
-                    return
-                if payment_method != 'wallet':
+                elif payment_method in ('mtn', 'orange'):
+                    from apps.payments import providers
+                    configured = (providers.mtn_configured() if payment_method == 'mtn'
+                                  else providers.orange_configured())
+                    if configured:
+                        url, reference = self._pay_mobile(booking, payment_method, request)
+                        if url:
+                            self._last_payment_url = url
+                        self._last_payment_reference = str(booking.pk)
+                        return
+                    # Sandbox : aucun credential provider → paiement mobile
+                    # simulé, validé d'office (désactivable via PAYMENTS_SANDBOX=false).
+                    if not getattr(settings, 'PAYMENTS_SANDBOX', True):
+                        raise ValidationError({'payment_method': 'Moyen de paiement non configuré.'})
+                    self._pay(booking, payment_method, sandbox=True)
+                    booking.status = Booking.Status.CONFIRMED
+                    booking.save(update_fields=['status', 'updated_at'])
+                elif payment_method != 'wallet':
                     raise ValidationError({'payment_method': 'Ce moyen de paiement n’est pas disponible.'})
-                self._pay(booking, payment_method)
-                booking.status = Booking.Status.CONFIRMED
-                booking.save(update_fields=['status', 'updated_at'])
+                else:
+                    self._pay(booking, payment_method)
+                    booking.status = Booking.Status.CONFIRMED
+                    booking.save(update_fields=['status', 'updated_at'])
 
             # Chauffeur
             if driver_type == 'internal':
@@ -559,7 +571,7 @@ class BookingViewSet(viewsets.ModelViewSet):
 
             booking.sync_vehicle_status()
 
-    def _pay(self, booking, method):
+    def _pay(self, booking, method, sandbox=False):
         """Encaisse le client : location + caution de garantie.
         Séquestre part proprio (85 %) + caution client bloqués jusqu'à la fin."""
         from apps.payments.models import Payment, WalletTransaction
@@ -592,6 +604,7 @@ class BookingViewSet(viewsets.ModelViewSet):
             commission=booking.commission_amount, owner_payout=booking.owner_amount,
             escrow_status='held', deposit_amount=deposit, deposit_status='held',
             transaction_ref=f'AL-{uuid.uuid4().hex[:12].upper()}',
+            provider_status='SANDBOX' if sandbox else '',
             paid_at=timezone.now(),
         )
 

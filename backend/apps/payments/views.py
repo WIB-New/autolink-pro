@@ -500,14 +500,14 @@ class WalletViewSet(viewsets.ViewSet):
         if method in ('mtn', 'orange'):
             configured = providers.mtn_configured() if method == 'mtn' else providers.orange_configured()
             if not configured:
-                # Mode démo : sans credentials provider réels, on crédite directement
-                # (comportement sandbox — à retirer/flaguer en production).
-                if settings.DEBUG:
+                # Mode test : sans credentials provider réels, on crédite
+                # directement en sandbox (désactivable via PAYMENTS_SANDBOX=false).
+                if getattr(settings, 'PAYMENTS_SANDBOX', True):
                     phone = serializer.validated_data.get('phone') or request.user.phone or ''
                     tx = WalletTransaction.objects.create(
                         user=request.user, kind='topup', method=method, amount=amount,
                         balance_after=(request.user.balance or 0) + amount,
-                        reference=ref, status='completed',
+                        reference=ref, status='completed', provider_status='SANDBOX',
                         note=f'Recharge {method.upper()} (sandbox) — {phone}',
                     )
                     request.user.balance = (request.user.balance or 0) + amount

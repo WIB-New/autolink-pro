@@ -164,3 +164,10 @@ CONTACT_EMAIL = config('CONTACT_EMAIL', default='wibchallenge@gmail.com')
 DEFAULT_FROM_EMAIL = config(
     'DEFAULT_FROM_EMAIL',
     default='AutoLink Pro <no-reply@autolink-pro.worldwide-international.business>')
+
+# Mode test des paiements : tant qu'aucun credential provider (MTN MoMo,
+# Orange Money, Stripe, PayPal) n'est configuré, les recharges wallet et les
+# paiements mobile de réservation sont validés en mode simulé (transactions
+# marquées provider_status=SANDBOX). Mettre PAYMENTS_SANDBOX=false pour
+# désactiver — ignoré dès que les vrais providers sont configurés.
+PAYMENTS_SANDBOX = config('PAYMENTS_SANDBOX', default=True, cast=bool)
