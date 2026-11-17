@@ -295,5 +295,18 @@ class Command(BaseCommand):
         if filled:
             self.stdout.write(f'image_url remplie sur {filled} véhicule(s)')
 
+        # Offres promotionnelles de base — section « Offres actives » de la
+        # page parrainage (idempotent, modifiables depuis l'admin).
+        from apps.users.models import Offer
+        for offer in (
+            dict(title='-10 % week-end', code='WEEKEND10',
+                 description='Locations de vendredi à dimanche sur la gamme Économique.',
+                 terms='Valable pour toute réservation payée via le portefeuille, vendredi à dimanche.'),
+            dict(title='1 jour offert', code='LONG7',
+                 description='Un jour de location offert dès 7 jours réservés sur la gamme Standard et Premium.',
+                 terms='Applicable aux réservations de 7 jours ou plus, hors caution.'),
+        ):
+            Offer.objects.get_or_create(code=offer['code'], defaults=offer)
+
         self.stdout.write(f'Vehicles: {Vehicle.objects.count()} ready')
         self.stdout.write(self.style.SUCCESS('Seed termine'))
