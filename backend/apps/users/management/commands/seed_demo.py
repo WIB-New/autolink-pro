@@ -276,5 +276,24 @@ class Command(BaseCommand):
                 obj.km_included_per_day = None
                 obj.extra_km_rate = None
                 obj.save()  # reclassifie + recalcule prix indicatif
+        # Véhicules sans image_url (créés hors seed : plaque différente,
+        # ajout propriétaire…) — on leur attribue une photo réaliste de leur
+        # catégorie pour éviter le placeholder générique côté frontend.
+        cat_img = {}
+        for v in DEMO_VEHICLES:
+            url = images.get(f"{v['brand']}|{v['model']}")
+            if url and v['category'] not in cat_img:
+                cat_img[v['category']] = url
+        generic = next(iter(images.values()), '')
+        filled = 0
+        for veh in Vehicle.objects.filter(image_url=''):
+            url = cat_img.get(veh.category) or generic
+            if url:
+                veh.image_url = url
+                veh.save(update_fields=['image_url'])
+                filled += 1
+        if filled:
+            self.stdout.write(f'image_url remplie sur {filled} véhicule(s)')
+
         self.stdout.write(f'Vehicles: {Vehicle.objects.count()} ready')
         self.stdout.write(self.style.SUCCESS('Seed termine'))

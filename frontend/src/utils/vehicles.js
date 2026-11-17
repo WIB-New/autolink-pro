@@ -1,16 +1,21 @@
 import { SPECIFIC_CARS, getVehicleImage } from './carImages';
+import { mediaUrl, vehicleCover } from './media';
 
 const MODEL_IMAGES = [
   ['corolla', 'corolla'], ['tucson', 'tucson'], ['serie', 'bmw5'], ['série', 'bmw5'], ['gle', 'mercedesGLE'],
   ['sportage', 'sportage'], ['evoque', 'rangeRover'], ['sprinter', 'sprinter'], ['hiace', 'hiace'],
 ];
 
-/** Image principale d'un véhicule API : URL fournie, première photo, puis illustration par modèle/catégorie. */
+/** Image principale d'un véhicule API : photo uploadée (même logique de cover
+   que la fiche détail), image_url du modèle, puis illustration par
+   modèle/catégorie en dernier recours. */
 export function vehicleImage(vehicle) {
   if (!vehicle) return getVehicleImage();
+  const cover = vehicleCover(vehicle);
+  if (cover) return cover;
   if (vehicle.image_url) return vehicle.image_url;
   const photo = vehicle.photos?.find((item) => item.kind === 'image')?.image;
-  if (photo) return photo;
+  if (photo) return mediaUrl(photo);
   const model = (vehicle.model || '').toLowerCase();
   const match = MODEL_IMAGES.find(([key]) => model.includes(key));
   return match ? SPECIFIC_CARS[match[1]] : getVehicleImage(vehicle.category);
