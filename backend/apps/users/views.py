@@ -143,6 +143,53 @@ class PlatformSettingsView(generics.RetrieveUpdateAPIView):
         return PlatformSettings.current()
 
 
+class AdminDbHealthView(APIView):
+    """Diagnostic base de données (admin) — détecte les écritures qui échouent
+    en production : test INSERT/UPDATE annulé sur users_user, dérive des
+    séquences Postgres, colonnes réelles vs modèle."""
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        from django.db import connection, transaction
+        report = {'vendor': connection.vendor}
+        with connection.cursor() as cursor:
+            # 1) Écriture test sur users_user (annulée — aucun effet de bord)
+            try:
+                with transaction.atomic():
+                    cursor.execute('SAVEPOINT _probe')
+                    cursor.execute(
+                        'INSERT INTO users_user (username, email, password, is_superuser, is_staff, is_active,'
+                        ' first_name, last_name, is_verified, newsletter_opt_in, balance, referral_credits,'
+                        ' date_joined, created_at, updated_at, role, phone, whatsapp, payment_method,'
+                        ' payment_phone, language, city, address, kyc_status, kyc_note, referral_code, notif_prefs)'
+                        " VALUES ('_db_probe', '_probe@test', 'x', false, false, true, '', '', false, true,"
+                        " 0, 0, now(), now(), now(), 'CLIENT', '', '', '', '', 'fr', '', '', 'none', '', '', '{}')"
+                        if connection.vendor == 'postgresql' else
+                        "SELECT 1")
+                    cursor.execute('ROLLBACK TO SAVEPOINT _probe')
+                report['users_user_write'] = 'ok'
+            except Exception as e:
+                report['users_user_write'] = f'ERREUR: {e}'
+            # 2) Dérive des séquences (Postgres)
+            if connection.vendor == 'postgresql':
+                seqs = {}
+                cursor.execute(
+                    "SELECT c.relname AS table_name, pg_get_serial_sequence(c.relname, 'id')"
+                    " FROM pg_class c WHERE c.relkind = 'r' AND c.relnamespace = 'public'::regnamespace")
+                for table, seq in cursor.fetchall():
+                    if not seq or not table.startswith(('users_', 'vehicles_', 'bookings_', 'payments_')):
+                        continue
+                    cursor.execute(f'SELECT last_value FROM {seq}')
+                    last = cursor.fetchone()[0]
+                    cursor.execute(f'SELECT COALESCE(MAX(id),0) FROM "{table}"')
+                    mx = cursor.fetchone()[0]
+                    if mx and last < mx:
+                        seqs[table] = {'sequence_last': last, 'max_id': mx, 'drift': mx - last}
+                report['sequence_drift'] = seqs or 'aucune'
+        report['ok'] = report.get('users_user_write') == 'ok' and report.get('sequence_drift') in (None, 'aucune')
+        return Response(report)
+
+
 class AdminActivityView(APIView):
     """Journal d'activité opérationnelle (tableau de bord admin) + compteurs de file."""
     permission_classes = [IsAdminRole]
@@ -692,7 +739,12 @@ class MeReferralView(APIView):
         if not user.referral_code:
             import secrets
             user.referral_code = f'ALP-{(user.username or "U").upper()[:8]}-{secrets.token_hex(3).upper()}'
-            user.save(update_fields=['referral_code'])
+            try:
+                user.save(update_fields=['referral_code'])
+            except Exception:
+                # Persiste impossible (incident DB) — on sert quand même le
+                # code généré pour ne pas casser la page parrainage.
+                logger.exception('referral_code save failed for user %s', user.pk)
         referred = list(user.referrals.all())
         completed = sum(
             1 for u in referred

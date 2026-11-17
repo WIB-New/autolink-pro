@@ -33,6 +33,7 @@ from .views import (
     KYCUploadView,
     PlatformSettingsView,
     AdminActivityView,
+    AdminDbHealthView,
 )
 
 urlpatterns = [
@@ -59,6 +60,7 @@ urlpatterns = [
     path('offers/', OfferListView.as_view(), name='offers'),
     path('platform-settings/', PlatformSettingsView.as_view(), name='platform-settings'),
     path('admin/activity/', AdminActivityView.as_view(), name='admin-activity'),
+    path('admin/db-health/', AdminDbHealthView.as_view(), name='admin-db-health'),
     path('notifications/', NotificationListView.as_view(), name='notifications'),
     path('notifications/read/', NotificationReadView.as_view(), name='notifications-read-all'),
     path('notifications/<int:pk>/', NotificationDetailView.as_view(), name='notification-detail'),
