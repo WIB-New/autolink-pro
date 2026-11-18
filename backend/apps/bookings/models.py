@@ -228,15 +228,31 @@ class Booking(models.Model):
         if already_done:
             return
         from apps.users.notif_utils import notif_allowed, notify_user
+        from apps.payments.models import WalletTransaction
+        UserModel = self.client.__class__
+        parrain = UserModel.objects.select_for_update().get(pk=parrain.pk)
         parrain.referral_credits += Decimal('5000')
-        parrain.save(update_fields=['referral_credits'])
+        parrain.balance = (parrain.balance or 0) + Decimal('5000')
+        parrain.save(update_fields=['referral_credits', 'balance', 'updated_at'])
+        WalletTransaction.objects.create(
+            user=parrain, kind='topup', method='wallet', amount=Decimal('5000'),
+            balance_after=parrain.balance, reference=f'REF-{self.client_id}',
+            note=f'Bonus parrainage — 1re location de {self.client.get_full_name() or self.client.username}',
+        )
         notify_user(parrain, 'Bonus parrainage',
-                    f'{self.client.get_full_name() or self.client.username} a terminé sa première location — 5 000 FCFA de crédits parrainage.')
+                    f'{self.client.get_full_name() or self.client.username} a terminé sa première location — 5 000 FCFA crédités sur votre portefeuille.')
         if not self.client.referral_credits and notif_allowed(self.client, 'push'):
-            self.client.referral_credits = Decimal('2000')
-            self.client.save(update_fields=['referral_credits'])
-            notify_user(self.client, 'Bonus de bienvenue',
-                        '2 000 FCFA de bonus de bienvenue crédités grâce au parrainage.')
+            client = UserModel.objects.select_for_update().get(pk=self.client_id)
+            client.referral_credits = Decimal('2000')
+            client.balance = (client.balance or 0) + Decimal('2000')
+            client.save(update_fields=['referral_credits', 'balance', 'updated_at'])
+            WalletTransaction.objects.create(
+                user=client, kind='topup', method='wallet', amount=Decimal('2000'),
+                balance_after=client.balance, reference=f'REF-WELCOME-{client.pk}',
+                note='Bonus de bienvenue parrainage',
+            )
+            notify_user(client, 'Bonus de bienvenue',
+                        '2 000 FCFA de bonus de bienvenue crédités sur votre portefeuille grâce au parrainage.')
 
     @classmethod
     def auto_complete_expired(cls):
