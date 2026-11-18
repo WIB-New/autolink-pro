@@ -1,6 +1,5 @@
 import json
 import os
-import secrets
 
 from decouple import config
 from django.conf import settings
@@ -15,8 +14,11 @@ from apps.vehicles.models import Vehicle
 # Identifiants du super admin — configurables via les variables
 # d'environnement Dokploy (ADMIN_USERNAME / ADMIN_EMAIL / ADMIN_PASSWORD).
 ADMIN_USERNAME = config('ADMIN_USERNAME', default='admin')
-ADMIN_EMAIL = config('ADMIN_EMAIL', default='admin@autolink.com')
+ADMIN_EMAIL = config('ADMIN_EMAIL', default='wibchallenge@gmail.com')
 ADMIN_PASSWORD = config('ADMIN_PASSWORD', default='')
+# Mot de passe de démonstration quand ADMIN_PASSWORD n'est pas défini —
+# identifiants documentés, à changer depuis le profil admin si besoin.
+ADMIN_DEFAULT_PASSWORD = 'Admin2026!'
 
 # Propriétaire de la flotte plateforme — les véhicules seedés et tous ceux
 # encore rattachés à un compte ADMIN lui sont réassignés pour que la flotte
@@ -166,18 +168,11 @@ class Command(BaseCommand):
             ),
         )
         if created:
-            if ADMIN_PASSWORD:
-                admin.set_password(ADMIN_PASSWORD)
-            else:
-                generated = secrets.token_urlsafe(16)
-                admin.set_password(generated)
-                self.stdout.write(self.style.WARNING(
-                    f'ADMIN_PASSWORD non défini — mot de passe généré : {generated}\n'
-                    'Définissez ADMIN_PASSWORD dans Dokploy puis redéployez.'))
+            admin.set_password(ADMIN_PASSWORD or ADMIN_DEFAULT_PASSWORD)
             admin.save()
         else:
             # Répare les droits admin si le compte existait déjà, et applique
-            # ADMIN_PASSWORD si la variable est explicitement définie.
+            # le mot de passe (ADMIN_PASSWORD ou démo documenté).
             fixed = False
             for attr, val in (('role', 'ADMIN'), ('email', ADMIN_EMAIL),
                               ('is_staff', True), ('is_superuser', True),
@@ -185,9 +180,8 @@ class Command(BaseCommand):
                 if getattr(admin, attr) != val:
                     setattr(admin, attr, val)
                     fixed = True
-            if ADMIN_PASSWORD:
-                admin.set_password(ADMIN_PASSWORD)
-                fixed = True
+            admin.set_password(ADMIN_PASSWORD or ADMIN_DEFAULT_PASSWORD)
+            fixed = True
             if fixed:
                 admin.save()
         # Si un username custom est utilisé, désactive l'ancien 'admin'
