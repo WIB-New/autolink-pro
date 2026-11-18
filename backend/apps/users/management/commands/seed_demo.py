@@ -25,6 +25,9 @@ ADMIN_PASSWORD = config('ADMIN_PASSWORD', default='')
 OWNER_USERNAME = config('OWNER_USERNAME', default='proprietaire')
 OWNER_EMAIL = config('OWNER_EMAIL', default='proprietaire@autolink.cm')
 OWNER_PASSWORD = config('OWNER_PASSWORD', default='')
+# Mot de passe de démonstration quand OWNER_PASSWORD n'est pas défini —
+# identifiants documentés, à changer depuis le profil propriétaire si besoin.
+OWNER_DEFAULT_PASSWORD = 'Autolink2026!'
 
 # Anciens comptes démo — supprimés au démarrage : en production, chaque
 # utilisateur doit être une personne réelle enregistrée via le site/l'app.
@@ -213,16 +216,10 @@ class Command(BaseCommand):
                 if getattr(owner, attr) != val:
                     setattr(owner, attr, val)
                     fixed = True
-            if OWNER_PASSWORD:
-                owner.set_password(OWNER_PASSWORD)
-                fixed = True
-            elif owner_created:
-                generated = secrets.token_urlsafe(16)
-                owner.set_password(generated)
-                self.stdout.write(self.style.WARNING(
-                    f'OWNER_PASSWORD non défini — mot de passe généré : {generated}\n'
-                    'Définissez OWNER_PASSWORD dans Dokploy puis redéployez.'))
-                fixed = True
+            # Mot de passe déterministe : OWNER_PASSWORD en priorité, sinon le
+            # mot de passe de démonstration documenté (modifiable dans le profil).
+            owner.set_password(OWNER_PASSWORD or OWNER_DEFAULT_PASSWORD)
+            fixed = True
             if fixed:
                 owner.save()
         self.stdout.write(f'Owner: {owner.username} ready')
