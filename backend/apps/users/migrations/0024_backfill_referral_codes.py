@@ -3,6 +3,14 @@ import secrets
 from django.db import migrations
 
 
+def widen_referral_code_column(apps, schema_editor):
+    """Réaligne la colonne prod (varchar(12), créée hors migrations)
+    sur le varchar(20) déclaré par la migration 0011."""
+    if schema_editor.connection.vendor == 'postgresql':
+        schema_editor.execute(
+            'ALTER TABLE users_user ALTER COLUMN referral_code TYPE varchar(20)')
+
+
 def backfill_referral_codes(apps, schema_editor):
     """Attribue un code parrainage unique aux comptes dont referral_code == ''.
 
@@ -13,10 +21,9 @@ def backfill_referral_codes(apps, schema_editor):
     """
     User = apps.get_model('users', 'User')
     for u in User.objects.filter(referral_code='').iterator():
-        prefix = (u.username or 'U').upper()[:8]
-        code = f'ALP-{prefix}-{secrets.token_hex(3).upper()}'
+        code = f'ALP-{secrets.token_hex(4).upper()}'
         while User.objects.filter(referral_code=code).exists():
-            code = f'ALP-{prefix}-{secrets.token_hex(3).upper()}'
+            code = f'ALP-{secrets.token_hex(4).upper()}'
         u.referral_code = code
         u.save(update_fields=['referral_code'])
 
@@ -28,5 +35,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(widen_referral_code_column, migrations.RunPython.noop),
         migrations.RunPython(backfill_referral_codes, migrations.RunPython.noop),
     ]

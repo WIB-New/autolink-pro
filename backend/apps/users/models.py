@@ -62,8 +62,9 @@ class User(AbstractUser):
         return f'{self.get_full_name()} ({self.role})'
 
     def _new_referral_code(self):
+        # 12 caractères max : la colonne prod a été créée en varchar(12).
         while True:
-            code = f'ALP-{(self.username or "U").upper()[:8]}-{secrets.token_hex(3).upper()}'
+            code = f'ALP-{secrets.token_hex(4).upper()}'
             if not User.objects.filter(referral_code=code).exists():
                 return code
 

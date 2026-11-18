@@ -740,7 +740,7 @@ class MeReferralView(APIView):
         user = request.user
         if not user.referral_code:
             import secrets
-            user.referral_code = f'ALP-{(user.username or "U").upper()[:8]}-{secrets.token_hex(3).upper()}'
+            user.referral_code = f'ALP-{secrets.token_hex(4).upper()}'
             try:
                 user.save(update_fields=['referral_code'])
             except Exception:
