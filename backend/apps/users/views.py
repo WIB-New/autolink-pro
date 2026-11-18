@@ -188,7 +188,36 @@ class AdminDbHealthView(APIView):
                     if mx and last < mx:
                         seqs[table] = {'sequence_last': last, 'max_id': mx, 'drift': mx - last}
                 report['sequence_drift'] = seqs or 'aucune'
-        report['ok'] = report.get('users_user_write') == 'ok' and report.get('sequence_drift') in (None, 'aucune')
+        # 3) Dérive des colonnes : chaque champ modèle doit avoir sa colonne
+        #    en base — liste les manquantes (tables créées hors migrations).
+        from django.apps import apps as django_apps
+        missing = {}
+        extra_not_null = {}
+        existing_tables = set(connection.introspection.table_names())
+        with connection.cursor() as cursor:
+            for model in django_apps.get_models():
+                table = model._meta.db_table
+                if table not in existing_tables:
+                    missing[table] = ['<table entière absente>']
+                    continue
+                desc = connection.introspection.get_table_description(cursor, table)
+                cols = {c.name for c in desc}
+                absent = [f.column for f in model._meta.fields
+                          if not f.auto_created and f.column not in cols]
+                if absent:
+                    missing[table] = absent
+                # Colonnes en base inconnues du modèle et NOT NULL : elles
+                # casseraient les INSERT même si le schéma semble complet.
+                model_cols = {f.column for f in model._meta.fields}
+                extra = [c.name for c in desc
+                         if c.name not in model_cols and not c.null_ok]
+                if extra:
+                    extra_not_null[table] = extra
+        report['missing_columns'] = missing or 'aucune'
+        report['extra_not_null_columns'] = extra_not_null or 'aucune'
+        report['ok'] = (report.get('users_user_write') == 'ok'
+                        and report.get('sequence_drift') in (None, 'aucune')
+                        and not missing and not extra_not_null)
         return Response(report)
 
 
