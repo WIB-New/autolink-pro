@@ -353,6 +353,7 @@ class GoogleAuthSerializer(serializers.Serializer):
             user.save()
         if not user.is_active:
             raise serializers.ValidationError('Ce compte a été suspendu.')
+        self._user = user
         try:
             if created:
                 send_welcome_email(user)

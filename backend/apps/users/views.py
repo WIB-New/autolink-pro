@@ -630,12 +630,20 @@ class GoogleAuthView(APIView):
                 'role': request.data.get('role') or '',
             })
             serializer.is_valid(raise_exception=True)
-            return Response(serializer.validated_data)
+            data = serializer.validated_data
+            user = getattr(serializer, '_user', None)
+            if user and data.get('refresh'):
+                _record_session(request, user, data['refresh'])
+            return Response(data)
 
         # Compatibilité : ancien flux email (sans vérification)
         serializer = GoogleAuthSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response(serializer.validated_data)
+        data = serializer.validated_data
+        user = getattr(serializer, '_user', None)
+        if user and data.get('refresh'):
+            _record_session(request, user, data['refresh'])
+        return Response(data)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -708,7 +716,8 @@ class MeSessionListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return self.request.user.sessions.all()
+        lifetime = settings.SIMPLE_JWT.get('REFRESH_TOKEN_LIFETIME', timedelta(days=30))
+        return self.request.user.sessions.filter(created_at__gte=timezone.now() - lifetime)
 
 
 class MeSessionDeleteView(APIView):
