@@ -75,7 +75,7 @@ const NAV_ITEMS = {
     items: [
       { icon: 'dashboard', label: 'Tableau de bord', path: '/controller/dashboard' },
       { icon: 'fact_check', label: 'Inspections', path: '/controller/inspections' },
-      { icon: 'chat', label: 'Messages', path: '/messages', badge: 'messages' },
+      { icon: 'chat', label: 'Messages', path: '/controller/messages', badge: 'messages' },
       { icon: 'notifications', label: 'Notifications', path: '/notifications', badge: 'notifications' },
       { icon: 'settings', label: 'Paramètres', path: '/settings' },
     ],
@@ -194,7 +194,7 @@ export function NotificationsBell() {
   );
 }
 
-export default function DashboardLayout({ children, title }) {
+export default function DashboardLayout({ children, title, fluid = false }) {
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -327,7 +327,7 @@ export default function DashboardLayout({ children, title }) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 dark:bg-slate-950">
+        <main className={fluid ? 'flex-1 min-h-0 overflow-hidden p-4 sm:p-6 dark:bg-slate-950' : 'flex-1 overflow-y-auto p-4 sm:p-6 dark:bg-slate-950'}>
           {children}
         </main>
       </div>

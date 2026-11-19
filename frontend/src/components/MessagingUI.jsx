@@ -6,7 +6,7 @@ import { mediaUrl } from '../utils/media';
 
 const ini = (s) => (s || '?').split(' ').map((w) => w[0] || '').join('').slice(0, 2).toUpperCase();
 const hh = (iso) => (iso ? new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '');
-const ROLE_LABEL = { CLIENT: 'Client AutoLink', DRIVER: 'Chauffeur certifié AutoLink', OWNER: 'Propriétaire AutoLink', ADMIN: 'Support AutoLink' };
+const ROLE_LABEL = { CLIENT: 'Client AutoLink', DRIVER: 'Chauffeur certifié AutoLink', OWNER: 'Propriétaire AutoLink', ADMIN: 'Support AutoLink', CONTROLLER: 'Contrôleur AutoLink' };
 
 /* Badge de certification officielle affiché à côté du nom de l'admin —
    repère visuel "compte vérifié" façon WhatsApp/Instagram. */
@@ -17,7 +17,7 @@ const VerifiedBadge = ({ size = 15 }) => (
     title="Compte officiel AutoLink certifié">verified</span>
 );
 const EMOJIS = ['😊', '😂', '😍', '👍', '🙏', '😉', '🔥', '❤️', '🎉', '😢', '😮', '🤝'];
-const FILTERS = [['', 'Tous'], ['CLIENT', 'Clients'], ['DRIVER', 'Chauffeurs'], ['OWNER', 'Propriétaires'], ['ADMIN', 'Support']];
+const FILTERS = [['', 'Tous'], ['CLIENT', 'Clients'], ['DRIVER', 'Chauffeurs'], ['OWNER', 'Propriétaires'], ['CONTROLLER', 'Contrôleurs'], ['ADMIN', 'Support']];
 
 // participants exclut déjà l'utilisateur courant côté API
 const convName = (c) => c.subject || c.title || c.name

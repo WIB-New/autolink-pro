@@ -98,7 +98,7 @@ class ConversationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
         q = (request.query_params.get('search') or '').strip()
         role = (request.query_params.get('role') or '').strip()
         qs = User.objects.filter(is_active=True).exclude(pk=request.user.pk)
-        if role in ('CLIENT', 'DRIVER', 'OWNER', 'ADMIN'):
+        if role in ('CLIENT', 'DRIVER', 'OWNER', 'ADMIN', 'CONTROLLER'):
             qs = qs.filter(role=role)
         if q:
             qs = qs.filter(
