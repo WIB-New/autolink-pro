@@ -41,6 +41,7 @@ import AdminClientDetail from './pages/admin/AdminClientDetail';
 import AdminSettings from './pages/admin/AdminSettings';
 import DriverRecruitment from './pages/admin/DriverRecruitment';
 import Finance from './pages/admin/Finance';
+import AdminProfile from './pages/admin/AdminProfile';
 import VehicleInspection from './pages/admin/VehicleInspection';
 import ManageUsers from './pages/admin/ManageUsers';
 import AdminKyc from './pages/admin/AdminKyc';
@@ -176,6 +177,7 @@ function AppRoutes() {
       <Route path="/admin/drivers" element={<Guard roles={['ADMIN']}><DriverRecruitment /></Guard>} />
       <Route path="/admin/kyc" element={<Guard roles={['ADMIN']}><AdminKyc /></Guard>} />
       <Route path="/admin/finance" element={<Guard roles={['ADMIN']}><Finance /></Guard>} />
+      <Route path="/admin/profile" element={<Guard roles={['ADMIN']}><AdminProfile /></Guard>} />
       <Route path="/admin/inspections" element={<Guard roles={['ADMIN', 'CONTROLLER']}><VehicleInspection /></Guard>} />
       <Route path="/admin/users" element={<Guard roles={['ADMIN']}><ManageUsers /></Guard>} />
       <Route path="/admin/catalog" element={<Guard roles={['ADMIN']}><CatalogManager /></Guard>} />
