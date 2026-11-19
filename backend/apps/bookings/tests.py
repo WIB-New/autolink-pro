@@ -280,6 +280,25 @@ class BookingFlowTests(APITestCase):
         self.assertIsNotNone(booking.dispute_resolved_at)
         self.assertEqual(booking.dispute_resolved_by, self.admin)
 
+    def test_resolve_dispute_refund_deposit_only(self):
+        """3e verdict : caution au client, la location reste payée au propriétaire."""
+        booking = self._confirmed_booking()
+        self.client.post(f'/api/bookings/{booking.id}/dispute/', {'reason': 'x'}, format='json')
+        self.client.force_authenticate(self.admin)
+        r = self.client.post(f'/api/bookings/{booking.id}/resolve-dispute/',
+                             {'decision': 'refund_deposit'}, format='json')
+        self.assertEqual(r.status_code, 200, r.data)
+        booking.refresh_from_db()
+        self.assertEqual(booking.status, 'completed')
+        self.assertEqual(booking.dispute_decision, 'refund_deposit')
+        self.assertEqual(booking.payment.deposit_status, 'released')
+        self.assertEqual(booking.payment.escrow_status, 'released')
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.balance, booking.owner_amount)
+        self.client_user.refresh_from_db()
+        self.assertEqual(self.client_user.balance,
+                         Decimal('5000000') - booking.subtotal)
+
     # ── Fin de location ─────────────────────────────────────────────────────
     def test_finish_releases_vehicle_and_pays_owner(self):
         booking = self._confirmed_booking()

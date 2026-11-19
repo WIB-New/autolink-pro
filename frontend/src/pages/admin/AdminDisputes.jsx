@@ -2,11 +2,23 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import AdminLayout from '../../components/admindash/AdminLayout';
 import { bookingsAPI } from '../../services/api';
 import { mediaUrl } from '../../utils/media';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import {
   Scale, Clock, Lock, CheckCircle2, FileSpreadsheet,
   User, Building2, Camera, Send, Loader, ShieldCheck, Gavel,
 } from 'lucide-react';
 import StatCard from '../../components/StatCard';
+
+/* Libellés des trois issues d'arbitrage possibles. */
+const DECISION = {
+  release: { label: 'en faveur du propriétaire', tag: '→ PROPRIÉTAIRE', cls: 'bg-amber-100 text-amber-700',
+    sentence: 'caution et part location versées au propriétaire' },
+  refund_deposit: { label: 'caution restituée au client', tag: '→ CLIENT (caution)', cls: 'bg-teal-100 text-teal-700',
+    sentence: 'caution restituée au client — location due au propriétaire' },
+  refund: { label: 'remboursement total du client', tag: '→ CLIENT (total)', cls: 'bg-emerald-100 text-emerald-700',
+    sentence: 'location et caution intégralement remboursées au client' },
+};
+const decisionOf = (b) => DECISION[b?.dispute_decision] || null;
 
 const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 const shortDate = iso => iso ? new Date(iso).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -32,6 +44,7 @@ export default function AdminDisputes() {
   const [decision, setDecision] = useState('release');
   const [motive, setMotive] = useState('');
   const [busy, setBusy] = useState(false);
+  const confirm = useConfirm();
   const [resolved, setResolved] = useState(false);
   const [err, setErr] = useState('');
 
@@ -62,6 +75,14 @@ export default function AdminDisputes() {
 
   const arbitrate = async () => {
     if (!b) return;
+    const opt = OPTIONS.find(o => o.id === decision);
+    const ok = await confirm({
+      title: `${opt?.title || 'Arbitrage'} — confirmer ?`,
+      message: `Litige #LIT-${String(b.id).padStart(4, '0')} : ${opt?.desc || ''} Cette sentence est définitive et débloque les fonds.`,
+      confirmLabel: 'Valider l\'arbitrage',
+      danger: decision === 'release',
+    });
+    if (!ok) return;
     setBusy(true); setErr('');
     try {
       await bookingsAPI.resolveDispute(b.id, decision, motive.trim() || undefined);
@@ -83,7 +104,7 @@ export default function AdminDisputes() {
       .concat(rows.map(d => [
         `LIT-${String(d.id).padStart(4, '0')}`, d.vehicle_name, d.client_name,
         d.dispute_reason, d.dispute_owner_response, d.deposit_amount,
-        shortDate(d.dispute_opened_at), d.dispute_decision === 'release' ? 'Propriétaire' : d.dispute_decision === 'refund' ? 'Client' : '—',
+        shortDate(d.dispute_opened_at), decisionOf(d)?.label || '—',
         shortDate(d.dispute_resolved_at),
       ].map(esc).join(';')))
       .join('\n');
@@ -94,8 +115,9 @@ export default function AdminDisputes() {
   };
 
   const OPTIONS = b ? [
-    { id: 'release', letter: 'A', title: 'Caution au propriétaire', desc: `Retenir ${fmt(b.deposit_amount)} FCFA du locataire au profit du bailleur — la part location est aussi versée.` },
-    { id: 'refund', letter: 'B', title: 'Rembourser le locataire', desc: `Restituer la caution intégrale ${fmt(b.deposit_amount)} FCFA au client — le dossier est clos en sa faveur.` },
+    { id: 'release', letter: 'A', title: 'Tout au propriétaire', desc: `Retenir la caution ${fmt(b.deposit_amount)} FCFA au profit du bailleur — la part location lui est aussi versée.` },
+    { id: 'refund_deposit', letter: 'B', title: 'Caution seule au client', desc: `Restituer la caution ${fmt(b.deposit_amount)} FCFA au client — la location reste due et sa part est versée au propriétaire.` },
+    { id: 'refund', letter: 'C', title: 'Tout rembourser au client', desc: `Rembourser la location ${fmt(b.subtotal)} FCFA ET la caution ${fmt(b.deposit_amount)} FCFA — le propriétaire ne perçoit rien.` },
   ] : [];
 
   /* Journal d'audit : événements réels dérivés des horodatages persistés. */
@@ -108,7 +130,7 @@ export default function AdminDisputes() {
     if (entry) ev.push({ t: 'Inspection d\'entrée enregistrée', d: `${entry.controller_name || 'Contrôleur'} · score ${entry.condition_score ?? '—'}/100`, ok: true });
     if (exit) ev.push({ t: 'Inspection de sortie enregistrée', d: `${exit.controller_name || 'Contrôleur'} · score ${exit.condition_score ?? '—'}/100`, ok: true });
     if (b.dispute_owner_response) ev.push({ t: 'Réponse du propriétaire reçue', d: longDate(b.dispute_owner_responded_at), ok: true });
-    if (b.dispute_resolved_at) ev.push({ t: `Arbitrage rendu — ${b.dispute_decision === 'release' ? 'en faveur du propriétaire' : 'en faveur du client'}`, d: longDate(b.dispute_resolved_at) + (b.dispute_resolution_note ? ` · ${b.dispute_resolution_note}` : ''), ok: true });
+    if (b.dispute_resolved_at) ev.push({ t: `Arbitrage rendu — ${decisionOf(b)?.label || 'décision enregistrée'}`, d: longDate(b.dispute_resolved_at) + (b.dispute_resolution_note ? ` · ${b.dispute_resolution_note}` : ''), ok: true });
     else ev.push({ t: b.dispute_owner_response ? 'En attente : sentence arbitrale' : 'En attente : réponse du propriétaire puis arbitrage', d: 'Les deux parties seront notifiées de la décision', ok: false });
     return ev;
   }, [b, entry, exit]);
@@ -162,7 +184,7 @@ export default function AdminDisputes() {
                   <span className="text-[12px] font-black text-slate-900">#LIT-{String(d.id).padStart(4, '0')}</span>
                   {d.status === 'disputed'
                     ? <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded-md">OUVERT</span>
-                    : <span className={`text-[8px] font-black px-2 py-0.5 rounded-md ${d.dispute_decision === 'release' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>{d.dispute_decision === 'release' ? '→ PROPRIÉTAIRE' : '→ CLIENT'}</span>}
+                    : <span className={`text-[8px] font-black px-2 py-0.5 rounded-md ${decisionOf(d)?.cls || 'bg-slate-100 text-slate-600'}`}>{decisionOf(d)?.tag || 'RÉSOLU'}</span>}
                 </div>
                 <div className="text-[10px] text-slate-500 mb-1.5">{d.vehicle_name || 'Véhicule'} · {d.client_name}</div>
                 {d.dispute_reason && <p className="text-[9px] text-slate-400 italic truncate">« {d.dispute_reason} »</p>}
@@ -339,7 +361,7 @@ export default function AdminDisputes() {
               <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5">
                 <h3 className="font-black text-emerald-800 text-sm mb-2 flex items-center gap-2"><Gavel size={15} /> Sentence rendue</h3>
                 <p className="text-[11px] text-emerald-700 font-bold">
-                  {b.dispute_decision === 'release' ? `Caution ${fmt(b.deposit_amount)} FCFA retenue au profit du propriétaire` : `Caution ${fmt(b.deposit_amount)} FCFA restituée au client`}
+                  {decisionOf(b) ? decisionOf(b).sentence.charAt(0).toUpperCase() + decisionOf(b).sentence.slice(1) : 'Litige arbitré'}
                   {b.dispute_resolved_at && ` · ${longDate(b.dispute_resolved_at)}`}
                 </p>
                 {b.dispute_resolution_note && <p className="text-[10px] text-emerald-700 italic mt-1.5">« {b.dispute_resolution_note} »</p>}

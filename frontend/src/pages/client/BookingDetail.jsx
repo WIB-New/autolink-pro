@@ -185,10 +185,12 @@ export default function BookingDetail() {
                   <div className="font-label-lg text-label-lg flex items-center gap-1"><Icon name="verified" size={18} />{t('Décision arbitrale AutoLink')} · {formatDateTime(booking.dispute_resolved_at)}</div>
                   <p className="font-body-md text-body-md mt-1 font-semibold">
                     {booking.dispute_decision === 'refund'
-                      ? t('Litige tranché en faveur du locataire — caution intégralement restituée.')
-                      : booking.dispute_decision === 'release'
-                        ? t('Litige tranché en faveur du propriétaire — caution et part location versées.')
-                        : t('Litige résolu par arbitrage AutoLink.')}
+                      ? t('Litige tranché en faveur du locataire — location et caution intégralement remboursées.')
+                      : booking.dispute_decision === 'refund_deposit'
+                        ? t('Litige tranché : caution restituée au locataire — la location reste due au propriétaire.')
+                        : booking.dispute_decision === 'release'
+                          ? t('Litige tranché en faveur du propriétaire — caution et part location versées.')
+                          : t('Litige résolu par arbitrage AutoLink.')}
                   </p>
                   {booking.dispute_resolution_note && <p className="font-body-md text-body-md mt-1 italic">« {booking.dispute_resolution_note} »</p>}
                 </div>

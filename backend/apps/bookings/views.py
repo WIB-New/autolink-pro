@@ -1322,6 +1322,32 @@ class BookingViewSet(viewsets.ModelViewSet):
             _notify(booking.vehicle.owner, 'Litige résolu',
                     f'Le litige sur votre véhicule {booking.vehicle} a été tranché '
                     f'en faveur du client. La caution a été remboursée.')
+        elif decision == 'refund_deposit':
+            # Client gagnant sur la caution uniquement : elle lui est restituée
+            # mais la prestation reste due — la part location part au propriétaire.
+            if payment:
+                payment.escrow_status = 'held'
+                payment.save(update_fields=['escrow_status'])
+                payment.release_escrow()
+                payment.release_deposit()
+            elif booking.deposit_amount:
+                from apps.payments.models import WalletTransaction
+                client = booking.client
+                client.balance = (client.balance or 0) + booking.deposit_amount
+                client.save(update_fields=['balance', 'updated_at'])
+                WalletTransaction.objects.create(
+                    user=client, kind='refund', amount=booking.deposit_amount,
+                    balance_after=client.balance,
+                    reference=f'REFUND-BK-{booking.pk:04d}',
+                    note=f'Caution remboursée — arbitrage litige {booking}',
+                )
+            booking.status = Booking.Status.COMPLETED
+            _notify(booking.client, 'Litige résolu',
+                    f'Votre litige sur {booking} a été tranché : la caution vous est '
+                    f'restituée. La location reste due au propriétaire.')
+            _notify(booking.vehicle.owner, 'Litige résolu',
+                    f'Le litige sur votre véhicule {booking.vehicle} a été tranché : '
+                    f'votre part de location vous est versée, la caution client restituée.')
         elif decision == 'release':
             if payment:
                 payment.escrow_status = 'held'
@@ -1346,7 +1372,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                     f'Votre litige sur {booking} a été tranché en faveur du propriétaire. '
                     f'La caution a été conservée à titre de dédommagement.')
         else:
-            raise ValidationError({'decision': 'Valeur attendue : "release" ou "refund".'})
+            raise ValidationError({'decision': 'Valeur attendue : "release", "refund_deposit" ou "refund".'})
         booking.dispute_decision = decision
         booking.dispute_resolution_note = (request.data.get('note') or '').strip()
         booking.dispute_resolved_at = timezone.now()
@@ -1354,7 +1380,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         booking.save(update_fields=['status', 'dispute_decision', 'dispute_resolution_note',
                                     'dispute_resolved_at', 'dispute_resolved_by', 'updated_at'])
         booking.sync_vehicle_status()
-        if booking.status == 'completed' and payment:
+        if decision == 'release' and payment:
             payment.release_escrow()   # part propriétaire
             payment.forfeit_deposit()  # caution client versée au propriétaire
         return Response(BookingSerializer(booking).data)
