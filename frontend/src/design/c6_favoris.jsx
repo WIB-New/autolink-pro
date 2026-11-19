@@ -2,6 +2,7 @@ import React, { useMemo, useEffect } from 'react';
 import DesignPage from './DesignPage';
 import useApiData from '../utils/useApiData';
 import { vehiclesAPI } from '../services/api';
+import { vehicleImage } from '../utils/vehicles';
 
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const fmt = (n) => new Intl.NumberFormat((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR')).format(Math.round(Number(n) || 0));
@@ -9,7 +10,7 @@ const FALLBACK_IMG = 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?
 const TIER = { premium: 'Gamme Premium', standard: 'Gamme Standard', basic: 'Gamme Basic', luxury: 'Gamme Luxe' };
 
 const card = (v) => {
-  const img = v.photos?.[0]?.image || v.image || FALLBACK_IMG;
+  const img = vehicleImage(v) || FALLBACK_IMG;
   return `<article class="fav-card group flex flex-col rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden" data-card-id="${v.id}" data-city="${esc(v.city || '')}" data-gamme="${esc(v.tier || '')}" data-name="${esc(((v.brand || '') + ' ' + (v.model || '') + ' ' + (v.year || '')).trim())}" data-brand="${esc(v.brand || '')}" data-model="${esc(v.model || '')}" data-fuel="${esc(v.fuel || '')}" data-price="${Number(v.daily_rate || v.price_min || 0)}" data-type="${esc(v.rental_type || '')}" data-available="${v.available === false ? '0' : '1'}" data-rating="${Number(v.rating || 0)}" data-year="${Number(v.year || 0)}">
 <div class="relative aspect-[16/10] w-full overflow-hidden bg-surface-container">
 <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="${esc(img)}" alt="${esc(v.brand)} ${esc(v.model)}"/>
@@ -661,8 +662,13 @@ export default function C6Favoris() {
       }
       if (rm) {
         const id = rm.dataset.removeId;
-        vehiclesAPI.removeFavorite(id).catch(() => {});
-        rm.closest('.fav-card')?.remove();
+        const favCard = rm.closest('.fav-card');
+        vehiclesAPI.removeFavorite(id)
+          .then(() => favCard?.remove())
+          .catch((err) => {
+            console.error('removeFavorite failed', err?.response?.status, err?.response?.data);
+            alert("La suppression a échoué — le véhicule reste dans vos favoris.");
+          });
       } else if (book) window.location.href = `/client/booking/recap?vehicle=${book.dataset.id}`;
       else if (detail) window.location.href = `/client/vehicule/${detail.dataset.id}`;
       else {

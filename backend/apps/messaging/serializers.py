@@ -7,9 +7,17 @@ class ParticipantSerializer(serializers.Serializer):
     name = serializers.SerializerMethodField()
     role = serializers.CharField()
     phone = serializers.CharField()
+    avatar = serializers.SerializerMethodField()
 
     def get_name(self, obj):
         return obj.get_full_name() or obj.username
+
+    def get_avatar(self, obj):
+        if not obj.avatar:
+            return ''
+        request = self.context.get('request')
+        url = obj.avatar.url
+        return request.build_absolute_uri(url) if request else url
 
 
 class MessageSerializer(serializers.ModelSerializer):
@@ -52,7 +60,7 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     def get_participants(self, obj):
         others = [u for u in obj.participants.all() if u.id != self._user().id]
-        return ParticipantSerializer(others, many=True).data
+        return ParticipantSerializer(others, many=True, context=self.context).data
 
     def get_last_message(self, obj):
         message = obj.messages.order_by('-created_at').first()

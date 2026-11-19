@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { messagingAPI } from '../services/api';
 import useApiData from '../utils/useApiData';
+import { mediaUrl } from '../utils/media';
 
 const ini = (s) => (s || '?').split(' ').map((w) => w[0] || '').join('').slice(0, 2).toUpperCase();
 const hh = (iso) => (iso ? new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '');
@@ -121,7 +122,9 @@ export default function MessagingUI({ scope, basePath = '/messages', isAdmin = f
             {filtered.map((c) => (
               <button key={c.id} type="button" onClick={() => setActive(c.id)}
                 className={`w-full flex items-start gap-3 p-3 rounded-xl text-left transition-all ${active === c.id ? 'bg-surface-container-high' : 'hover:bg-surface-container-low'}`}>
-                <span className="w-11 h-11 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-[14px] shrink-0">{ini(convName(c))}</span>
+                {other(c)?.avatar
+                  ? <img src={mediaUrl(other(c).avatar)} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" />
+                  : <span className="w-11 h-11 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-[14px] shrink-0">{ini(convName(c))}</span>}
                 <span className="flex-1 min-w-0">
                   <span className="flex justify-between"><span className="font-label-md text-label-md font-bold text-on-surface truncate">{convName(c)}</span>
                     <span className="font-label-sm text-[10px] text-primary font-bold shrink-0">{hh(c.last_message?.created_at || c.updated_at)}</span></span>
@@ -143,7 +146,9 @@ export default function MessagingUI({ scope, basePath = '/messages', isAdmin = f
                 <button type="button" onClick={() => setActive(null)} className="lg:hidden w-9 h-9 rounded-xl hover:bg-surface-container-high text-on-surface flex items-center justify-center shrink-0" title="Retour">
                   <span className="material-symbols-outlined text-[20px]">arrow_back</span>
                 </button>
-                <span className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold shrink-0">{ini(name)}</span>
+                {peer?.avatar
+                  ? <img src={mediaUrl(peer.avatar)} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                  : <span className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold shrink-0">{ini(name)}</span>}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-headline-sm text-headline-sm font-bold text-on-surface truncate">{name}</span>
@@ -219,7 +224,7 @@ export default function MessagingUI({ scope, basePath = '/messages', isAdmin = f
                 return (
                   <button key={u.id} type="button" onClick={() => setPicked((p) => (on ? p.filter((x) => x !== u.id) : [...p, u.id]))}
                     className={`flex items-center gap-3 p-2.5 rounded-xl text-left ${on ? 'bg-primary/10 ring-1 ring-primary' : 'hover:bg-surface-container-low'}`}>
-                    {u.photo ? <img src={u.photo} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                    {(u.photo || u.avatar) ? <img src={mediaUrl(u.photo || u.avatar)} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
                       : <span className="w-9 h-9 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-[13px] shrink-0">{ini(u.name)}</span>}
                     <span className="min-w-0 flex-1">
                       <span className="block font-label-md text-label-md font-semibold text-on-surface truncate">{u.name}</span>

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import AutoLinkLogo from '../components/AutoLinkLogo';
 import dict from '../i18n/design-dict.json';
 import i18next from '../i18n';
+import { mediaUrl } from '../utils/media';
 
 const NAVS = {
   client: [
@@ -91,6 +92,7 @@ export default function DesignShell({ children, role = 'client' }) {
     name: `${fn} ${ln}`.trim() || authUser.username,
     short: fn ? `${fn} ${(ln || '')[0] || ''}.` : authUser.username,
     email: authUser.email || user.email,
+    avatar: authUser.avatar || '',
   } : user;
   const displayUser = realUser;
   const doLogout = () => { logout(); navigate('/login'); };
@@ -162,7 +164,9 @@ export default function DesignShell({ children, role = 'client' }) {
             </button>
             <div className="relative" ref={profileRef}>
               <button onClick={() => setProfileOpen((o) => !o)} className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-surface-container-low hover:bg-surface-container transition-colors">
-                <span className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-label-md text-label-md">{displayUser.init}</span>
+                {displayUser.avatar
+                  ? <img src={mediaUrl(displayUser.avatar)} alt="" className="w-8 h-8 rounded-full object-cover" />
+                  : <span className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-label-md text-label-md">{displayUser.init}</span>}
                 <span className="hidden md:block text-left leading-tight">
                   <span className="block font-label-md text-label-md text-on-surface">{displayUser.short}</span>
                 </span>

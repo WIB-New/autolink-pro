@@ -811,23 +811,29 @@ class MeDataExportView(APIView):
         teal = colors.HexColor('#0d7a6f')
         ink = colors.HexColor('#1f2937')
         mute = colors.HexColor('#6b7280')
-        h1 = ParagraphStyle('h1', fontName='Helvetica-Bold', fontSize=18, textColor=teal)
-        h2 = ParagraphStyle('h2', fontName='Helvetica-Bold', fontSize=11, textColor=teal, spaceBefore=14)
-        body = ParagraphStyle('body', fontName='Helvetica', fontSize=9, textColor=ink, leading=13)
-        small = ParagraphStyle('small', fontName='Helvetica', fontSize=8, textColor=mute)
+        h1 = ParagraphStyle('h1', fontName='Helvetica-Bold', fontSize=18, textColor=teal, leading=22)
+        h2 = ParagraphStyle('h2', fontName='Helvetica-Bold', fontSize=11, textColor=teal, spaceBefore=18, spaceAfter=6)
+        body = ParagraphStyle('body', fontName='Helvetica', fontSize=9, textColor=ink, leading=14, spaceAfter=4)
+        small = ParagraphStyle('small', fontName='Helvetica', fontSize=8, textColor=mute, leading=11)
+        cell = ParagraphStyle('cell', fontName='Helvetica', fontSize=8.5, textColor=ink, leading=12)
+        cellh = ParagraphStyle('cellh', fontName='Helvetica-Bold', fontSize=8.5, textColor=colors.white, leading=12)
 
         def table(headers, rows, widths=None):
-            t = Table([headers] + rows, colWidths=widths, repeatRows=1)
+            # Cellules en Paragraph : le texte long se replie sur plusieurs
+            # lignes au lieu de déborder et de chevaucher la ligne suivante.
+            t = Table(
+                [[Paragraph(str(h), cellh) for h in headers]]
+                + [[Paragraph(str(c), cell) for c in row] for row in rows],
+                colWidths=widths, repeatRows=1)
             t.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), teal),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 8),
-                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
                 ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f0f7f6')]),
                 ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#cbd5e1')),
-                ('TOPPADDING', (0, 0), (-1, -1), 4),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('TOPPADDING', (0, 0), (-1, -1), 6),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
             ]))
             return t
 
