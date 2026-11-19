@@ -1,34 +1,41 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import DashboardLayout from '../../components/DashboardLayout';
-import { ClipboardList, CheckCircle, Clock, AlertTriangle, Car, ArrowRight, LogIn, LogOut, User } from 'lucide-react';
+import { ClipboardList, CheckCircle, Clock, AlertTriangle, LogIn, LogOut, TrendingUp, PieChart as PieIcon, CalendarDays, Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { inspectionsAPI } from '../../services/api';
-import { formatDate } from '../../i18n';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  PieChart, Pie, Cell, AreaChart, Area,
+} from 'recharts';
+
+const LANG = () => (localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR');
+const dayKey = (d) => d.toISOString().slice(0, 10);
+const dayLabel = (key) => new Date(`${key}T12:00:00`).toLocaleDateString(LANG(), { weekday: 'short', day: 'numeric' });
+const TT_STYLE = { borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 11, fontWeight: 700 };
+const AXIS_TICK = { fontSize: 10, fill: '#94a3b8' };
 
 export default function ControllerDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
+  const [history, setHistory] = useState([]);
   const [stats, setStats] = useState({ entry_pending: 0, exit_pending: 0, completed_week: 0, issues_week: 0, average_score_week: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [dash, entry, exit] = await Promise.all([
+        const [dash, entry, exit, list] = await Promise.all([
           inspectionsAPI.dashboard(),
           inspectionsAPI.queue({ type: 'entry' }),
           inspectionsAPI.queue({ type: 'exit' }),
+          inspectionsAPI.list({ ordering: '-inspection_date', page_size: 300 }),
         ]);
         setStats(dash.data);
         const rows = r => r.data.results ?? r.data;
-        const today = new Date().toISOString().slice(0, 10);
-        setTasks(
-          [...rows(entry), ...rows(exit)]
-            .map(t => ({ ...t, priority: (t.start_date || '') <= today ? 'high' : 'normal' }))
-            .sort((a, b) => String(a.start_date).localeCompare(String(b.start_date)))
-        );
+        setTasks([...rows(entry), ...rows(exit)]);
+        setHistory(rows(list));
       } catch (e) {
         console.error('Dashboard contrôleur:', e);
       } finally {
@@ -40,15 +47,61 @@ export default function ControllerDashboard() {
 
   const pendingCount = (stats.entry_pending || 0) + (stats.exit_pending || 0);
 
+  /* Activité des 14 derniers jours : fiches remplies + problèmes signalés. */
+  const activity = useMemo(() => {
+    const map = {};
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      map[dayKey(d)] = { d: dayLabel(dayKey(d)), entries: 0, exits: 0, issues: 0 };
+    }
+    history.forEach(i => {
+      const k = dayKey(new Date(i.inspection_date));
+      if (!map[k]) return;
+      if (i.inspection_type === 'entry') map[k].entries += 1; else map[k].exits += 1;
+      if ((i.issues || []).length) map[k].issues += 1;
+    });
+    return Object.values(map);
+  }, [history]);
+
+  /* Score moyen d'état par jour (fiches récentes). */
+  const scoreTrend = useMemo(() => {
+    const sums = {};
+    history.forEach(i => {
+      const k = dayKey(new Date(i.inspection_date));
+      if (!sums[k]) sums[k] = { d: dayLabel(k), total: 0, n: 0 };
+      sums[k].total += Number(i.condition_score || 0);
+      sums[k].n += 1;
+    });
+    return Object.keys(sums).sort().slice(-14)
+      .map(k => ({ d: sums[k].d, score: Math.round(sums[k].total / sums[k].n) }));
+  }, [history]);
+
+  /* Répartition de la file d'attente. */
+  const queueSplit = [
+    { name: 'Entrées à faire', value: stats.entry_pending || 0, color: '#10b981' },
+    { name: 'Sorties à faire', value: stats.exit_pending || 0, color: '#ef4444' },
+  ];
+
+  /* Charge à venir : inspections en attente regroupées par date de début de location. */
+  const upcoming = useMemo(() => {
+    const map = {};
+    tasks.forEach(t => {
+      const k = t.start_date;
+      if (!map[k]) map[k] = { d: dayLabel(k), entries: 0, exits: 0 };
+      if (t.inspection_type === 'entry') map[k].entries += 1; else map[k].exits += 1;
+    });
+    return Object.keys(map).sort().map(k => map[k]);
+  }, [tasks]);
+
   return (
     <DashboardLayout title="Tableau de bord Contrôleur">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <div className="bg-gradient-to-br from-slate-900 to-primary-900 rounded-2xl p-6 text-white">
           <h2 className="text-2xl font-bold mb-1">Bonjour, {user?.firstName || user?.first_name}</h2>
           <p className="text-primary-200 mb-5">Vous avez <strong className="text-white">{pendingCount} inspection{pendingCount > 1 ? 's' : ''}</strong> à effectuer.</p>
           <button onClick={() => navigate('/admin/inspections')} className="flex items-center gap-2 bg-white text-primary-700 font-semibold py-2.5 px-5 rounded-xl hover:bg-primary-50 transition-all shadow-md">
-            <ClipboardList size={18} /> Voir toutes les inspections
+            <ClipboardList size={18} /> Voir la file d'inspections
           </button>
         </div>
 
@@ -60,7 +113,7 @@ export default function ControllerDashboard() {
             { label: 'Problèmes signalés (7 j)', value: stats.issues_week, icon: AlertTriangle, color: 'text-red-600 bg-red-50' },
             { label: 'Score moyen', value: `${Math.round(stats.average_score_week || 0)}/100`, icon: ClipboardList, color: 'text-primary-600 bg-primary-50' },
           ].map(({ label, value, icon: Icon, color }) => (
-            <div key={label} className="card">
+            <div key={label} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
               <div className={`w-10 h-10 ${color} rounded-xl flex items-center justify-center mb-3`}><Icon size={18} /></div>
               <div className="text-xl font-bold text-slate-900">{value}</div>
               <div className="text-sm text-slate-500">{label}</div>
@@ -68,41 +121,115 @@ export default function ControllerDashboard() {
           ))}
         </div>
 
-        {/* Today's tasks */}
-        <div className="card">
-          <h3 className="font-bold text-slate-900 mb-5">Inspections à effectuer — {new Date().toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
-          {loading && <p className="text-sm text-slate-400 text-center py-6">Chargement…</p>}
-          {!loading && tasks.length === 0 && (
-            <p className="text-sm text-slate-400 text-center py-6">Aucune inspection en attente — toutes les locations couvertes sont inspectées.</p>
-          )}
-          <div className="space-y-4">
-            {tasks.map(task => (
-              <div key={`${task.inspection_type}-${task.id}`} className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${task.priority === 'high' ? 'border-primary-200 bg-primary-50' : 'border-slate-100 bg-white'}`}>
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${task.inspection_type === 'entry' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
-                  {task.inspection_type === 'entry' ? <LogIn size={22} /> : <LogOut size={22} />}
+        {loading && <p className="text-sm text-slate-400 text-center py-6">Chargement…</p>}
+
+        {!loading && (
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Activité 14 jours */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 md:col-span-2">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                  <Activity size={15} className="text-primary-600" /> Fiches remplies — 14 derniers jours
+                </h3>
+                <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-500 rounded-full" /> Entrées</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 bg-red-500 rounded-full" /> Sorties</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 bg-amber-400 rounded-full" /> Avec problème</span>
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${task.inspection_type === 'entry' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                      {task.inspection_type === 'entry' ? 'ENTRÉE' : 'SORTIE'}
-                    </span>
-                    <span className="font-semibold text-slate-900">{task.vehicle}</span>
-                    {task.priority === 'high' && <span className="badge-warning">Priorité haute</span>}
-                  </div>
-                  <div className="text-sm text-slate-500 flex items-center gap-3 flex-wrap">
-                    <span className="inline-flex items-center gap-1"><Clock size={12} /> {formatDate(task.start_date)} → {formatDate(task.end_date)}</span>
-                    <span className="inline-flex items-center gap-1"><User size={12} /> {task.client}</span>
-                    <span>{task.booking_reference}</span>
-                  </div>
-                  <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1"><Car size={12} /> {task.plate}</div>
+              </div>
+              <ResponsiveContainer width="100%" height={230}>
+                <BarChart data={activity} margin={{ top: 0, right: 0, left: -26, bottom: 0 }} barGap={2}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="d" tick={AXIS_TICK} axisLine={false} tickLine={false} interval={1} />
+                  <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={TT_STYLE} />
+                  <Bar dataKey="entries" name="Entrées" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="exits" name="Sorties" stackId="a" fill="#ef4444" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="issues" name="Avec problème" fill="#fbbf24" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Tendance du score */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                  <TrendingUp size={15} className="text-teal-600" /> État moyen constaté (/100)
+                </h3>
+              </div>
+              {scoreTrend.length ? (
+                <ResponsiveContainer width="100%" height={210}>
+                  <AreaChart data={scoreTrend} margin={{ top: 0, right: 0, left: -26, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="scoreFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#0d9488" stopOpacity={0.28} />
+                        <stop offset="100%" stopColor="#0d9488" stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                    <XAxis dataKey="d" tick={AXIS_TICK} axisLine={false} tickLine={false} />
+                    <YAxis domain={[0, 100]} tick={AXIS_TICK} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={TT_STYLE} formatter={v => [`${v}/100`, 'État moyen']} />
+                    <Area type="monotone" dataKey="score" stroke="#0d9488" strokeWidth={2.5} fill="url(#scoreFill)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : <p className="text-sm text-slate-400 text-center py-16">Aucune fiche enregistrée récemment.</p>}
+            </div>
+
+            {/* File d'attente */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                  <PieIcon size={15} className="text-amber-500" /> File d'attente actuelle
+                </h3>
+                <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-500 rounded-full" /> Entrées</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 bg-red-500 rounded-full" /> Sorties</span>
                 </div>
-                <button onClick={() => navigate('/admin/inspections')} className="btn-primary py-2 px-4 text-sm flex items-center gap-1 shrink-0">
-                  Inspecter <ArrowRight size={14} />
+              </div>
+              {pendingCount ? (
+                <div className="relative">
+                  <ResponsiveContainer width="100%" height={210}>
+                    <PieChart>
+                      <Pie data={queueSplit} dataKey="value" innerRadius={58} outerRadius={85} paddingAngle={3} strokeWidth={0}>
+                        {queueSplit.map(s => <Cell key={s.name} fill={s.color} />)}
+                      </Pie>
+                      <Tooltip contentStyle={TT_STYLE} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-2xl font-black text-slate-900">{pendingCount}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">à faire</span>
+                  </div>
+                </div>
+              ) : <p className="text-sm text-slate-400 text-center py-16">File vide — tout est inspecté.</p>}
+            </div>
+
+            {/* Charge à venir */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 md:col-span-2">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                  <CalendarDays size={15} className="text-primary-600" /> Charge à venir — inspections en attente par date
+                </h3>
+                <button onClick={() => navigate('/admin/inspections')} className="text-[11px] font-bold text-primary-600 hover:text-primary-700">
+                  Ouvrir la file complète →
                 </button>
               </div>
-            ))}
+              {upcoming.length ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={upcoming} margin={{ top: 0, right: 0, left: -26, bottom: 0 }} barGap={2}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                    <XAxis dataKey="d" tick={AXIS_TICK} axisLine={false} tickLine={false} />
+                    <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip contentStyle={TT_STYLE} />
+                    <Bar dataKey="entries" name="Entrées" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="exits" name="Sorties" stackId="a" fill="#ef4444" radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <p className="text-sm text-slate-400 text-center py-12">Aucune inspection en attente — toutes les locations couvertes sont inspectées.</p>}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Quick guide */}
         <div className="card bg-slate-50">
