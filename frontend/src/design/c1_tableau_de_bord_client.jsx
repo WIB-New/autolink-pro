@@ -208,14 +208,15 @@ export default function C1TableauDeBordClient() {
 
       // --- Donut types de locations ---
       const split = Array.isArray(d.driver_split) ? d.driver_split : [];
-      const totalB = Math.max(1, split.reduce((a, s) => a + (s.count || 0), 0));
+      const realB = split.reduce((a, s) => a + (s.count || 0), 0);
+      const denom = Math.max(1, realB);
       const cat = (k) => split.find((s) => s.driver_type === k)?.count || 0;
-      const pNo = Math.round((cat('none') / totalB) * 100);
-      const pInt = Math.round((cat('internal') / totalB) * 100);
-      const pOwn = Math.max(0, 100 - pNo - pInt);
+      const pNo = realB ? Math.round((cat('none') / denom) * 100) : 0;
+      const pInt = realB ? Math.round((cat('internal') / denom) * 100) : 0;
+      const pOwn = realB ? Math.max(0, 100 - pNo - pInt) : 0;
       h = h
         .replace(/class="relative w-32 h-32 rounded-full" style="background: conic-gradient[^"]*"/, `class="relative w-32 h-32 rounded-full" data-tip="Sans chauffeur ${pNo}% · AutoLink ${pInt}% · Proprio ${pOwn}%" style="background: conic-gradient(#0d9488 0 ${pNo}%, #b45309 ${pNo}% ${pNo + pInt}%, #64748b ${pNo + pInt}% 100%);animation:dp-spin .9s ease-out both;transform-origin:center;cursor:pointer"`)
-        .replace(/>12<\/span>\s*<span class="font-label-sm text-label-sm text-on-surface-variant mt-1">trajets</, `>${totalB}</span><span class="font-label-sm text-label-sm text-on-surface-variant mt-1">trajets<`)
+        .replace(/>12<\/span>\s*<span class="font-label-sm text-label-sm text-on-surface-variant mt-1">trajets</, `>${realB}</span><span class="font-label-sm text-label-sm text-on-surface-variant mt-1">trajets<`)
         .replace('Trajets urbains</span><span class="font-label-md text-label-md font-bold text-on-surface">55%', `Sans chauffeur</span><span class="font-label-md text-label-md font-bold text-on-surface">${pNo}%`)
         .replace('Interurbains</span><span class="font-label-md text-label-md font-bold text-on-surface">25%', `Chauffeur AutoLink</span><span class="font-label-md text-label-md font-bold text-on-surface">${pInt}%`)
         .replace('Avec chauffeur</span><span class="font-label-md text-label-md font-bold text-on-surface">20%', `Chauffeur proprio</span><span class="font-label-md text-label-md font-bold text-on-surface">${pOwn}%`)
