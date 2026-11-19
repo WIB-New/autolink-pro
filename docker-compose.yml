@@ -44,6 +44,14 @@ services:
       OWNER_USERNAME: ${OWNER_USERNAME:-proprietaire}
       OWNER_EMAIL: ${OWNER_EMAIL:-proprietaire@autolink.cm}
       OWNER_PASSWORD: ${OWNER_PASSWORD:-}
+      # Comptes contrôleurs techniques (créés/maj par seed_controllers au
+      # démarrage — équipe d'inspection entrée/sortie véhicules).
+      CONTROLLER1_USERNAME: ${CONTROLLER1_USERNAME:-controleur1}
+      CONTROLLER1_EMAIL: ${CONTROLLER1_EMAIL:-controleur1@autolink.cm}
+      CONTROLLER1_PASSWORD: ${CONTROLLER1_PASSWORD:-}
+      CONTROLLER2_USERNAME: ${CONTROLLER2_USERNAME:-controleur2}
+      CONTROLLER2_EMAIL: ${CONTROLLER2_EMAIL:-controleur2@autolink.cm}
+      CONTROLLER2_PASSWORD: ${CONTROLLER2_PASSWORD:-}
       # Uploads persistants : le volume /app/data survit aux redéploiements.
       MEDIA_ROOT: /app/data/media
     volumes:
