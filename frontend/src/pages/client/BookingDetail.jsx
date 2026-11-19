@@ -33,8 +33,6 @@ export default function BookingDetail() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
-  const [disputeResponse, setDisputeResponse] = useState('');
-  const [disputeErr, setDisputeErr] = useState('');
 
   const load = useCallback(() => bookingsAPI.detail(id).then(({ data }) => {
     setBooking(data);
@@ -91,25 +89,6 @@ export default function BookingDetail() {
       confirmLabel: accept ? t('Accepter') : t('Refuser'), danger: !accept,
     });
     if (ok) run(() => (accept ? bookingsAPI.ownerAccept(id) : bookingsAPI.ownerRefuse(id, '')), accept ? t('Demande acceptée.') : t('Demande refusée.'));
-  };
-
-  const submitDisputeResponse = async () => {
-    const ok = await confirm({
-      title: t('Transmettre votre version ?'),
-      message: t('Elle sera confrontée à celle du client et jointe au dossier d\'arbitrage.'),
-      confirmLabel: t('Transmettre'),
-    });
-    if (!ok) return;
-    setBusy(true); setDisputeErr('');
-    try {
-      const { data } = await bookingsAPI.disputeResponse(id, disputeResponse.trim());
-      setBooking(data);
-      setDisputeResponse('');
-      setNotice(t('Votre version a été transmise aux arbitres.'));
-    } catch (err) {
-      setDisputeErr(err.response?.data?.response?.[0] || err.response?.data?.status?.[0] || err.response?.data?.detail || t('Envoi impossible.'));
-    }
-    setBusy(false);
   };
 
   if (!booking) {
@@ -201,16 +180,17 @@ export default function BookingDetail() {
                   <p className="font-body-md text-body-md mt-1">{booking.dispute_owner_response}</p>
                 </div>
               )}
-              {role === 'OWNER' && booking.status === 'disputed' && !booking.dispute_owner_response && (
-                <div className="mt-3 p-4 rounded-xl bg-surface-container border border-outline-variant/30">
-                  <div className="font-label-lg text-label-lg flex items-center gap-1"><Icon name="gavel" size={18} className="text-primary" />{t('Votre version des faits')}</div>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">{t('Décrivez votre version — elle sera confrontée à celle du client lors de l\'arbitrage.')}</p>
-                  <textarea value={disputeResponse} onChange={(e) => setDisputeResponse(e.target.value)} rows={3}
-                    placeholder={t('Ex : état des lieux de sortie signé, photos datées, devis carrosserie…')}
-                    className="input-field resize-none mt-2" />
-                  {disputeErr && <p className="rounded-xl px-3 py-2 mt-2 bg-error-container text-on-error-container font-body-sm text-body-sm">{disputeErr}</p>}
-                  <button onClick={submitDisputeResponse} disabled={busy || !disputeResponse.trim()}
-                    className="btn-primary mt-2 py-2 px-4"><Icon name="send" size={16} />{t('Transmettre ma version')}</button>
+              {booking.dispute_resolved_at && (
+                <div className="mt-3 p-4 rounded-xl bg-teal-50 text-teal-900 border border-teal-200">
+                  <div className="font-label-lg text-label-lg flex items-center gap-1"><Icon name="verified" size={18} />{t('Décision arbitrale AutoLink')} · {formatDateTime(booking.dispute_resolved_at)}</div>
+                  <p className="font-body-md text-body-md mt-1 font-semibold">
+                    {booking.dispute_decision === 'refund'
+                      ? t('Litige tranché en faveur du locataire — caution intégralement restituée.')
+                      : booking.dispute_decision === 'release'
+                        ? t('Litige tranché en faveur du propriétaire — caution et part location versées.')
+                        : t('Litige résolu par arbitrage AutoLink.')}
+                  </p>
+                  {booking.dispute_resolution_note && <p className="font-body-md text-body-md mt-1 italic">« {booking.dispute_resolution_note} »</p>}
                 </div>
               )}
             </section>

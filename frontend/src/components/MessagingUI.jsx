@@ -7,6 +7,15 @@ import { mediaUrl } from '../utils/media';
 const ini = (s) => (s || '?').split(' ').map((w) => w[0] || '').join('').slice(0, 2).toUpperCase();
 const hh = (iso) => (iso ? new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '');
 const ROLE_LABEL = { CLIENT: 'Client AutoLink', DRIVER: 'Chauffeur certifié AutoLink', OWNER: 'Propriétaire AutoLink', ADMIN: 'Support AutoLink' };
+
+/* Badge de certification officielle affiché à côté du nom de l'admin —
+   repère visuel "compte vérifié" façon WhatsApp/Instagram. */
+const isStaff = (c, p) => p?.role === 'ADMIN' || c?.kind === 'support';
+const VerifiedBadge = ({ size = 15 }) => (
+  <span className="material-symbols-outlined text-primary align-middle leading-none shrink-0"
+    style={{ fontSize: size, fontVariationSettings: "'FILL' 1" }}
+    title="Compte officiel AutoLink certifié">verified</span>
+);
 const EMOJIS = ['😊', '😂', '😍', '👍', '🙏', '😉', '🔥', '❤️', '🎉', '😢', '😮', '🤝'];
 const FILTERS = [['', 'Tous'], ['CLIENT', 'Clients'], ['DRIVER', 'Chauffeurs'], ['OWNER', 'Propriétaires'], ['ADMIN', 'Support']];
 
@@ -126,7 +135,7 @@ export default function MessagingUI({ scope, basePath = '/messages', isAdmin = f
                   ? <img src={mediaUrl(other(c).avatar)} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" />
                   : <span className="w-11 h-11 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-[14px] shrink-0">{ini(convName(c))}</span>}
                 <span className="flex-1 min-w-0">
-                  <span className="flex justify-between"><span className="font-label-md text-label-md font-bold text-on-surface truncate">{convName(c)}</span>
+                  <span className="flex justify-between"><span className="font-label-md text-label-md font-bold text-on-surface truncate">{convName(c)}{isStaff(c, other(c)) && <> <VerifiedBadge /></>}</span>
                     <span className="font-label-sm text-[10px] text-primary font-bold shrink-0">{hh(c.last_message?.created_at || c.updated_at)}</span></span>
                   {c.booking_label && <span className="block font-label-sm text-[10px] text-on-surface-variant truncate"><span className="material-symbols-outlined text-[11px] align-middle">directions_car</span> {c.booking_label}</span>}
                   <span className="block font-body-sm text-body-sm text-on-surface-variant truncate">{c.last_message?.content || ''}</span>
@@ -152,6 +161,7 @@ export default function MessagingUI({ scope, basePath = '/messages', isAdmin = f
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-headline-sm text-headline-sm font-bold text-on-surface truncate">{name}</span>
+                    {isStaff(activeConv, peer) && <VerifiedBadge size={18} />}
                     <span className="px-2 py-0.5 rounded-full bg-primary-fixed text-primary text-[10px] font-bold">{ROLE_LABEL[peer?.role] || (activeConv.kind === 'support' ? 'Support AutoLink' : 'Contact')}</span>
                   </div>
                   {peer?.phone && <p className="font-body-sm text-[12px] text-on-surface-variant"><span className="material-symbols-outlined text-[13px] align-middle">call</span> {peer.phone}</p>}
@@ -227,7 +237,7 @@ export default function MessagingUI({ scope, basePath = '/messages', isAdmin = f
                     {(u.photo || u.avatar) ? <img src={mediaUrl(u.photo || u.avatar)} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
                       : <span className="w-9 h-9 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-[13px] shrink-0">{ini(u.name)}</span>}
                     <span className="min-w-0 flex-1">
-                      <span className="block font-label-md text-label-md font-semibold text-on-surface truncate">{u.name}</span>
+                      <span className="block font-label-md text-label-md font-semibold text-on-surface truncate">{u.name}{u.role === 'ADMIN' && <> <VerifiedBadge size={13} /></>}</span>
                       <span className="block font-body-sm text-[11px] text-on-surface-variant truncate">{u.email} · {u.role}</span>
                     </span>
                     {on && <span className="material-symbols-outlined text-primary text-[18px]">check_circle</span>}
