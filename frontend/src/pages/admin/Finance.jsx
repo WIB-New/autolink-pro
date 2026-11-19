@@ -64,6 +64,33 @@ export default function Finance() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  /* Actions sur les retraits depuis la modale détail */
+  const [wdBusy, setWdBusy] = useState(false);
+  const [wdErr, setWdErr] = useState('');
+  const processWithdrawal = async (row, approve) => {
+    setWdBusy(true); setWdErr('');
+    try {
+      await (approve ? withdrawalsAPI.approve(row.wid, '') : withdrawalsAPI.reject(row.wid, ''));
+      setDetail(null);
+      fetchAll();
+    } catch (e) {
+      setWdErr(e.response?.data?.detail || 'Action impossible.');
+    }
+    setWdBusy(false);
+  };
+  const refundWithdrawal = async (row) => {
+    if (!window.confirm(`Recréditer ${fmt(row.gross)} FCFA sur le solde de l'utilisateur ? À utiliser uniquement si le virement a échoué ou a été fait par erreur — si l'argent est réellement parti sur ${row.phone || 'le compte externe'}, la plateforme supporte la perte.`)) return;
+    setWdBusy(true); setWdErr('');
+    try {
+      await withdrawalsAPI.refund(row.wid, '');
+      setDetail(null);
+      fetchAll();
+    } catch (e) {
+      setWdErr(e.response?.data?.detail || 'Action impossible.');
+    }
+    setWdBusy(false);
+  };
+
   /* Journal central — lignes dérivées des vraies opérations */
   const ops = useMemo(() => {
     const rows = [];
@@ -96,7 +123,7 @@ export default function Finance() {
     });
     // Retraits utilisateurs (demandes réelles — WalletTransaction lié par référence)
     withdrawals.forEach((w) => {
-      rows.push({ id: w.reference, at: w.created_at, type: 'retrait',
+      rows.push({ id: w.reference, wid: w.id, wstatus: w.status, phone: w.phone, at: w.created_at, type: 'retrait',
         who: `${w.user_name || 'Utilisateur'} · ${w.user_role === 'OWNER' ? 'Propriétaire' : w.user_role === 'DRIVER' ? 'Chauffeur' : 'Client'}`,
         method: METHOD_LABEL[w.method] || w.method,
         gross: Number(w.amount || 0), fees: '0 FCFA', net: Number(w.amount || 0),
@@ -290,7 +317,25 @@ export default function Finance() {
                 <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${ROW_STATUS[detail.status].cls}`}>{ROW_STATUS[detail.status].l}</span>
               </div>
             </div>
-            <div className="px-5 pb-5">
+            <div className="px-5 pb-5 flex flex-col gap-2">
+              {detail.type === 'retrait' && detail.wstatus === 'pending' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <button disabled={wdBusy} onClick={() => processWithdrawal(detail, false)}
+                    className="py-3 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 font-black text-[11px] transition-colors disabled:opacity-50">Refuser</button>
+                  <button disabled={wdBusy} onClick={() => processWithdrawal(detail, true)}
+                    className="py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-[11px] transition-colors disabled:opacity-50">
+                    {wdBusy ? 'Traitement…' : 'Autoriser le virement'}
+                  </button>
+                </div>
+              )}
+              {detail.type === 'retrait' && detail.wstatus === 'paid' && (
+                <button disabled={wdBusy} onClick={() => refundWithdrawal(detail)}
+                  className="w-full py-3 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 font-black text-[11px] transition-colors disabled:opacity-50"
+                  title="Compenser : recrédite le solde interne sans rappeler le virement externe">
+                  {wdBusy ? 'Traitement…' : 'Recréditer (compensation)'}
+                </button>
+              )}
+              {wdErr && <p className="rounded-lg px-3 py-2 bg-red-50 text-red-600 text-[10px] font-bold">{wdErr}</p>}
               <button onClick={() => setDetail(null)}
                 className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black text-[11px] py-3 rounded-xl transition-colors">Fermer</button>
             </div>
