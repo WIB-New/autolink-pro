@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Tag, Plus, CheckCircle, XCircle, TrendingUp, DollarSign, Users, Copy, Link2, ToggleLeft, ToggleRight, Search, Loader, Wallet } from 'lucide-react';
+import { Tag, Plus, CheckCircle, XCircle, TrendingUp, DollarSign, Users, Copy, Link2, ToggleLeft, ToggleRight, Search, Loader, Wallet, Eye, Pencil } from 'lucide-react';
 import AdminLayout from '../../components/admindash/AdminLayout';
 import StatCard from '../../components/StatCard';
 import FilterField from '../../components/FilterField';
-import { affiliatesAPI } from '../../services/api';
+import api, { affiliatesAPI } from '../../services/api';
 
 const TYPE_COLORS = {
   'Influenceur': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
@@ -22,6 +22,11 @@ export default function AgentsManager() {
   const [newAgent, setNewAgent] = useState({ name: '', agent_type: 'Influenceur', phone: '', city: 'Douala', rate: 5 });
   const [paying, setPaying] = useState(null);   // agent → modale versement
   const [payForm, setPayForm] = useState({ amount: '', note: '' });
+  const [detail, setDetail] = useState(null);   // agent → modale détail
+  const [detailData, setDetailData] = useState(null);
+  const [payouts, setPayouts] = useState([]);
+  const [editing, setEditing] = useState(null); // agent → modale édition
+  const [editForm, setEditForm] = useState({});
   const [copied, setCopied] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -64,6 +69,41 @@ export default function AgentsManager() {
   };
 
   const openPayout = (a) => { setPaying(a); setPayForm({ amount: '', note: '' }); setError(''); };
+
+  const openDetail = async (a) => {
+    setDetail(a); setDetailData(null); setPayouts([]);
+    try {
+      const [d, p] = await Promise.all([
+        api.get(`/affiliates/agents/${a.id}/`),
+        affiliatesAPI.payouts({ agent: a.id }),
+      ]);
+      setDetailData(d.data);
+      setPayouts(p.data.results || p.data);
+    } catch (_) { setDetailData(a); }
+  };
+
+  const openEdit = (a) => {
+    setEditing(a); setError('');
+    setEditForm({
+      name: a.name, agent_type: a.agent_type || 'Influenceur', phone: a.phone || '',
+      city: a.city || 'Douala', rate: Math.round(Number(a.commission_rate || 0) * 10000) / 100,
+    });
+  };
+
+  const saveEdit = async () => {
+    setBusy(true); setError('');
+    try {
+      await affiliatesAPI.updateAgent(editing.id, {
+        name: editForm.name, agent_type: editForm.agent_type, phone: editForm.phone,
+        city: editForm.city, commission_rate: (Number(editForm.rate) / 100).toFixed(4),
+      });
+      load(); setEditing(null);
+    } catch (err) {
+      const d = err?.response?.data;
+      setError(typeof d === 'string' ? d : Object.values(d || {}).flat()[0] || 'Mise à jour impossible.');
+    }
+    setBusy(false);
+  };
 
   const createPayout = async () => {
     const amount = Number(payForm.amount);
@@ -180,6 +220,14 @@ export default function AgentsManager() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
+                        <button onClick={() => openDetail(a)} title="Voir le détail"
+                          className="text-slate-400 hover:text-primary-600 transition-colors">
+                          <Eye size={17} />
+                        </button>
+                        <button onClick={() => openEdit(a)} title="Modifier l'agent"
+                          className="text-slate-400 hover:text-primary-600 transition-colors">
+                          <Pencil size={15} />
+                        </button>
                         <button onClick={() => toggleAgent(a)} title={a.is_active ? 'Désactiver' : 'Activer'}
                           className="text-slate-400 hover:text-primary-600 transition-colors">
                           {a.is_active ? <ToggleRight size={20} className="text-emerald-500" /> : <ToggleLeft size={20} />}
@@ -287,6 +335,113 @@ export default function AgentsManager() {
                 <button onClick={createPayout} disabled={busy || !Number(payForm.amount) || Number(payForm.amount) <= 0}
                   className="btn-primary flex-1 py-3 flex items-center justify-center gap-2 disabled:opacity-50">
                   {busy ? <Loader size={16} className="animate-spin" /> : <Wallet size={16} />} Confirmer le versement
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Detail modal */}
+        {detail && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
+                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2"><Tag size={18} /> {detail.name}</h3>
+                <button onClick={() => setDetail(null)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><XCircle size={18} /></button>
+              </div>
+              <div className="p-5 space-y-4 text-sm">
+                {!detailData ? <p className="text-center text-slate-400 py-4"><Loader size={16} className="animate-spin mx-auto" /></p> : (<>
+                  <div className="bg-slate-50 rounded-xl p-4 space-y-1">
+                    <p><span className="text-slate-500">Code :</span> <code className="font-bold text-primary-700">{detailData.code}</code></p>
+                    <p><span className="text-slate-500">Type :</span> {detailData.agent_type || '—'} · <span className="text-slate-500">Ville :</span> {detailData.city}</p>
+                    <p><span className="text-slate-500">Téléphone :</span> {detailData.phone || '—'} · <span className="text-slate-500">Taux :</span> {ratePct(detailData)}%</p>
+                    <p><span className="text-slate-500">Statut :</span> {detailData.is_active ? 'Actif' : 'Inactif'} · <span className="text-slate-500">Créé le :</span> {detailData.created_at?.slice(0, 10)}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-emerald-50 rounded-xl p-3"><span className="text-slate-500">Conversions</span><p className="font-black text-emerald-700 text-lg">{detailData.conversions ?? 0}</p></div>
+                    <div className="bg-violet-50 rounded-xl p-3"><span className="text-slate-500">CA généré</span><p className="font-black text-violet-700 text-lg">{fmt(detailData.generated_revenue)} F</p></div>
+                    <div className="bg-amber-50 rounded-xl p-3"><span className="text-slate-500">Commission due</span><p className="font-black text-amber-700 text-lg">{fmt(detailData.commission_due)} F</p></div>
+                    <div className="bg-slate-50 rounded-xl p-3"><span className="text-slate-500">Déjà versé</span><p className="font-black text-slate-700 text-lg">{fmt(detailData.payouts_total)} F</p></div>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-slate-800 mb-2">Filleuls ({detailData.referrals_count ?? 0})</h4>
+                    {(detailData.referred_clients || []).length === 0
+                      ? <p className="text-slate-400 text-xs">Aucun client inscrit avec ce code.</p>
+                      : <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                          {detailData.referred_clients.map(c => (
+                            <div key={c.id} className="flex justify-between bg-slate-50 rounded-lg px-3 py-2">
+                              <span className="font-medium">{c.name}</span>
+                              <span className="text-xs text-slate-400">{c.since?.slice(0, 10)}</span>
+                            </div>
+                          ))}
+                        </div>}
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-slate-800 mb-2">Versements ({payouts.length})</h4>
+                    {payouts.length === 0
+                      ? <p className="text-slate-400 text-xs">Aucun versement enregistré.</p>
+                      : <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                          {payouts.map(p => (
+                            <div key={p.id} className="flex justify-between bg-slate-50 rounded-lg px-3 py-2">
+                              <span className="font-bold text-orange-600">{fmt(p.amount)} F</span>
+                              <span className="text-xs text-slate-400">{p.paid_at?.slice(0, 10)} · {p.note || p.paid_by_name || ''}</span>
+                            </div>
+                          ))}
+                        </div>}
+                  </div>
+                </>)}
+              </div>
+              <div className="p-5 border-t border-slate-100 dark:border-slate-700"><button onClick={() => setDetail(null)} className="btn-outline w-full">Fermer</button></div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit modal */}
+        {editing && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
+              <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
+                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2"><Pencil size={18} /> Modifier {editing.code}</h3>
+                <button onClick={() => setEditing(null)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><XCircle size={18} /></button>
+              </div>
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className="label">Nom complet</label>
+                  <input type="text" className="input-field" value={editForm.name}
+                    onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Type d'agent</label>
+                    <select className="input-field" value={editForm.agent_type} onChange={e => setEditForm(f => ({ ...f, agent_type: e.target.value }))}>
+                      {Object.keys(TYPE_COLORS).map(t => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Ville</label>
+                    <select className="input-field" value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))}>
+                      {CITIES.map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="label">Numéro de téléphone (+237)</label>
+                  <input type="tel" className="input-field" value={editForm.phone}
+                    onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">Taux de commission (%)</label>
+                  <input type="number" className="input-field" min={1} max={100} value={editForm.rate}
+                    onChange={e => setEditForm(f => ({ ...f, rate: Number(e.target.value) }))} />
+                  <p className="text-xs text-slate-500 mt-1">Le code {editing.code} n'est pas modifiable — il est lié aux filleuls existants.</p>
+                </div>
+                {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl p-3">{error}</p>}
+              </div>
+              <div className="p-5 border-t border-slate-100 dark:border-slate-700 flex gap-3">
+                <button onClick={() => setEditing(null)} className="btn-outline flex-1 py-3">Annuler</button>
+                <button onClick={saveEdit} disabled={busy || !editForm.name}
+                  className="btn-primary flex-1 py-3 flex items-center justify-center gap-2 disabled:opacity-50">
+                  {busy ? <Loader size={16} className="animate-spin" /> : <CheckCircle size={16} />} Enregistrer
                 </button>
               </div>
             </div>

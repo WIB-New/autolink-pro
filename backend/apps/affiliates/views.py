@@ -38,7 +38,11 @@ class AgentPayoutViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'head', 'options']
 
     def get_queryset(self):
-        return AgentPayout.objects.select_related('agent', 'paid_by').all()
+        qs = AgentPayout.objects.select_related('agent', 'paid_by').all()
+        agent = self.request.query_params.get('agent')
+        if agent:
+            qs = qs.filter(agent_id=agent)
+        return qs
 
     @transaction.atomic
     def perform_create(self, serializer):
