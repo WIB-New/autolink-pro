@@ -207,6 +207,7 @@ export const usersAPI = {
   create: (payload) => api.post('/users/', payload),
   update: (id, payload) => api.patch(`/users/${id}/`, payload),
   delete: (id) => api.delete(`/users/${id}/`),
+  resetCredentials: (id) => api.post(`/users/${id}/reset-credentials/`),
   me: () => api.get('/users/me/'),
   updatePassword: (payload) => api.post('/users/me/password/', payload),
   sessions: () => api.get('/users/me/sessions/'),

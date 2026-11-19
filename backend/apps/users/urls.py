@@ -35,6 +35,7 @@ from .views import (
     PlatformSettingsView,
     AdminActivityView,
     AdminDbHealthView,
+    AdminUserResetCredentialsView,
 )
 
 urlpatterns = [
@@ -72,6 +73,7 @@ urlpatterns = [
     path('documents/', AdminDocumentListView.as_view(), name='admin-documents'),
     path('documents/<int:pk>/', AdminDocumentVerifyView.as_view(), name='admin-document-verify'),
     path('<int:pk>/documents/', AdminUserDocumentListView.as_view(), name='user-documents'),
+    path('<int:pk>/reset-credentials/', AdminUserResetCredentialsView.as_view(), name='user-reset-credentials'),
     path('<int:pk>/', UserDetailView.as_view(), name='user-detail'),
     path('', UserListView.as_view(), name='user-list'),
 ]

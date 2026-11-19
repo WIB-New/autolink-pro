@@ -7,7 +7,7 @@ import i18next from '../../i18n';
 import {
   LayoutDashboard, CalendarCheck, Car, Building2, Users, UserCheck,
   Landmark, AlertTriangle, Wrench, Settings, UserIcon,
-  LogOut, Search, Bell, Menu, X,
+  LogOut, Search, Bell, Menu, X, ClipboardCheck,
   ChevronDown, Moon, MessageSquare, FileSearch, Globe, ShieldCheck,
 } from 'lucide-react';
 
@@ -18,6 +18,7 @@ const ITEMS = [
   { to: '/admin/partenaires', icon: Building2,       label: 'Propriétaires',    badge: 'owners' },
   { to: '/admin/clients',     icon: Users,           label: 'Clients',          badge: 'clients' },
   { to: '/admin/drivers',     icon: UserCheck,       label: 'Chauffeurs',       badge: null },
+  { to: '/admin/controleurs', icon: ClipboardCheck,  label: 'Contrôleurs',      badge: null },
   { to: '/admin/kyc',         icon: ShieldCheck,     label: 'KYC & Documents',  badge: 'kyc' },
   { to: '/admin/finance',     icon: Landmark,        label: 'Finances',         badge: 'finances' },
   { to: '/admin/litiges',     icon: AlertTriangle,   label: 'Litiges',          badge: 'disputes' },

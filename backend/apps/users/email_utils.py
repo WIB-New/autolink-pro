@@ -1,7 +1,11 @@
+import logging
+
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 
+
+logger = logging.getLogger(__name__)
 
 SUPPORTED_LANGUAGES = {'fr', 'en'}
 
@@ -110,3 +114,39 @@ def send_login_notification(user):
         html_message=html_message,
         fail_silently=True,
     )
+
+
+def send_staff_credentials_email(user, password):
+    """Envoie les identifiants de connexion à un compte staff (contrôleur,
+    admin…) créé par un administrateur."""
+    if not user.email:
+        return False
+
+    context = {
+        'user': user,
+        'first_name': user.first_name or user.username,
+        'email': user.email,
+        'password': password,
+        'login_url': getattr(settings, 'FRONTEND_URL', 'http://localhost:3000') + '/login',
+        'language': 'fr',
+        'logo_url': getattr(settings, 'SITE_URL', 'https://autolink-pro.worldwide-international.business') + '/static/logo.png',
+    }
+    try:
+        send_mail(
+            subject='AutoLink Pro — Vos identifiants de connexion',
+            message=(
+                f"Bonjour {context['first_name']},\n\n"
+                f"Votre compte {user.get_role_display()} AutoLink Pro a été créé.\n\n"
+                f"Identifiant : {user.email}\nMot de passe : {password}\n\n"
+                f"Connectez-vous : {context['login_url']}\n"
+                f"Changez votre mot de passe après la première connexion."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            html_message=render_email_template('staff_credentials', context),
+            fail_silently=False,
+        )
+        return True
+    except Exception:
+        logger.exception('staff credentials email failed for user %s', user.pk)
+        return False

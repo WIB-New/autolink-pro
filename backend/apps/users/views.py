@@ -1146,12 +1146,30 @@ class UserListView(generics.ListCreateAPIView):
             bookings_count=Count('bookings', distinct=True),
             vehicles_count=Count('vehicles', distinct=True),
             trips_count=Count('driven_bookings', distinct=True),
+            inspections_count=Count('vehicleinspection', distinct=True),
             client_rating=Avg('bookings__owner_rating'),
             client_rating_count=Count('bookings__owner_rating', distinct=True),
         ).order_by('-created_at')
 
     def get_serializer_class(self):
         return AdminUserCreateSerializer if self.request.method == 'POST' else AdminUserSerializer
+
+    def perform_create(self, serializer):
+        import secrets
+        password = serializer.validated_data.get('password') or secrets.token_urlsafe(9)
+        user = serializer.save(password=password)
+        # Compte staff créé par l'admin : pas de parcours KYC — vérifié d'office.
+        if user.role in ('CONTROLLER', 'ADMIN') and not user.is_verified:
+            user.is_verified = True
+            user.save(update_fields=['is_verified'])
+        # Les identifiants partent par email — seul moyen pour le nouveau
+        # compte de connaître son mot de passe (généré ou choisi par l'admin).
+        if user.email:
+            from .email_utils import send_staff_credentials_email
+            send_staff_credentials_email(user, password)
+        Notification.objects.create(
+            user=user, title='Compte créé',
+            message='Votre compte AutoLink Pro a été créé par l\'administration. Changez votre mot de passe dès la première connexion.')
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -1164,6 +1182,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
             bookings_count=Count('bookings', distinct=True),
             vehicles_count=Count('vehicles', distinct=True),
             trips_count=Count('driven_bookings', distinct=True),
+            inspections_count=Count('vehicleinspection', distinct=True),
             client_rating=Avg('bookings__owner_rating'),
             client_rating_count=Count('bookings__owner_rating', distinct=True),
         )
@@ -1191,6 +1210,32 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         except ProtectedError:
             return Response({'detail': 'Impossible de supprimer un compte lié à des réservations ou véhicules.'}, status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AdminUserResetCredentialsView(APIView):
+    """Régénère le mot de passe d'un compte et envoie les nouveaux
+    identifiants par email. Toutes les sessions actives sont révoquées."""
+    permission_classes = [IsAdminRole]
+
+    def post(self, request, pk):
+        import secrets
+        from django.shortcuts import get_object_or_404
+        user = get_object_or_404(User, pk=pk)
+        if not user.email:
+            return Response({'detail': 'Ce compte n\'a pas d\'email — impossible d\'envoyer les identifiants.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        password = secrets.token_urlsafe(9)
+        user.set_password(password)
+        user.save(update_fields=['password'])
+        # Révoque toutes les sessions actives — le nouveau mot de passe
+        # devient le seul moyen de connexion.
+        for s in UserSession.objects.filter(user=user):
+            _blacklist_jti(user, s.jti)
+        from .email_utils import send_staff_credentials_email
+        if not send_staff_credentials_email(user, password):
+            return Response({'detail': 'Mot de passe réinitialisé mais l\'envoi de l\'email a échoué.'},
+                            status=status.HTTP_502_BAD_GATEWAY)
+        return Response({'status': 'ok'})
 
 
 class NotificationListView(generics.ListAPIView):

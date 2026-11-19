@@ -188,6 +188,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
     trips_count = serializers.IntegerField(read_only=True)
     client_rating = serializers.FloatField(read_only=True)
     client_rating_count = serializers.IntegerField(read_only=True)
+    inspections_count = serializers.IntegerField(read_only=True)
     driver_rating = serializers.SerializerMethodField()
     driver_rating_count = serializers.SerializerMethodField()
 
@@ -199,7 +200,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
                   'city', 'avatar', 'id_document', 'driving_license', 'driving_license_expires_at',
                   'address_proof', 'insurance',
                   'kyc_status', 'kyc_note', 'kyc_submitted_at',
-                  'bookings_count', 'vehicles_count', 'trips_count',
+                  'bookings_count', 'vehicles_count', 'trips_count', 'inspections_count',
                   'client_rating', 'client_rating_count', 'driver_rating', 'driver_rating_count']
         read_only_fields = ['id', 'created_at', 'id_document', 'driving_license', 'kyc_submitted_at']
 
@@ -218,7 +219,8 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
 
 class AdminUserCreateSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, validators=[validate_password])
+    # Optionnel : si vide, un mot de passe sûr est généré et envoyé par email.
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True, validators=[validate_password])
 
     class Meta:
         model = User
@@ -227,6 +229,16 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
     def validate_phone(self, value):
         if phone_taken(value):
             raise serializers.ValidationError('Ce numéro de téléphone est déjà associé à un compte.')
+        return value
+
+    def validate_username(self, value):
+        if User.objects.filter(username__iexact=value).exists():
+            raise serializers.ValidationError('Un compte existe déjà avec cet identifiant.')
+        return value
+
+    def validate_email(self, value):
+        if value and User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError('Un compte existe déjà avec cet email.')
         return value
 
     def create(self, validated_data):

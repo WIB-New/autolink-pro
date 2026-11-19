@@ -44,6 +44,7 @@ import Finance from './pages/admin/Finance';
 import AdminProfile from './pages/admin/AdminProfile';
 import VehicleInspection from './pages/admin/VehicleInspection';
 import ManageUsers from './pages/admin/ManageUsers';
+import AdminControllers from './pages/admin/AdminControllers';
 import AdminKyc from './pages/admin/AdminKyc';
 import ControllerDashboard from './pages/controller/ControllerDashboard';
 import ControllerInspections from './pages/controller/ControllerInspections';
@@ -185,6 +186,7 @@ function AppRoutes() {
       <Route path="/admin/profile" element={<Guard roles={['ADMIN']}><AdminProfile /></Guard>} />
       <Route path="/admin/inspections" element={<Guard roles={['ADMIN', 'CONTROLLER']}><VehicleInspection /></Guard>} />
       <Route path="/admin/users" element={<Guard roles={['ADMIN']}><ManageUsers /></Guard>} />
+      <Route path="/admin/controleurs" element={<Guard roles={['ADMIN']}><AdminControllers /></Guard>} />
       <Route path="/admin/catalog" element={<Guard roles={['ADMIN']}><CatalogManager /></Guard>} />
       <Route path="/admin/agents" element={<Guard roles={['ADMIN']}><AgentsManager /></Guard>} />
       <Route path="/admin/agents/:id" element={<Guard roles={['ADMIN']}><AgentDetail /></Guard>} />
