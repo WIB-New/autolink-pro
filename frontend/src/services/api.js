@@ -293,6 +293,7 @@ export const inspectionsAPI = {
     ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
   update: (id, payload) => api.patch(`/inspections/${id}/`, payload, payload instanceof FormData
     ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
+  deletePhoto: (id, photoId) => api.delete(`/inspections/${id}/photos/${photoId}/`),
 };
 
 export const controllerVehiclesAPI = {

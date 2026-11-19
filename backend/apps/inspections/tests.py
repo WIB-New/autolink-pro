@@ -102,6 +102,33 @@ class InspectionWorkflowTests(APITestCase):
         self.assertEqual(ins.notes, 'Score revu après contre-expertise')
         self.assertEqual(ins.photos.count(), 1)
 
+    def test_delete_photo(self):
+        r = self.client.post('/api/inspections/', {
+            'booking': self.booking.pk, 'vehicle': self.vehicle.pk,
+            'inspection_type': 'entry', 'mileage_at_inspection': 71000,
+            'fuel_level': 60, 'condition_score': 90, 'checklist': '{}', 'issues': '[]',
+            'uploaded_photos': [self._png(), self._png()],
+        }, format='multipart')
+        ins_id = r.data['id']
+        photo_id = r.data['photos'][0]['id']
+        r = self.client.delete(f'/api/inspections/{ins_id}/photos/{photo_id}/')
+        self.assertEqual(r.status_code, 204)
+        from apps.inspections.models import VehicleInspection
+        self.assertEqual(VehicleInspection.objects.get(pk=ins_id).photos.count(), 1)
+
+    def test_photo_caption_uses_filename_slot(self):
+        """La légende reprend le nom du fichier (emplacement : Avant, KM...)."""
+        img = self._png()
+        img.name = 'Avant.jpg'
+        r = self.client.post('/api/inspections/', {
+            'booking': self.booking.pk, 'vehicle': self.vehicle.pk,
+            'inspection_type': 'entry', 'mileage_at_inspection': 71000,
+            'fuel_level': 60, 'condition_score': 90, 'checklist': '{}', 'issues': '[]',
+            'uploaded_photos': [img],
+        }, format='multipart')
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual(r.data['photos'][0]['caption'], 'Avant')
+
     def test_queue_lists_pending_and_excludes_inspected(self):
         self.booking.status = 'confirmed'
         self.booking.save(update_fields=['status'])

@@ -43,10 +43,15 @@ function InspectionForm({ inspection, editing, onClose, onSaved }) {
   const [notes, setNotes] = useState(editing?.notes || '');
   const [photos, setPhotos] = useState(() => Object.fromEntries(PHOTO_SLOTS.map(s => [s, null])));
   const [previews, setPreviews] = useState({});
+  const [savedPhotos, setSavedPhotos] = useState(() => editing?.photos || []);
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const fileRefs = useRef({});
+
+  const norm = s => (s || '').toLowerCase().replace(/[^a-zàâéèêëîïôùûç0-9]/g, '');
+  const savedForSlot = (slot) => savedPhotos.find(p => norm(p.caption) === norm(slot));
+  const unmatchedSaved = savedPhotos.filter(p => !PHOTO_SLOTS.some(s => norm(s) === norm(p.caption)));
 
   const total = Object.keys(checks).length;
   const passed = Object.values(checks).filter(v => v === 'ok').length;
@@ -56,7 +61,6 @@ function InspectionForm({ inspection, editing, onClose, onSaved }) {
   const vehicleLabel = editing ? inspection.vehicle_name : inspection.vehicle;
   const plate = editing ? inspection.vehicle_plate : inspection.plate;
   const clientLabel = editing ? inspection.client_name : inspection.client;
-  const existingPhotos = editing?.photos || [];
 
   const addIssue = () => { if (newIssue.trim()) { setIssues(i => [...i, { text: newIssue.trim(), severity: 'minor' }]); setNewIssue(''); } };
 
@@ -64,6 +68,23 @@ function InspectionForm({ inspection, editing, onClose, onSaved }) {
     if (!file) return;
     setPhotos(p => ({ ...p, [slot]: file }));
     setPreviews(p => ({ ...p, [slot]: URL.createObjectURL(file) }));
+  };
+
+  const clearPicked = (slot, e) => {
+    e.stopPropagation();
+    setPhotos(p => ({ ...p, [slot]: null }));
+    setPreviews(p => ({ ...p, [slot]: null }));
+    if (fileRefs.current[slot]) fileRefs.current[slot].value = '';
+  };
+
+  const removeSaved = async (photo, e) => {
+    e.stopPropagation();
+    try {
+      await inspectionsAPI.deletePhoto(editing.id, photo.id);
+      setSavedPhotos(ps => ps.filter(x => x.id !== photo.id));
+    } catch (err) {
+      setError('Suppression de la photo impossible.');
+    }
   };
 
   const submit = async () => {
@@ -183,28 +204,53 @@ function InspectionForm({ inspection, editing, onClose, onSaved }) {
 
             <div>
               <h4 className="font-bold text-slate-800 mb-3">Photos de l'état du véhicule</h4>
-              {existingPhotos.length > 0 && (
-                <div className="grid grid-cols-4 gap-3 mb-3">
-                  {existingPhotos.map(p => (
-                    <a key={p.id} href={mediaUrl(p.image)} target="_blank" rel="noreferrer" className="rounded-xl aspect-square overflow-hidden border border-slate-200">
-                      <img src={mediaUrl(p.image)} alt={p.caption} className="w-full h-full object-cover" />
-                    </a>
-                  ))}
+              <div className="grid grid-cols-4 gap-3">
+                {PHOTO_SLOTS.map(label => {
+                  const saved = savedForSlot(label);
+                  const preview = previews[label];
+                  const img = preview || (saved ? mediaUrl(saved.image) : null);
+                  return (
+                    <div key={label}
+                      onClick={() => fileRefs.current[label]?.click()}
+                      className={`relative border-2 border-dashed rounded-xl aspect-square flex flex-col items-center justify-center cursor-pointer transition-colors overflow-hidden ${img ? 'border-primary-400 bg-primary-50' : 'border-slate-300 hover:border-primary-400'}`}>
+                      {img ? (
+                        <>
+                          <img src={img} alt={label} className="absolute inset-0 w-full h-full object-cover" />
+                          <span className="absolute bottom-0 inset-x-0 bg-black/50 text-white text-[10px] text-center py-0.5">{label}</span>
+                          <button type="button"
+                            onClick={preview ? (e) => clearPicked(label, e) : (e) => removeSaved(saved, e)}
+                            title={preview ? 'Retirer cette photo' : 'Supprimer la photo enregistrée'}
+                            className="absolute top-1 right-1 w-6 h-6 bg-white/90 rounded-full flex items-center justify-center text-red-500 hover:bg-white shadow">
+                            <X size={13} />
+                          </button>
+                        </>
+                      ) : (
+                        <><Camera size={20} className="text-slate-400 mb-1" /><span className="text-xs text-slate-400 text-center px-1">{label}</span></>
+                      )}
+                      <input ref={el => { fileRefs.current[label] = el; }} type="file" accept="image/*" capture="environment" className="hidden"
+                        onChange={e => pickPhoto(label, e.target.files?.[0])} />
+                    </div>
+                  );
+                })}
+              </div>
+              {unmatchedSaved.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs text-slate-400 mb-2">Autres photos enregistrées</p>
+                  <div className="grid grid-cols-4 gap-3">
+                    {unmatchedSaved.map(p => (
+                      <div key={p.id} className="relative rounded-xl aspect-square overflow-hidden border border-slate-200">
+                        <a href={mediaUrl(p.image)} target="_blank" rel="noreferrer">
+                          <img src={mediaUrl(p.image)} alt={p.caption} className="w-full h-full object-cover" />
+                        </a>
+                        <button type="button" onClick={(e) => removeSaved(p, e)} title="Supprimer"
+                          className="absolute top-1 right-1 w-6 h-6 bg-white/90 rounded-full flex items-center justify-center text-red-500 hover:bg-white shadow">
+                          <X size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-              <div className="grid grid-cols-4 gap-3">
-                {PHOTO_SLOTS.map(label => (
-                  <div key={label}
-                    onClick={() => fileRefs.current[label]?.click()}
-                    className={`border-2 border-dashed rounded-xl aspect-square flex flex-col items-center justify-center cursor-pointer transition-colors p-2 overflow-hidden ${photos[label] ? 'border-primary-400 bg-primary-50' : 'border-slate-300 hover:border-primary-400'}`}>
-                    {previews[label]
-                      ? <img src={previews[label]} alt={label} className="w-full h-full object-cover rounded-lg" />
-                      : <><Camera size={20} className="text-slate-400 mb-1" /><span className="text-xs text-slate-400 text-center">{label}</span></>}
-                    <input ref={el => { fileRefs.current[label] = el; }} type="file" accept="image/*" capture="environment" className="hidden"
-                      onChange={e => pickPhoto(label, e.target.files?.[0])} />
-                  </div>
-                ))}
-              </div>
             </div>
 
             <div>

@@ -117,6 +117,17 @@ class VehicleInspectionViewSet(viewsets.ModelViewSet):
         } for booking in page]
         return self.get_paginated_response(results)
 
+    @action(detail=True, methods=['delete'], url_path='photos/(?P<photo_id>[0-9]+)')
+    def photos(self, request, pk=None, photo_id=None):
+        """Supprimer une photo d'une fiche (remplacement dans l'éditeur)."""
+        inspection = self.get_object()
+        try:
+            photo = inspection.photos.get(pk=photo_id)
+        except Exception:
+            return Response({'detail': 'Photo introuvable.'}, status=404)
+        photo.delete()
+        return Response(status=204)
+
     @action(detail=False, methods=['get'])
     def dashboard(self, request):
         if request.user.role not in ['ADMIN', 'CONTROLLER']:

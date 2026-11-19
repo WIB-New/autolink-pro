@@ -25,7 +25,9 @@ class VehicleInspectionSerializer(serializers.ModelSerializer):
         read_only_fields = ['controller', 'inspection_date']
 
     def get_controller_name(self, obj):
-        return obj.controller.get_full_name() if obj.controller else None
+        if not obj.controller:
+            return None
+        return obj.controller.get_full_name() or obj.controller.email
 
     def get_client_name(self, obj):
         c = obj.booking.client
@@ -38,9 +40,12 @@ class VehicleInspectionSerializer(serializers.ModelSerializer):
         return f'{obj.vehicle.brand} {obj.vehicle.model} {obj.vehicle.year}'
 
     def _add_photos(self, inspection, files):
+        import os
         for image in files:
+            # Le frontend nomme le fichier d'après son emplacement (ex. "Avant.jpg")
+            caption = os.path.splitext(getattr(image, 'name', '') or '')[0] or 'Photo inspection'
             InspectionPhoto.objects.create(
-                inspection=inspection, image=image, caption='Photo inspection')
+                inspection=inspection, image=image, caption=caption[:100])
 
     @transaction.atomic
     def create(self, validated_data):
