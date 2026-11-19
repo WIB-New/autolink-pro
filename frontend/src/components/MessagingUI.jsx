@@ -19,10 +19,14 @@ const VerifiedBadge = ({ size = 15 }) => (
 const EMOJIS = ['😊', '😂', '😍', '👍', '🙏', '😉', '🔥', '❤️', '🎉', '😢', '😮', '🤝'];
 const FILTERS = [['', 'Tous'], ['CLIENT', 'Clients'], ['DRIVER', 'Chauffeurs'], ['OWNER', 'Propriétaires'], ['CONTROLLER', 'Contrôleurs'], ['ADMIN', 'Support']];
 
-// participants exclut déjà l'utilisateur courant côté API
-const convName = (c) => c.subject || c.title || c.name
-  || (c.participants || []).map((p) => p.name || p.username).filter(Boolean).join(', ')
-  || 'Conversation';
+// participants exclut déjà l'utilisateur courant côté API. Pour les 'direct',
+// le subject contient les noms vus par le créateur (ex. "Brice Mballa") —
+// chaque destinataire y verrait son propre nom : on privilégie participants.
+const convName = (c) => {
+  const names = (c.participants || []).map((p) => p.name || p.username).filter(Boolean).join(', ');
+  if (c.kind === 'direct') return names || c.subject || 'Conversation';
+  return c.subject || c.title || c.name || names || 'Conversation';
+};
 const other = (c) => (c.participants || [])[0] || null;
 
 /* UI messagerie complète (conversations, messages, pièces jointes, nouvel
