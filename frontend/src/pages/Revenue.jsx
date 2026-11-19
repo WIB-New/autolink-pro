@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import Icon from '../components/Icon';
 import { useAuth } from '../contexts/AuthContext';
+import { useConfirm } from '../contexts/ConfirmContext';
 import { bookingsAPI, driversAPI, siteAPI, walletAPI, withdrawalsAPI } from '../services/api';
 import { formatDate, formatNumber, formatTime, uiText } from '../i18n';
 
@@ -22,6 +23,7 @@ const PAGE_SIZE = 6;
 
 export default function Revenue() {
   const { user } = useAuth();
+  const confirm = useConfirm();
   const isOwner = user?.role === 'OWNER';
   const [wallet, setWallet] = useState(null);
   const [stats, setStats] = useState(null);
@@ -72,6 +74,12 @@ export default function Revenue() {
   const pageRows = filteredRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const submit = async () => {
+    const ok = await confirm({
+      title: t('Confirmer le retrait ?'),
+      message: t('{{amount}} FCFA seront débités de votre solde et virés sur {{account}} ({{phone}}) après validation.', { amount: formatNumber(amount), account: ACCOUNTS.find(a => a.id === account)?.label || account, phone }),
+      confirmLabel: t('Confirmer le retrait'),
+    });
+    if (!ok) return;
     setBusy(true); setMessage(null);
     try {
       const { data } = await withdrawalsAPI.create({ amount: Number(amount), method: account, phone });

@@ -68,6 +68,10 @@ export default function Finance() {
   const [wdBusy, setWdBusy] = useState(false);
   const [wdErr, setWdErr] = useState('');
   const processWithdrawal = async (row, approve) => {
+    const msg = approve
+      ? `Autoriser le virement de ${fmt(row.gross)} FCFA vers ${row.phone || 'le compte externe'} ? L'argent partira réellement.`
+      : `Refuser ce retrait de ${fmt(row.gross)} FCFA ? Le solde de l'utilisateur sera recrédité.`;
+    if (!window.confirm(msg)) return;
     setWdBusy(true); setWdErr('');
     try {
       await (approve ? withdrawalsAPI.approve(row.wid, '') : withdrawalsAPI.reject(row.wid, ''));
