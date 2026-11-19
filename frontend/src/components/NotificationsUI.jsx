@@ -37,6 +37,12 @@ const ROLE_TEXT = {
     search: 'Rechercher une notification (litige, KYC, paiement…)',
     kinds: { booking: 'Réservations', payment: 'Finances', message: 'Messagerie', security: 'Sécurité' },
   },
+  controller: {
+    title: 'Notifications Contrôleur',
+    sub: 'Inspections à effectuer, fiches complétées et échanges avec la plateforme.',
+    search: 'Rechercher une notification (inspection, réservation, message…)',
+    kinds: { booking: 'Réservations', payment: 'Finances', message: 'Messagerie', security: 'Sécurité' },
+  },
 };
 
 const rel = (iso) => {

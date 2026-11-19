@@ -49,6 +49,7 @@ import ControllerDashboard from './pages/controller/ControllerDashboard';
 import ControllerInspections from './pages/controller/ControllerInspections';
 import ControllerMessages from './pages/controller/ControllerMessages';
 import ControllerNotifications from './pages/controller/ControllerNotifications';
+import ControllerProfile from './pages/controller/ControllerProfile';
 import CatalogManager from './pages/admin/CatalogManager';
 import AgentsManager from './pages/admin/AgentsManager';
 import AgentDetail from './pages/admin/AgentDetail';
@@ -194,6 +195,7 @@ function AppRoutes() {
       <Route path="/controller/messages" element={<Guard roles={['ADMIN', 'CONTROLLER']}><ControllerMessages /></Guard>} />
       <Route path="/controller/notifications" element={<Guard roles={['ADMIN', 'CONTROLLER']}><ControllerNotifications /></Guard>} />
       <Route path="/controller/settings" element={<Guard roles={['ADMIN', 'CONTROLLER']}><Parametres role="controller" /></Guard>} />
+      <Route path="/controller/profile" element={<Guard roles={['ADMIN', 'CONTROLLER']}><ControllerProfile /></Guard>} />
 
       {/* Pages communes à tous les rôles connectés */}
       <Route path="/owner/profile" element={<Guard roles={['OWNER']}><OP /></Guard>} />

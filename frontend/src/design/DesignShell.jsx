@@ -35,6 +35,7 @@ const NAVS = {
     { icon: 'fact_check', label: 'Inspections', path: '/controller/inspections' },
     { icon: 'chat', label: 'Messages', path: '/controller/messages', badge: 'msg' },
     { icon: 'notifications', label: 'Notifications', path: '/controller/notifications', badge: 'notif' },
+    { icon: 'badge', label: 'Profil & Paramètres', path: '/controller/profile' },
     { icon: 'settings', label: 'Paramètres', path: '/controller/settings' },
   ],
 };
@@ -200,7 +201,7 @@ export default function DesignShell({ children, role = 'client' }) {
                       <button onClick={() => { i18n.changeLanguage('en'); import('../services/api').then(({ usersAPI }) => usersAPI.updateMe({ language: 'en' }).catch(() => {})); }} className={`px-2.5 py-1 font-label-sm text-label-sm ${i18n.language === 'en' ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant'}`}>EN</button>
                     </div>
                   </div>
-                  <button onClick={() => { setProfileOpen(false); navigate(role === 'controller' ? '/controller/settings' : '/profile'); }}
+                  <button onClick={() => { setProfileOpen(false); navigate(role === 'controller' ? '/controller/profile' : '/profile'); }}
                     className="flex items-center gap-2 px-4 py-2 font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-low w-full">
                     <Icon name="badge" size={18} />Profil
                   </button>

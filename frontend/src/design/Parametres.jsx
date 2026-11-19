@@ -138,7 +138,7 @@ export default function Parametres({ role = 'client' }) {
         <div className="flex flex-col gap-space-xs">
           <span className="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold">Compte &amp; Application</span>
           <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight">Paramètres</h1>
-          <p className="font-body-md text-body-md text-on-surface-variant">Préférences de votre espace client — données d'exemple, aucune synchronisation serveur.</p>
+          <p className="font-body-md text-body-md text-on-surface-variant">{role === 'controller' ? 'Préférences de votre espace contrôleur.' : role === 'owner' ? 'Préférences de votre espace propriétaire.' : role === 'driver' ? 'Préférences de votre espace chauffeur.' : 'Préférences de votre espace client.'}</p>
         </div>
 
         <section className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col gap-space-md">
@@ -151,9 +151,11 @@ export default function Parametres({ role = 'client' }) {
           <Row icon="payments" title="Devise" desc="Franc CFA zone CEMAC">
             <span className="font-label-md text-label-md font-bold text-on-surface">FCFA (XAF)</span>
           </Row>
-          <Row icon="location_on" title="Ville de prédilection" desc="Pré-remplie lors des recherches">
-            <div className="flex gap-1"><Opt label="Douala" active={city === 'douala'} onClick={() => setCity('douala')} /><Opt label="Yaoundé" active={city === 'yaounde'} onClick={() => setCity('yaounde')} /></div>
-          </Row>
+          {role !== 'controller' && (
+            <Row icon="location_on" title="Ville de prédilection" desc="Pré-remplie lors des recherches">
+              <div className="flex gap-1"><Opt label="Douala" active={city === 'douala'} onClick={() => setCity('douala')} /><Opt label="Yaoundé" active={city === 'yaounde'} onClick={() => setCity('yaounde')} /></div>
+            </Row>
+          )}
           <Row icon="dark_mode" title="Mode sombre" desc="Thème de l'interface">
             <Toggle on={dark} setOn={toggleDark} />
           </Row>
@@ -193,9 +195,11 @@ export default function Parametres({ role = 'client' }) {
             </button>
           </Row>
           {exportError && <p className="font-label-md text-label-md text-error">{exportError}</p>}
-          <Row icon="delete_forever" title="Supprimer mon compte" desc="Irréversible — exportez vos données d'abord">
-            <button type="button" className="px-3.5 py-1.5 rounded-lg bg-error-container text-error hover:bg-error hover:text-on-error font-label-md text-label-md font-semibold transition-colors" onClick={save}>Supprimer</button>
-          </Row>
+          {role !== 'controller' && (
+            <Row icon="delete_forever" title="Supprimer mon compte" desc="Irréversible — exportez vos données d'abord">
+              <button type="button" className="px-3.5 py-1.5 rounded-lg bg-error-container text-error hover:bg-error hover:text-on-error font-label-md text-label-md font-semibold transition-colors" onClick={save}>Supprimer</button>
+            </Row>
+          )}
         </section>
 
         <div className="flex items-center justify-between">
