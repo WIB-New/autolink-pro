@@ -100,7 +100,7 @@ export default function ControllerDashboard() {
         <div className="bg-gradient-to-br from-slate-900 to-primary-900 rounded-2xl p-6 text-white">
           <h2 className="text-2xl font-bold mb-1">Bonjour, {user?.firstName || user?.first_name}</h2>
           <p className="text-primary-200 mb-5">Vous avez <strong className="text-white">{pendingCount} inspection{pendingCount > 1 ? 's' : ''}</strong> à effectuer.</p>
-          <button onClick={() => navigate('/admin/inspections')} className="flex items-center gap-2 bg-white text-primary-700 font-semibold py-2.5 px-5 rounded-xl hover:bg-primary-50 transition-all shadow-md">
+          <button onClick={() => navigate('/controller/inspections')} className="flex items-center gap-2 bg-white text-primary-700 font-semibold py-2.5 px-5 rounded-xl hover:bg-primary-50 transition-all shadow-md">
             <ClipboardList size={18} /> Voir la file d'inspections
           </button>
         </div>
@@ -211,7 +211,7 @@ export default function ControllerDashboard() {
                 <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
                   <CalendarDays size={15} className="text-primary-600" /> Charge à venir — inspections en attente par date
                 </h3>
-                <button onClick={() => navigate('/admin/inspections')} className="text-[11px] font-bold text-primary-600 hover:text-primary-700">
+                <button onClick={() => navigate('/controller/inspections')} className="text-[11px] font-bold text-primary-600 hover:text-primary-700">
                   Ouvrir la file complète →
                 </button>
               </div>

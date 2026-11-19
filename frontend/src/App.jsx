@@ -46,6 +46,7 @@ import VehicleInspection from './pages/admin/VehicleInspection';
 import ManageUsers from './pages/admin/ManageUsers';
 import AdminKyc from './pages/admin/AdminKyc';
 import ControllerDashboard from './pages/controller/ControllerDashboard';
+import ControllerInspections from './pages/controller/ControllerInspections';
 import CatalogManager from './pages/admin/CatalogManager';
 import AgentsManager from './pages/admin/AgentsManager';
 import AgentDetail from './pages/admin/AgentDetail';
@@ -187,6 +188,7 @@ function AppRoutes() {
       <Route path="/admin/settings" element={<Guard roles={['ADMIN']}><AdminSettings /></Guard>} />
 
       <Route path="/controller/dashboard" element={<Guard roles={['ADMIN', 'CONTROLLER']}><ControllerDashboard /></Guard>} />
+      <Route path="/controller/inspections" element={<Guard roles={['ADMIN', 'CONTROLLER']}><ControllerInspections /></Guard>} />
 
       {/* Pages communes à tous les rôles connectés */}
       <Route path="/owner/profile" element={<Guard roles={['OWNER']}><OP /></Guard>} />

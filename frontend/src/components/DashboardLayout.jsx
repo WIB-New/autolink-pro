@@ -74,7 +74,7 @@ const NAV_ITEMS = {
     space: 'Espace Contrôleur',
     items: [
       { icon: 'dashboard', label: 'Tableau de bord', path: '/controller/dashboard' },
-      { icon: 'fact_check', label: 'Inspections', path: '/admin/inspections' },
+      { icon: 'fact_check', label: 'Inspections', path: '/controller/inspections' },
       { icon: 'chat', label: 'Messages', path: '/messages', badge: 'messages' },
       { icon: 'notifications', label: 'Notifications', path: '/notifications', badge: 'notifications' },
       { icon: 'settings', label: 'Paramètres', path: '/settings' },
