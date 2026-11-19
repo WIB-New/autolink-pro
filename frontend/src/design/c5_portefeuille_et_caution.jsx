@@ -750,7 +750,14 @@ export default function C5PortefeuilleEtCaution() {
     if (!wdPhone.trim()) { setWdErr(wdMethod === 'card' ? 'Indiquez le numéro de carte ou de compte.' : 'Indiquez le numéro à créditer.'); return; }
     setWdBusy(true); setWdErr('');
     withdrawalsAPI.create({ amount: amt, method: wdMethod, phone: wdPhone.trim() })
-      .then(() => { setWdOpen(false); setWdOk(`${fmt(amt)} FCFA — demande de retrait enregistrée, en attente de traitement.`); setTimeout(() => window.location.reload(), 1200); })
+      .then((r) => {
+        setWdOpen(false);
+        const paid = r?.data?.status === 'paid';
+        setWdOk(paid
+          ? `${fmt(amt)} FCFA — retrait effectué, virement en cours vers votre Mobile Money.`
+          : `${fmt(amt)} FCFA — demande de retrait enregistrée, en attente de traitement.`);
+        setTimeout(() => window.location.reload(), 1200);
+      })
       .catch((e) => { const d = e?.response?.data || {}; setWdErr([d.amount, d.phone, d.detail].flat().filter(Boolean)[0] || 'Impossible de traiter la demande.'); })
       .finally(() => setWdBusy(false));
   };

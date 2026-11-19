@@ -84,6 +84,15 @@ class PlatformSettings(models.Model):
     """Paramètres de la plateforme modifiables par l'admin (singleton)."""
     commission_rate = models.DecimalField(max_digits=4, decimal_places=2, default=0.50)
     min_withdrawal_amount = models.DecimalField(max_digits=12, decimal_places=2, default=5000)
+    max_withdrawal_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=2000000,
+        help_text='Montant maximum par retrait (FCFA).')
+    withdrawal_daily_cap = models.DecimalField(
+        max_digits=12, decimal_places=2, default=1000000,
+        help_text='Plafond cumulé de retraits par utilisateur et par jour (FCFA). 0 = illimité.')
+    withdrawal_auto_approve = models.BooleanField(
+        default=True,
+        help_text='Retraits exécutés immédiatement ; sinon ils restent en attente de validation admin.')
     contact_email = models.EmailField(blank=True)
     phones = models.CharField(max_length=255, default='+237 656 789 000, +237 699 456 000')
     addresses = models.CharField(max_length=255, default='Akwa, Rue Joss, Douala | Centre-ville, Yaoundé')

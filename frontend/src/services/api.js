@@ -139,6 +139,7 @@ export const withdrawalsAPI = {
   create: (payload) => api.post('/payments/withdrawals/', payload),
   approve: (id, note) => api.post(`/payments/withdrawals/${id}/approve/`, { note }),
   reject: (id, note) => api.post(`/payments/withdrawals/${id}/reject/`, { note }),
+  refund: (id, note) => api.post(`/payments/withdrawals/${id}/refund/`, { note }),
   receipt: (id) => api.get(`/payments/withdrawals/${id}/receipt/`, { responseType: 'blob' }),
 };
 

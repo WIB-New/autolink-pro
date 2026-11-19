@@ -224,24 +224,44 @@ class WithdrawalRequestViewSet(viewsets.ModelViewSet):
         return qs.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        from apps.users.models import User
+        from apps.users.models import User, PlatformSettings
         if self.request.user.role not in ('OWNER', 'DRIVER', 'CLIENT'):
             raise PermissionDenied('Les retraits sont réservés aux propriétaires, chauffeurs et clients.')
         amount = serializer.validated_data['amount']
+        cfg = PlatformSettings.current()
         with db_transaction.atomic():
             user = User.objects.select_for_update().get(pk=self.request.user.pk)
             if (user.balance or 0) < amount:
                 raise ValidationError({'amount': 'Solde insuffisant pour ce retrait.'})
+            if cfg.withdrawal_daily_cap:
+                today = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                taken = (WithdrawalRequest.objects
+                         .filter(user=user, status__in=['pending', 'paid'], created_at__gte=today)
+                         .aggregate(s=Sum('amount'))['s'] or 0)
+                if taken + amount > cfg.withdrawal_daily_cap:
+                    raise ValidationError({
+                        'amount': f'Plafond journalier atteint — vous pouvez encore retirer '
+                                  f'{max(0, cfg.withdrawal_daily_cap - taken):.0f} FCFA aujourd\u2019hui.'})
             user.balance -= amount
             user.save(update_fields=['balance', 'updated_at'])
             reference = f'WD-{uuid.uuid4().hex[:10].upper()}'
-            serializer.save(user=user, reference=reference)
+            auto = bool(cfg.withdrawal_auto_approve)
+            withdrawal = serializer.save(
+                user=user, reference=reference,
+                status='paid' if auto else 'pending',
+                processed_at=timezone.now() if auto else None)
             WalletTransaction.objects.create(
                 user=user, kind='debit', method=serializer.validated_data['method'], amount=amount,
                 balance_after=user.balance, reference=reference,
-                note=f'Retrait vers {serializer.validated_data["phone"]} (en attente)')
+                note=f'Retrait vers {serializer.validated_data["phone"]}'
+                     + ('' if auto else ' (en attente)'))
+        if auto:
+            _notify(user, 'Retrait effectué',
+                    f'Votre retrait {reference} de {amount:.0f} FCFA a été viré sur votre compte Mobile Money.')
         for admin in User.objects.filter(role='ADMIN', is_active=True):
-            _notify(admin, 'Demande de retrait',
+            _notify(admin, 'Retrait effectué' if auto else 'Demande de retrait',
+                    f'{user.get_full_name()} a retiré {amount:.0f} FCFA ({reference}).'
+                    if auto else
                     f'{user.get_full_name()} demande un retrait de {amount:.0f} FCFA ({reference}).')
 
     def _process(self, request, pk, approve):
@@ -273,6 +293,32 @@ class WithdrawalRequestViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
         return self._process(request, pk, True)
+
+    @action(detail=True, methods=['post'])
+    def refund(self, request, pk=None):
+        """Admin : annule un retrait déjà payé — recrédite le solde utilisateur."""
+        from apps.users.models import User
+        if request.user.role != 'ADMIN':
+            raise PermissionDenied('Traitement réservé à l\u2019administration.')
+        with db_transaction.atomic():
+            withdrawal = WithdrawalRequest.objects.select_for_update().get(pk=pk)
+            if withdrawal.status != 'paid':
+                raise ValidationError({'detail': 'Seul un retrait payé peut être remboursé.'})
+            withdrawal.status = 'rejected'
+            withdrawal.admin_note = (request.data.get('note') or '')[:255]
+            withdrawal.processed_by = request.user
+            withdrawal.processed_at = timezone.now()
+            withdrawal.save()
+            user = User.objects.select_for_update().get(pk=withdrawal.user_id)
+            user.balance = (user.balance or 0) + withdrawal.amount
+            user.save(update_fields=['balance', 'updated_at'])
+            WalletTransaction.objects.create(
+                user=user, kind='refund', amount=withdrawal.amount, balance_after=user.balance,
+                reference=withdrawal.reference, note='Retrait annulé par l\u2019administration — montant recrédité')
+        _notify(withdrawal.user, 'Retrait annulé',
+                f'Votre retrait {withdrawal.reference} de {withdrawal.amount:.0f} FCFA a été annulé '
+                f'et recrédité sur votre solde. {withdrawal.admin_note}')
+        return Response(self.get_serializer(withdrawal).data)
 
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):

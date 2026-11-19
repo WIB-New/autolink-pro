@@ -101,6 +101,23 @@ export default function AdminOwners() {
     setBusy(false);
   };
 
+  const refundWithdrawal = async (withdrawal) => {
+    const ok = await confirm({
+      title: t('Annuler et recréditer le retrait'),
+      message: t('Le retrait {{ref}} de {{amount}} FCFA déjà marqué payé sera annulé et recrédité sur le solde de l\u2019utilisateur.',
+        { ref: withdrawal.reference, amount: formatNumber(withdrawal.amount) }),
+      confirmLabel: t('Recréditer'), danger: true,
+    });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await withdrawalsAPI.refund(withdrawal.id, note);
+      setNote('');
+      if (selected) withdrawalsAPI.list({ user: selected.id }).then(({ data }) => setHistory(data.results || []));
+    } catch (e) { setError(e.response?.data?.detail || t('Action impossible.')); }
+    setBusy(false);
+  };
+
   const toggleSuspend = async () => {
     const ok = await confirm({
       title: selected.is_active ? t('Suspendre ce propriétaire') : t('Réactiver ce propriétaire'),
@@ -317,7 +334,14 @@ export default function AdminOwners() {
                   {history.filter((w) => w.status !== 'pending').map((w) => (
                     <div key={w.id} className="py-2 flex items-center justify-between font-body-md text-body-md">
                       <span>{formatDate(w.created_at)} · {w.reference}</span>
-                      <span className="flex items-center gap-2"><strong>{formatNumber(w.amount)} F</strong><span className={w.status === 'paid' ? 'badge-success' : 'badge-error'}>{w.status === 'paid' ? t('Viré') : t('Refusé')}</span></span>
+                      <span className="flex items-center gap-2">
+                        <strong>{formatNumber(w.amount)} F</strong>
+                        <span className={w.status === 'paid' ? 'badge-success' : 'badge-error'}>{w.status === 'paid' ? t('Viré') : t('Refusé')}</span>
+                        {w.status === 'paid' && (
+                          <button disabled={busy} onClick={() => refundWithdrawal(w)}
+                            className="text-error font-label-sm text-label-sm font-semibold hover:underline">{t('Recréditer')}</button>
+                        )}
+                      </span>
                     </div>
                   ))}
                   {!history.filter((w) => w.status !== 'pending').length && <p className="py-3 font-body-sm text-body-sm text-on-surface-variant">{t('Aucun retrait traité.')}</p>}

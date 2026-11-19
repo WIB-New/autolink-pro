@@ -4,7 +4,7 @@ from decimal import Decimal
 from unittest.mock import patch
 from django.test import override_settings
 from rest_framework.test import APITestCase
-from apps.users.models import User
+from apps.users.models import User, PlatformSettings
 from apps.vehicles.tests import make_user, make_vehicle
 from apps.bookings.models import Booking
 from .models import Payment, WalletTransaction
@@ -19,16 +19,15 @@ class WalletTopupTests(APITestCase):
         r = self.client.post('/api/payments/wallet/topup/',
                              {'amount': 50000, 'method': 'mtn', 'phone': '237690000000'},
                              format='json')
-        self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual(r.status_code, 200, r.data)
         self.user.refresh_from_db()
         self.assertEqual(self.user.balance, Decimal('50000'))
 
-    def test_orange_senbid_paybid_credit(self):
-        for m in ('orange', 'senbid', 'paybid'):
-            r = self.client.post('/api/payments/wallet/topup/', {'amount': 10000, 'method': m}, format='json')
-            self.assertEqual(r.status_code, 201, m)
+    def test_orange_sandbox_credit(self):
+        r = self.client.post('/api/payments/wallet/topup/', {'amount': 10000, 'method': 'orange'}, format='json')
+        self.assertEqual(r.status_code, 200, r.data)
         self.user.refresh_from_db()
-        self.assertEqual(self.user.balance, Decimal('30000'))
+        self.assertEqual(self.user.balance, Decimal('10000'))
 
     @patch('apps.payments.views.providers.paypal_create_order')
     def test_paypal_topup_stays_pending(self, mock_create):
@@ -183,16 +182,69 @@ class WithdrawalTests(APITestCase):
         self.client.force_authenticate(self.owner)
 
     def _request(self, amount=40000, method='mtn', phone='237670000000'):
-        return self.client.post('/api/payments/wallet/withdraw/',
+        return self.client.post('/api/payments/withdrawals/',
                                 {'amount': amount, 'method': method, 'phone': phone}, format='json')
 
-    def test_withdraw_locks_funds_and_stays_pending(self):
+    def _cfg(self, **kw):
+        cfg = PlatformSettings.current()
+        for k, v in kw.items():
+            setattr(cfg, k, v)
+        cfg.save()
+        return cfg
+
+    def test_withdraw_auto_approved_by_default(self):
         r = self._request()
         self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual(r.data['status'], 'paid')
         self.owner.refresh_from_db()
         self.assertEqual(self.owner.balance, Decimal('60000'))
-        tx = WalletTransaction.objects.get(pk=r.data['transaction']['id'])
-        self.assertEqual((tx.kind, tx.status), ('withdraw', 'pending'))
+        tx = WalletTransaction.objects.get(reference=r.data['reference'])
+        self.assertEqual(tx.kind, 'debit')
+        self.assertNotIn('(en attente)', tx.note or '')
+
+    def test_withdraw_pending_when_auto_off(self):
+        self._cfg(withdrawal_auto_approve=False)
+        r = self._request()
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual(r.data['status'], 'pending')
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.balance, Decimal('60000'))
+        tx = WalletTransaction.objects.get(reference=r.data['reference'])
+        self.assertIn('(en attente)', tx.note)
+
+    def test_admin_approve_marks_paid(self):
+        self._cfg(withdrawal_auto_approve=False)
+        wd_id = self._request().data['id']
+        self.client.force_authenticate(self.admin)
+        r = self.client.post(f'/api/payments/withdrawals/{wd_id}/approve/', {}, format='json')
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data['status'], 'paid')
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.balance, Decimal('60000'))
+
+    def test_admin_reject_refunds_owner(self):
+        self._cfg(withdrawal_auto_approve=False)
+        wd_id = self._request().data['id']
+        self.client.force_authenticate(self.admin)
+        r = self.client.post(f'/api/payments/withdrawals/{wd_id}/reject/', {}, format='json')
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data['status'], 'rejected')
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.balance, Decimal('100000'))
+        # déjà traité : seconde décision refusée
+        r = self.client.post(f'/api/payments/withdrawals/{wd_id}/approve/', {}, format='json')
+        self.assertEqual(r.status_code, 400)
+
+    def test_admin_refund_reverts_paid(self):
+        r = self._request()
+        self.assertEqual(r.data['status'], 'paid')
+        self.client.force_authenticate(self.admin)
+        r = self.client.post(f'/api/payments/withdrawals/{r.data["id"]}/refund/', {}, format='json')
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data['status'], 'rejected')
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.balance, Decimal('100000'))
+        self.assertTrue(WalletTransaction.objects.filter(kind='refund', reference=r.data['reference']).exists())
 
     def test_withdraw_over_balance_rejected(self):
         r = self._request(amount=150000)
@@ -203,35 +255,26 @@ class WithdrawalTests(APITestCase):
     def test_withdraw_requires_phone(self):
         self.assertEqual(self._request(phone='').status_code, 400)
 
-    def test_admin_marks_paid(self):
-        tx_id = self._request().data['transaction']['id']
-        self.client.force_authenticate(self.admin)
-        pending = self.client.get('/api/payments/wallet/withdrawals/').data
-        self.assertEqual([w['id'] for w in pending], [tx_id])
-        r = self.client.post(f'/api/payments/wallet/withdrawals/{tx_id}/process/',
-                             {'decision': 'paid', 'reference': 'MP2611.1234'}, format='json')
-        self.assertEqual(r.status_code, 200, r.data)
-        tx = WalletTransaction.objects.get(pk=tx_id)
-        self.assertEqual((tx.status, tx.provider_ref), ('completed', 'MP2611.1234'))
-        self.owner.refresh_from_db()
-        self.assertEqual(self.owner.balance, Decimal('60000'))
-
-    def test_admin_rejects_refunds_owner(self):
-        tx_id = self._request().data['transaction']['id']
-        self.client.force_authenticate(self.admin)
-        r = self.client.post(f'/api/payments/wallet/withdrawals/{tx_id}/process/',
-                             {'decision': 'rejected'}, format='json')
-        self.assertEqual(r.status_code, 200, r.data)
+    def test_withdraw_min_and_max_enforced(self):
+        self._cfg(min_withdrawal_amount=5000, max_withdrawal_amount=45000)
+        self.assertEqual(self._request(amount=1000).status_code, 400)
+        self.assertEqual(self._request(amount=50000).status_code, 400)
         self.owner.refresh_from_db()
         self.assertEqual(self.owner.balance, Decimal('100000'))
-        # déjà traité : seconde décision refusée
-        r = self.client.post(f'/api/payments/wallet/withdrawals/{tx_id}/process/',
-                             {'decision': 'paid'}, format='json')
-        self.assertEqual(r.status_code, 400)
 
-    def test_withdrawals_admin_only(self):
-        tx_id = self._request().data['transaction']['id']
-        self.assertEqual(self.client.get('/api/payments/wallet/withdrawals/').status_code, 403)
-        r = self.client.post(f'/api/payments/wallet/withdrawals/{tx_id}/process/',
-                             {'decision': 'paid'}, format='json')
-        self.assertEqual(r.status_code, 403)
+    def test_withdraw_daily_cap_enforced(self):
+        self._cfg(withdrawal_daily_cap=50000)
+        self.assertEqual(self._request(amount=40000).status_code, 201)
+        r = self._request(amount=20000)
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('journalier', str(r.data))
+
+    def test_withdrawals_scoped_per_user(self):
+        self._request()
+        other = make_user('cli2', 'CLIENT')
+        self.client.force_authenticate(other)
+        data = self.client.get('/api/payments/withdrawals/').data
+        self.assertEqual(len(data.get('results', data)), 0)
+        self.client.force_authenticate(self.admin)
+        data = self.client.get('/api/payments/withdrawals/').data
+        self.assertEqual(len(data.get('results', data)), 1)

@@ -120,13 +120,29 @@ export default function AdminSettings() {
           <h3 className="font-black text-slate-900 text-sm flex items-center gap-2 mb-4">
             <Smartphone size={15} className="text-teal-600" /> Passerelles de paiement
           </h3>
-          <div className="bg-slate-50 rounded-xl p-3 mb-4">
-            <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">Montant min. retrait</div>
-            <div className="flex items-center gap-1.5 mt-1">
-              <input type="number" min={0} step={500} value={Math.round(Number(form.min_withdrawal_amount || 0))}
-                onChange={(e) => set('min_withdrawal_amount')(e.target.value)} className="bg-transparent text-sm font-black text-slate-900 w-24 focus:outline-none" />
-              <span className="text-[9px] text-slate-400 font-bold">FCFA</span>
-            </div>
+          <div className="bg-slate-50 rounded-xl p-3 mb-4 space-y-3">
+            {[
+              ['min_withdrawal_amount', 'Montant min. retrait'],
+              ['max_withdrawal_amount', 'Montant max. par retrait'],
+              ['withdrawal_daily_cap', 'Plafond cumulé par jour (0 = illimité)'],
+            ].map(([key, label]) => (
+              <div key={key}>
+                <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">{label}</div>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <input type="number" min={0} step={500} value={Math.round(Number(form[key] || 0))}
+                    onChange={(e) => set(key)(e.target.value)} className="bg-transparent text-sm font-black text-slate-900 w-24 focus:outline-none" />
+                  <span className="text-[9px] text-slate-400 font-bold">FCFA</span>
+                </div>
+              </div>
+            ))}
+            <label className="flex items-center justify-between gap-3 pt-1 border-t border-slate-200 cursor-pointer">
+              <div>
+                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Retraits instantanés</div>
+                <div className="text-[10px] text-slate-500 font-medium mt-0.5">Sans validation admin dans les limites ci-dessus</div>
+              </div>
+              <input type="checkbox" checked={!!form.withdrawal_auto_approve} onChange={(e) => set('withdrawal_auto_approve')(e.target.checked)}
+                className="w-4 h-4 accent-teal-600" />
+            </label>
           </div>
           <div className="space-y-2">
             {GATEWAYS.map((g) => {

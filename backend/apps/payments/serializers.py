@@ -86,9 +86,13 @@ class WithdrawalRequestSerializer(serializers.ModelSerializer):
 
     def validate_amount(self, value):
         from apps.users.models import PlatformSettings
-        minimum = PlatformSettings.current().min_withdrawal_amount
-        if value < minimum:
-            raise serializers.ValidationError(f'Montant minimum de retrait : {minimum:.0f} FCFA.')
+        cfg = PlatformSettings.current()
+        if value < cfg.min_withdrawal_amount:
+            raise serializers.ValidationError(
+                f'Montant minimum de retrait : {cfg.min_withdrawal_amount:.0f} FCFA.')
+        if cfg.max_withdrawal_amount and value > cfg.max_withdrawal_amount:
+            raise serializers.ValidationError(
+                f'Montant maximum par retrait : {cfg.max_withdrawal_amount:.0f} FCFA.')
         return value
 
 
