@@ -68,6 +68,49 @@ function RateClient({ b, onDone }) {
   );
 }
 
+/* Version du propriétaire sur un litige ouvert — transmise aux arbitres. */
+function DisputeResponse({ b, onDone }) {
+  const [text, setText] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  if (b.dispute_owner_response) {
+    return (
+      <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
+        <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Votre version transmise</span>
+        <p className="text-[11px] text-amber-800 italic mt-1.5">« {b.dispute_owner_response} »</p>
+        {b.dispute_owner_responded_at && <p className="text-[9px] text-amber-600 mt-1">Envoyée le {new Date(b.dispute_owner_responded_at).toLocaleString('fr-FR')}</p>}
+      </div>
+    );
+  }
+  const submit = async () => {
+    if (!text.trim()) return;
+    setSaving(true); setErr('');
+    try {
+      await bookingsAPI.disputeResponse(b.id, text.trim());
+      setText('');
+      onDone?.();
+    } catch (e) {
+      setErr(e.response?.data?.response?.[0] || e.response?.data?.detail || 'Envoi impossible.');
+    }
+    setSaving(false);
+  };
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-3">
+      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Votre version des faits</span>
+      <p className="text-[10px] text-slate-400 mt-1">Elle sera confrontée à celle du client lors de l'arbitrage.</p>
+      <textarea rows={3} value={text} onChange={e => setText(e.target.value)}
+        placeholder="État des lieux, photos datées, devis…"
+        className="w-full mt-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[11px] text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none" />
+      {err && <p className="text-[10px] text-red-500 font-bold mt-1">{err}</p>}
+      <button onClick={submit} disabled={saving || !text.trim()}
+        className="mt-2 flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-black px-4 py-2 rounded-xl transition-colors disabled:opacity-40">
+        <Send size={12} /> Transmettre ma version
+      </button>
+    </div>
+  );
+}
+
 /* Panneau droit — dossier de la réservation, décomposition financière et
    seule action propriétaire autorisée par le backend : confirmer la restitution. */
 export default function RequestDetail({ b, onComplete, busy, onRefresh }) {
@@ -112,10 +155,13 @@ export default function RequestDetail({ b, onComplete, busy, onRefresh }) {
       </div>
 
       {b.status === 'disputed' && (
-        <div className="flex gap-2 bg-red-50 border border-red-100 rounded-xl p-3 text-[11px] text-red-700">
-          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-          <div><strong>Litige ouvert par le client.</strong> {b.dispute_reason || ''} Les fonds restent bloqués jusqu'à l'arbitrage AutoLink.</div>
-        </div>
+        <>
+          <div className="flex gap-2 bg-red-50 border border-red-100 rounded-xl p-3 text-[11px] text-red-700">
+            <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+            <div><strong>Litige ouvert par le client.</strong> {b.dispute_reason || ''} Les fonds restent bloqués jusqu'à l'arbitrage AutoLink.</div>
+          </div>
+          <DisputeResponse key={`dr-${b.id}`} b={b} onDone={onRefresh} />
+        </>
       )}
       {b.status === 'pending' && (
         <div className="flex gap-2 bg-amber-50 border border-amber-100 rounded-xl p-3 text-[11px] text-amber-700">
