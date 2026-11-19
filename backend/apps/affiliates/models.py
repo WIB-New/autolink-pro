@@ -24,7 +24,9 @@ class Agent(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.code:
-            city_code = (slugify(self.city).replace('-', '').upper() or 'CITY')[:10]
+            # 12 caractères max, aligné sur les codes parrainage (ALP-XXXXXXXX)
+            # — ville tronquée à 4 lettres : AGT-DOUA-001.
+            city_code = (slugify(self.city).replace('-', '').upper() or 'CITY')[:4]
             prefix = f'AGT-{city_code}-'
             number = Agent.objects.filter(code__startswith=prefix).count() + 1
             while Agent.objects.filter(code=f'{prefix}{number:03d}').exists():

@@ -16,8 +16,9 @@ class AffiliateWorkflowTests(APITestCase):
     def test_generated_codes_are_unique(self):
         first = Agent.objects.create(name='Premier agent', city='Douala')
         second = Agent.objects.create(name='Deuxième agent', city='Douala')
-        self.assertEqual(first.code, 'AGT-DOUALA-001')
-        self.assertEqual(second.code, 'AGT-DOUALA-002')
+        self.assertEqual(first.code, 'AGT-DOUA-001')
+        self.assertEqual(second.code, 'AGT-DOUA-002')
+        self.assertLessEqual(len(first.code), 12)
 
     def test_register_code_links_referred_user(self):
         agent = Agent.objects.create(name='Référent', city='Douala')
