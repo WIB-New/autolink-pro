@@ -862,39 +862,102 @@ class MeDataExportView(APIView):
                 ['Rôle', user.get_role_display()],
                 ['Ville', user.city or '—'],
                 ['Statut KYC', user.get_kyc_status_display()],
-                ['Solde portefeuille', f'{user.balance or 0} FCFA'],
+                *([] if user.role in ('ADMIN', 'CONTROLLER') else [['Solde portefeuille', f'{user.balance or 0} FCFA']]),
                 ['Inscrit le', f'{user.created_at:%d/%m/%Y}' if user.created_at else '—'],
             ], widths=[160, 340]),
         ]
 
-        bookings = list(user.bookings.select_related('vehicle').order_by('-created_at'))
-        story += [Paragraph(f'2. Réservations ({len(bookings)})', h2)]
-        if bookings:
-            story.append(table(
-                ['Réf.', 'Véhicule', 'Période', 'Statut', 'Montant'],
-                [[f'BK-{b.pk:04d}', str(b.vehicle), f'{b.start_date:%d/%m/%y} → {b.end_date:%d/%m/%y}',
-                  b.get_status_display(), f'{b.subtotal} F'] for b in bookings],
-                widths=[60, 180, 120, 80, 70]))
-        else:
-            story.append(Paragraph('Aucune réservation.', body))
+        # Sections adaptées au rôle : un staff (contrôleur/admin) n'a ni
+        # réservations, ni portefeuille, ni parrainage — l'export reflète
+        # son activité réelle sur la plateforme.
+        section_no = 2
+        if user.role == 'CONTROLLER':
+            from apps.inspections.models import VehicleInspection
+            insps = list(VehicleInspection.objects.filter(controller=user)
+                         .select_related('vehicle', 'booking').order_by('-inspection_date'))
+            story += [Paragraph(f'{section_no}. Inspections réalisées ({len(insps)})', h2)]
+            section_no += 1
+            if insps:
+                story.append(table(
+                    ['Date', 'Type', 'Véhicule', 'Réservation', 'Score état', 'Problèmes'],
+                    [[f'{i.inspection_date:%d/%m/%y %H:%M}', i.get_inspection_type_display(),
+                      str(i.vehicle), f'BK-{i.booking_id:04d}' if i.booking_id else '—',
+                      f'{i.condition_score}/100', str(len(i.issues or []))] for i in insps],
+                    widths=[80, 70, 170, 80, 60, 60]))
+            else:
+                story.append(Paragraph('Aucune inspection réalisée.', body))
+        elif user.role == 'DRIVER':
+            bookings = list(user.driven_bookings.select_related('vehicle', 'client').order_by('-created_at'))
+            story += [Paragraph(f'{section_no}. Courses effectuées ({len(bookings)})', h2)]
+            section_no += 1
+            if bookings:
+                story.append(table(
+                    ['Réf.', 'Véhicule', 'Client', 'Période', 'Statut', 'Prestation'],
+                    [[f'BK-{b.pk:04d}', str(b.vehicle), b.client.get_full_name() or b.client.username,
+                      f'{b.start_date:%d/%m/%y} → {b.end_date:%d/%m/%y}',
+                      b.get_status_display(), f'{b.driver_fee} F'] for b in bookings],
+                    widths=[60, 160, 120, 110, 70, 70]))
+            else:
+                story.append(Paragraph('Aucune course.', body))
+        elif user.role == 'OWNER':
+            from apps.bookings.models import Booking
+            vehicles = list(user.vehicles.all())
+            story += [Paragraph(f'{section_no}. Mes véhicules ({len(vehicles)})', h2)]
+            section_no += 1
+            if vehicles:
+                story.append(table(
+                    ['Véhicule', 'Plaque', 'Statut'],
+                    [[str(v), v.plate or '—', v.get_status_display() if hasattr(v, 'get_status_display') else '—']
+                     for v in vehicles],
+                    widths=[230, 120, 130]))
+            else:
+                story.append(Paragraph('Aucun véhicule enregistré.', body))
+            bookings = list(Booking.objects.filter(vehicle__owner=user)
+                            .select_related('vehicle', 'client').order_by('-created_at'))
+            story += [Paragraph(f'{section_no}. Locations de mes véhicules ({len(bookings)})', h2)]
+            section_no += 1
+            if bookings:
+                story.append(table(
+                    ['Réf.', 'Véhicule', 'Client', 'Période', 'Statut', 'Part propriétaire'],
+                    [[f'BK-{b.pk:04d}', str(b.vehicle), b.client.get_full_name() or b.client.username,
+                      f'{b.start_date:%d/%m/%y} → {b.end_date:%d/%m/%y}',
+                      b.get_status_display(), f'{b.owner_amount} F'] for b in bookings],
+                    widths=[60, 150, 110, 110, 70, 80]))
+            else:
+                story.append(Paragraph('Aucune location.', body))
+        elif user.role != 'ADMIN':
+            bookings = list(user.bookings.select_related('vehicle').order_by('-created_at'))
+            story += [Paragraph(f'{section_no}. Réservations ({len(bookings)})', h2)]
+            section_no += 1
+            if bookings:
+                story.append(table(
+                    ['Réf.', 'Véhicule', 'Période', 'Statut', 'Montant'],
+                    [[f'BK-{b.pk:04d}', str(b.vehicle), f'{b.start_date:%d/%m/%y} → {b.end_date:%d/%m/%y}',
+                      b.get_status_display(), f'{b.subtotal} F'] for b in bookings],
+                    widths=[60, 180, 120, 80, 70]))
+            else:
+                story.append(Paragraph('Aucune réservation.', body))
 
-        txs = list(WalletTransaction.objects.filter(user=user).order_by('-created_at'))
-        story += [Paragraph(f'3. Transactions portefeuille ({len(txs)})', h2)]
-        if txs:
-            story.append(table(
-                ['Date', 'Type', 'Référence', 'Montant', 'Solde après'],
-                [[f'{t.created_at:%d/%m/%y %H:%M}', t.get_kind_display(), t.reference,
-                  f'{t.amount} F', f'{t.balance_after} F'] for t in txs],
-                widths=[80, 90, 150, 80, 80]))
-        else:
-            story.append(Paragraph('Aucune transaction.', body))
+        if user.role in ('CLIENT', 'OWNER', 'DRIVER'):
+            txs = list(WalletTransaction.objects.filter(user=user).order_by('-created_at'))
+            story += [Paragraph(f'{section_no}. Transactions portefeuille ({len(txs)})', h2)]
+            section_no += 1
+            if txs:
+                story.append(table(
+                    ['Date', 'Type', 'Référence', 'Montant', 'Solde après'],
+                    [[f'{t.created_at:%d/%m/%y %H:%M}', t.get_kind_display(), t.reference,
+                      f'{t.amount} F', f'{t.balance_after} F'] for t in txs],
+                    widths=[80, 90, 150, 80, 80]))
+            else:
+                story.append(Paragraph('Aucune transaction.', body))
 
         docs = list(UserDocument.objects.filter(user=user).order_by('-created_at'))
         kyc_files = [label for label, f in (
             ('CNI', user.id_document), ('Permis', user.driving_license),
             ('Justificatif de domicile', user.address_proof), ('Assurance', user.insurance)) if f]
-        story += [Paragraph('4. Documents', h2),
+        story += [Paragraph(f'{section_no}. Documents', h2),
                   Paragraph(f'Fichiers KYC du compte : {", ".join(kyc_files) if kyc_files else "aucun"}.', body)]
+        section_no += 1
         if docs:
             story.append(table(
                 ['Document', 'Type', 'Statut', 'Déposé le'],
@@ -902,8 +965,9 @@ class MeDataExportView(APIView):
                   f'{d.created_at:%d/%m/%y}'] for d in docs],
                 widths=[170, 110, 90, 90]))
 
-        story += [Paragraph('5. Parrainage', h2),
-                  Paragraph(f'Code : {user.referral_code or "—"} · Filleuls : {user.referrals.count()} · Crédits : {user.referral_credits or 0} FCFA', body)]
+        if user.role == 'CLIENT':
+            story += [Paragraph(f'{section_no}. Parrainage', h2),
+                      Paragraph(f'Code : {user.referral_code or "—"} · Filleuls : {user.referrals.count()} · Crédits : {user.referral_credits or 0} FCFA', body)]
 
         buffer = BytesIO()
         SimpleDocTemplate(buffer, pagesize=A4, leftMargin=40, rightMargin=40,
