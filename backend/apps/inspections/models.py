@@ -18,6 +18,9 @@ class VehicleInspection(models.Model):
     checklist = models.JSONField(default=dict)
     issues = models.JSONField(default=list)
     notes = models.TextField(blank=True)
+    edited_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+                                  null=True, blank=True, related_name='edited_inspections')
+    edited_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Inspection véhicule"

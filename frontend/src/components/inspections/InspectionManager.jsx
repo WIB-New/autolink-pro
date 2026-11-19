@@ -308,7 +308,7 @@ function InspectionDetail({ inspection, onClose }) {
         <div className="p-5 space-y-4 text-sm">
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-slate-50 rounded-xl p-3"><span className="text-slate-500">Client</span><p className="font-semibold">{inspection.client_name}</p></div>
-            <div className="bg-slate-50 rounded-xl p-3"><span className="text-slate-500">Contrôleur</span><p className="font-semibold">{inspection.controller_name || '—'}</p></div>
+            <div className="bg-slate-50 rounded-xl p-3"><span className="text-slate-500">Contrôleur</span><p className="font-semibold">{inspection.controller_name || '—'}</p>{inspection.edited_by_name && <p className="text-[10px] text-slate-400 mt-0.5">Modifiée par {inspection.edited_by_name}{inspection.edited_at ? ` le ${formatDate(inspection.edited_at)}` : ''}</p>}</div>
             <div className="bg-slate-50 rounded-xl p-3"><span className="text-slate-500">Kilométrage</span><p className="font-semibold">{Number(inspection.mileage_at_inspection || 0).toLocaleString()} km</p></div>
             <div className="bg-slate-50 rounded-xl p-3"><span className="text-slate-500">Carburant</span><p className="font-semibold">{inspection.fuel_level}%</p></div>
           </div>

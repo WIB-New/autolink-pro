@@ -101,6 +101,10 @@ class InspectionWorkflowTests(APITestCase):
         ins = VehicleInspection.objects.get(pk=ins_id)
         self.assertEqual(ins.notes, 'Score revu après contre-expertise')
         self.assertEqual(ins.photos.count(), 1)
+        # L'éditeur est tracé pour l'audit, sans effacer le créateur.
+        self.assertEqual(ins.controller, self.controller)
+        self.assertEqual(ins.edited_by, self.controller)
+        self.assertIsNotNone(ins.edited_at)
 
     def test_delete_photo(self):
         r = self.client.post('/api/inspections/', {
@@ -144,6 +148,26 @@ class InspectionWorkflowTests(APITestCase):
         }, format='json')
         r = self.client.get('/api/inspections/queue/?type=entry')
         ids = [row['id'] for row in r.data['results']]
+        self.assertNotIn(self.booking.pk, ids)
+
+    def test_entry_queue_covers_active_and_window(self):
+        """La file d'entrée inclut les résas actives en rattrapage (J+3 max)."""
+        self.booking.status = 'active'
+        self.booking.save(update_fields=['status'])
+        ids = [row['id'] for row in
+               self.client.get('/api/inspections/queue/?type=entry').data['results']]
+        self.assertIn(self.booking.pk, ids)
+        # Une résa confirmée à J+2 apparaît, à J+5 non.
+        self.booking.status = 'confirmed'
+        self.booking.start_date = date.today() + timedelta(days=2)
+        self.booking.save(update_fields=['status', 'start_date'])
+        ids = [row['id'] for row in
+               self.client.get('/api/inspections/queue/?type=entry').data['results']]
+        self.assertIn(self.booking.pk, ids)
+        self.booking.start_date = date.today() + timedelta(days=5)
+        self.booking.save(update_fields=['start_date'])
+        ids = [row['id'] for row in
+               self.client.get('/api/inspections/queue/?type=entry').data['results']]
         self.assertNotIn(self.booking.pk, ids)
 
     def test_create_forbidden_for_client(self):

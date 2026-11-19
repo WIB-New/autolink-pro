@@ -14,6 +14,7 @@ class VehicleInspectionSerializer(serializers.ModelSerializer):
     uploaded_photos = serializers.ListField(
         child=serializers.ImageField(), write_only=True, required=False)
     controller_name = serializers.SerializerMethodField()
+    edited_by_name = serializers.SerializerMethodField()
     client_name = serializers.SerializerMethodField()
     booking_reference = serializers.SerializerMethodField()
     vehicle_name = serializers.SerializerMethodField()
@@ -22,12 +23,17 @@ class VehicleInspectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = VehicleInspection
         fields = '__all__'
-        read_only_fields = ['controller', 'inspection_date']
+        read_only_fields = ['controller', 'inspection_date', 'edited_by', 'edited_at']
 
     def get_controller_name(self, obj):
         if not obj.controller:
             return None
         return obj.controller.get_full_name() or obj.controller.email
+
+    def get_edited_by_name(self, obj):
+        if not obj.edited_by:
+            return None
+        return obj.edited_by.get_full_name() or obj.edited_by.email
 
     def get_client_name(self, obj):
         c = obj.booking.client

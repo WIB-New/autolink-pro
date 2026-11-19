@@ -59,15 +59,20 @@ class VehicleInspectionViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         # Réédition d'une fiche : l'état courant du véhicule reflète
-        # les valeurs corrigées (kilométrage, carburant, score).
-        self._sync_vehicle(serializer.save())
+        # les valeurs corrigées (kilométrage, carburant, score) et
+        # l'identité du dernier éditeur est conservée pour l'audit.
+        self._sync_vehicle(serializer.save(edited_by=self.request.user,
+                                           edited_at=timezone.now()))
 
     def _queue_items(self, inspection_type):
         today = timezone.localdate()
         if inspection_type == VehicleInspection.InspectionType.ENTRY:
             bookings = Booking.objects.filter(
-                status=Booking.Status.CONFIRMED,
-                start_date__lte=today + timedelta(days=1),
+                # Fenêtre J+3 pour la planification + les locations déjà
+                # actives qui ont raté leur fiche d'entrée (rattrapage).
+                Q(status=Booking.Status.CONFIRMED,
+                  start_date__lte=today + timedelta(days=3))
+                | Q(status=Booking.Status.ACTIVE),
             ).exclude(inspections__inspection_type=inspection_type)
         else:
             bookings = Booking.objects.filter(
