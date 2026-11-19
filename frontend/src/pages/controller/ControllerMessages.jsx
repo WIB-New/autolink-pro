@@ -1,13 +1,12 @@
 import React from 'react';
-import DashboardLayout from '../../components/DashboardLayout';
+import DesignShell from '../../design/DesignShell';
 import MessagingUI from '../../components/MessagingUI';
 
-/* Messagerie contrôleur — conversations réelles (clients, propriétaires,
-   support), même UI que les autres espaces, dans l'habillage contrôleur. */
+/* Messagerie contrôleur — même shell et même UI WhatsApp que l'espace client. */
 export default function ControllerMessages() {
   return (
-    <DashboardLayout title="Messagerie" fluid>
-      <MessagingUI basePath="/controller/messages" hideTitle fillHeight />
-    </DashboardLayout>
+    <DesignShell role="controller">
+      <MessagingUI basePath="/controller/messages" />
+    </DesignShell>
   );
 }

@@ -30,12 +30,20 @@ const NAVS = {
     { icon: 'badge', label: 'Profil & Documents', path: '/driver/profile' },
     { icon: 'settings', label: 'Paramètres', path: '/driver/settings' },
   ],
+  controller: [
+    { icon: 'dashboard', label: 'Tableau de bord', path: '/controller/dashboard' },
+    { icon: 'fact_check', label: 'Inspections', path: '/controller/inspections' },
+    { icon: 'chat', label: 'Messages', path: '/controller/messages', badge: 'msg' },
+    { icon: 'notifications', label: 'Notifications', path: '/controller/notifications', badge: 'notif' },
+    { icon: 'settings', label: 'Paramètres', path: '/controller/settings' },
+  ],
 };
 
 const USERS = {
   client: { init: 'EN', name: 'Emmanuel Ndedi', short: 'Emmanuel N.', role: 'Client', email: 'emmanuel@autolink.cm', space: 'Espace Client' },
   driver: { init: 'JM', name: 'Jean-Pierre Mbida', short: 'Jean-Pierre M.', role: 'Chauffeur', email: 'jp.mbida@autolink.cm', space: 'Espace Chauffeur' },
   owner: { init: 'AY', name: 'ANANGUE Yves', short: 'ANANGUE Y.', role: 'Propriétaire', email: 'anague@autolink.cm', space: 'Espace Propriétaire' },
+  controller: { init: 'CT', name: 'Contrôleur AutoLink', short: 'Contrôleur', role: 'Contrôleur', email: '', space: 'Espace Contrôleur' },
 };
 
 const tr = (fr) => {
@@ -55,7 +63,7 @@ export default function DesignShell({ children, role = 'client' }) {
     { icon: 'badge', label: 'Profil & Paramètres', path: '/settings' },
   ] : (NAVS[role] || NAVS.client);
   const user = USERS[role] || USERS.client;
-  const notifPath = role === 'driver' ? '/driver/notifications' : role === 'owner' ? '/owner/notifications' : '/notifications';
+  const notifPath = role === 'driver' ? '/driver/notifications' : role === 'owner' ? '/owner/notifications' : role === 'controller' ? '/controller/notifications' : '/notifications';
   const walletPath = role === 'driver' ? '/driver/revenue' : role === 'owner' ? '/owner/revenue' : '/client/wallet?recharge=1';
   const { i18n } = useTranslation();
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
@@ -154,7 +162,7 @@ export default function DesignShell({ children, role = 'client' }) {
             </button>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <button onClick={() => navigate(role === 'driver' ? '/driver/messages' : '/messages')} className="relative w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high" title="Messages">
+            <button onClick={() => navigate(role === 'driver' ? '/driver/messages' : role === 'controller' ? '/controller/messages' : '/messages')} className="relative w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high" title="Messages">
               <Icon name="chat_bubble" size={22} />
               {unreadMsg > 0 && <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-on-primary text-[10px] font-bold flex items-center justify-center">{unreadMsg}</span>}
             </button>
@@ -192,7 +200,7 @@ export default function DesignShell({ children, role = 'client' }) {
                       <button onClick={() => { i18n.changeLanguage('en'); import('../services/api').then(({ usersAPI }) => usersAPI.updateMe({ language: 'en' }).catch(() => {})); }} className={`px-2.5 py-1 font-label-sm text-label-sm ${i18n.language === 'en' ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant'}`}>EN</button>
                     </div>
                   </div>
-                  <button onClick={() => { setProfileOpen(false); navigate('/profile'); }}
+                  <button onClick={() => { setProfileOpen(false); navigate(role === 'controller' ? '/controller/settings' : '/profile'); }}
                     className="flex items-center gap-2 px-4 py-2 font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-low w-full">
                     <Icon name="badge" size={18} />Profil
                   </button>

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import DashboardLayout from '../../components/DashboardLayout';
+import DesignShell from '../../design/DesignShell';
 import { ClipboardList, CheckCircle, Clock, AlertTriangle, LogIn, LogOut, TrendingUp, PieChart as PieIcon, CalendarDays, Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { inspectionsAPI } from '../../services/api';
@@ -94,8 +94,8 @@ export default function ControllerDashboard() {
   }, [tasks]);
 
   return (
-    <DashboardLayout title="Tableau de bord Contrôleur">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <DesignShell role="controller">
+      <div className="max-w-5xl mx-auto space-y-6 p-4 sm:p-6">
         {/* Header */}
         <div className="bg-gradient-to-br from-slate-900 to-primary-900 rounded-2xl p-6 text-white">
           <h2 className="text-2xl font-bold mb-1">Bonjour, {user?.firstName || user?.first_name}</h2>
@@ -253,6 +253,6 @@ export default function ControllerDashboard() {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </DesignShell>
   );
 }

@@ -1,11 +1,13 @@
 import React from 'react';
-import DashboardLayout from '../../components/DashboardLayout';
+import DesignShell from '../../design/DesignShell';
 import InspectionManager from '../../components/inspections/InspectionManager';
 
 export default function ControllerInspections() {
   return (
-    <DashboardLayout title="Inspections et Audits Techniques">
-      <InspectionManager />
-    </DashboardLayout>
+    <DesignShell role="controller">
+      <div className="p-4 sm:p-6">
+        <InspectionManager />
+      </div>
+    </DesignShell>
   );
 }
