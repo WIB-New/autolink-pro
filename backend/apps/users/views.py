@@ -701,10 +701,13 @@ def _safe_refresh(user):
 def _blacklist_jti(user, jti):
     """Blacklist le refresh token et supprime la session enregistrée."""
     try:
-        from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
+        from rest_framework_simplejwt.token_blacklist.models import (
+            BlacklistedToken, OutstandingToken)
         t = OutstandingToken.objects.filter(user=user, jti=jti).first()
         if t:
-            t.blacklist()
+            # OutstandingToken n'a pas de méthode blacklist() — on crée la
+            # ligne BlacklistedToken directement.
+            BlacklistedToken.objects.get_or_create(token=t)
     except Exception:
         pass
     UserSession.objects.filter(user=user, jti=jti).delete()

@@ -4,6 +4,7 @@ from datetime import timedelta
 from unittest.mock import patch
 from django.test import override_settings
 from rest_framework.test import APITestCase
+from rest_framework_simplejwt.tokens import RefreshToken
 from apps.users.models import ContactMessage, LoginCode, NewsletterCampaign, User
 from apps.users.views import NEWSLETTER_UNSUBSCRIBE_SALT
 
@@ -436,3 +437,61 @@ class MeDataExportTests(APITestCase):
     def test_export_requires_authentication(self):
         response = self.client.get('/api/users/me/export/')
         self.assertEqual(response.status_code, 401)
+
+
+class SessionManagementTests(APITestCase):
+    """Révocation de sessions — le refresh token doit être réellement blacklisté."""
+
+    def _make_session(self, user):
+        from django.test import RequestFactory
+        from apps.users.views import _record_session
+        refresh = RefreshToken.for_user(user)
+        req = RequestFactory().post('/login')
+        req.META['HTTP_USER_AGENT'] = 'Mozilla/5.0 (Windows NT 10.0) Chrome/120'
+        req.META['REMOTE_ADDR'] = '41.202.1.1'
+        _record_session(req, user, refresh)
+        return refresh
+
+    def test_revoke_session_blacklists_refresh_token(self):
+        from rest_framework_simplejwt.exceptions import TokenError
+        user = User.objects.create_user(
+            username='sess-user', email='sess@test.cm', password='Pass2026!')
+        refresh = self._make_session(user)
+        token_str = str(refresh)
+
+        self.client.force_authenticate(user)
+        self.assertEqual(
+            self.client.get('/api/users/me/sessions/').status_code, 200)
+        self.assertEqual(
+            self.client.delete(f'/api/users/me/sessions/{refresh["jti"]}/').status_code, 204)
+
+        with self.assertRaises(TokenError):
+            RefreshToken(token_str).check_blacklist()
+
+    def test_logout_all_revokes_every_session(self):
+        user = User.objects.create_user(
+            username='sess-all', email='sessall@test.cm', password='Pass2026!')
+        t1, t2 = self._make_session(user), self._make_session(user)
+        self.assertEqual(user.sessions.count(), 2)
+
+        self.client.force_authenticate(user)
+        self.assertEqual(
+            self.client.delete('/api/users/me/sessions/logout-all/').status_code, 204)
+        self.assertEqual(user.sessions.count(), 0)
+
+        from rest_framework_simplejwt.exceptions import TokenError
+        for t in (t1, t2):
+            with self.assertRaises(TokenError):
+                RefreshToken(str(t)).check_blacklist()
+
+    def test_sessions_are_scoped_to_user(self):
+        user = User.objects.create_user(
+            username='sess-a', email='sessa@test.cm', password='x')
+        other = User.objects.create_user(
+            username='sess-b', email='sessb@test.cm', password='x')
+        refresh = self._make_session(other)
+        self.client.force_authenticate(user)
+        # Supprimer le jti d'un autre user → pas de fuite
+        self.assertEqual(
+            self.client.delete(f'/api/users/me/sessions/{refresh["jti"]}/').status_code, 204)
+        self.assertEqual(other.sessions.count(), 1)
