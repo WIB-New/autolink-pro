@@ -247,6 +247,39 @@ class BookingFlowTests(APITestCase):
         self.client.force_authenticate(self.client_user)
         self.assertEqual(self.client.get('/api/bookings/disputes/?state=open').status_code, 403)
 
+    def test_owner_can_submit_dispute_response(self):
+        booking = self._confirmed_booking()
+        self.client.post(f'/api/bookings/{booking.id}/dispute/', {'reason': 'Clim HS'}, format='json')
+        self.client.force_authenticate(self.owner)
+        r = self.client.post(f'/api/bookings/{booking.id}/dispute-response/',
+                             {'response': 'La clim fonctionnait au départ — état des lieux signé.'},
+                             format='json')
+        self.assertEqual(r.status_code, 200, r.data)
+        booking.refresh_from_db()
+        self.assertEqual(booking.dispute_owner_response, 'La clim fonctionnait au départ — état des lieux signé.')
+        self.assertIsNotNone(booking.dispute_owner_responded_at)
+        # Un autre propriétaire ne peut pas répondre
+        intruder = make_user('intruder', role='OWNER')
+        self.client.force_authenticate(intruder)
+        # La réservation n'apparaît pas dans le queryset de l'intrus → 404.
+        self.assertEqual(self.client.post(
+            f'/api/bookings/{booking.id}/dispute-response/',
+            {'response': 'x'}, format='json').status_code, 404)
+
+    def test_resolve_dispute_persists_decision_and_note(self):
+        booking = self._confirmed_booking()
+        self.client.post(f'/api/bookings/{booking.id}/dispute/', {'reason': 'x'}, format='json')
+        self.client.force_authenticate(self.admin)
+        r = self.client.post(f'/api/bookings/{booking.id}/resolve-dispute/',
+                             {'decision': 'refund', 'note': 'Preuves client recevables.'},
+                             format='json')
+        self.assertEqual(r.status_code, 200, r.data)
+        booking.refresh_from_db()
+        self.assertEqual(booking.dispute_decision, 'refund')
+        self.assertEqual(booking.dispute_resolution_note, 'Preuves client recevables.')
+        self.assertIsNotNone(booking.dispute_resolved_at)
+        self.assertEqual(booking.dispute_resolved_by, self.admin)
+
     # ── Fin de location ─────────────────────────────────────────────────────
     def test_finish_releases_vehicle_and_pays_owner(self):
         booking = self._confirmed_booking()
@@ -334,7 +367,9 @@ class BookingEditAndReceiptTests(APITestCase):
         self.assertEqual(response.status_code, 200, response.data)
         record = response.data['inspections'][0]
         self.assertEqual(record['inspection_type'], 'entry')
-        self.assertEqual(record['controller_name'], inspector.get_full_name())
+        # Fallback email quand le contrôleur n'a pas de nom complet renseigné.
+        self.assertEqual(record['controller_name'],
+                         inspector.get_full_name() or inspector.email)
         self.assertEqual(record['condition_score'], 92)
         self.assertEqual(record['notes'], 'Carrosserie en bon état.')
         self.assertEqual(record['photos'][0]['caption'], 'Vue avant')

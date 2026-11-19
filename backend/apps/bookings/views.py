@@ -1260,6 +1260,30 @@ class BookingViewSet(viewsets.ModelViewSet):
                 f'La caution reste bloquée en attendant l\'arbitrage AutoLink.')
         return Response(BookingSerializer(booking).data)
 
+    @action(detail=True, methods=['post'], url_path='dispute-response')
+    def dispute_response(self, request, pk=None):
+        """Le propriétaire donne sa version des faits sur un litige ouvert."""
+        booking = self.get_object()
+        if booking.vehicle.owner_id != request.user.id:
+            raise PermissionDenied('Seul le propriétaire du véhicule peut répondre.')
+        if booking.status != 'disputed':
+            raise ValidationError({'status': 'Cette réservation n\'est pas en litige.'})
+        response_text = (request.data.get('response') or '').strip()
+        if not response_text:
+            raise ValidationError({'response': 'Décrivez votre version des faits.'})
+        booking.dispute_owner_response = response_text
+        booking.dispute_owner_responded_at = timezone.now()
+        booking.save(update_fields=['dispute_owner_response', 'dispute_owner_responded_at', 'updated_at'])
+        from apps.users.models import User
+        for admin in User.objects.filter(role='ADMIN', is_active=True):
+            _notify(admin, 'Réponse du propriétaire sur un litige',
+                    f'{booking.vehicle.owner.get_full_name()} a donné sa version '
+                    f'sur le litige {booking}.')
+        _notify(booking.client, 'Le propriétaire a répondu au litige',
+                f'Le propriétaire de {booking.vehicle} a transmis sa version des faits '
+                f'sur votre litige {booking}. L\'arbitrage AutoLink est en cours.')
+        return Response(BookingSerializer(booking).data)
+
     @action(detail=True, methods=['post'], url_path='resolve-dispute')
     def resolve_dispute(self, request, pk=None):
         """Arbitrage admin : decision = 'release' (proprio payé) ou 'refund' (client remboursé)."""
@@ -1323,7 +1347,12 @@ class BookingViewSet(viewsets.ModelViewSet):
                     f'La caution a été conservée à titre de dédommagement.')
         else:
             raise ValidationError({'decision': 'Valeur attendue : "release" ou "refund".'})
-        booking.save(update_fields=['status', 'updated_at'])
+        booking.dispute_decision = decision
+        booking.dispute_resolution_note = (request.data.get('note') or '').strip()
+        booking.dispute_resolved_at = timezone.now()
+        booking.dispute_resolved_by = request.user
+        booking.save(update_fields=['status', 'dispute_decision', 'dispute_resolution_note',
+                                    'dispute_resolved_at', 'dispute_resolved_by', 'updated_at'])
         booking.sync_vehicle_status()
         if booking.status == 'completed' and payment:
             payment.release_escrow()   # part propriétaire

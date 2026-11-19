@@ -36,7 +36,10 @@ class BookingSerializer(serializers.ModelSerializer):
                             'driver_fee', 'delivery_fee', 'terms_accepted_at', 'debit_authorized_at', 'terms_version',
                             'commission_amount', 'owner_amount', 'discount_percent',
                             'deposit_amount',
-                            'dispute_reason', 'dispute_opened_at', 'driver_response',
+                            'dispute_reason', 'dispute_opened_at',
+                            'dispute_owner_response', 'dispute_owner_responded_at',
+                            'dispute_decision', 'dispute_resolution_note',
+                            'dispute_resolved_at', 'driver_response',
                             'owner_response', 'owner_responded_at',
                             'created_at', 'updated_at']
 

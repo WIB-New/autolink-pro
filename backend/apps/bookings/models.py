@@ -83,6 +83,14 @@ class Booking(models.Model):
 
     dispute_reason = models.TextField(blank=True)
     dispute_opened_at = models.DateTimeField(null=True, blank=True)
+    dispute_owner_response = models.TextField(blank=True)
+    dispute_owner_responded_at = models.DateTimeField(null=True, blank=True)
+    dispute_decision = models.CharField(max_length=10, blank=True)
+    dispute_resolution_note = models.TextField(blank=True)
+    dispute_resolved_at = models.DateTimeField(null=True, blank=True)
+    dispute_resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='disputes_resolved')
 
     client_rating = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)])
     client_review = models.TextField(blank=True)
