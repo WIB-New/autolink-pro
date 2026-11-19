@@ -43,3 +43,76 @@ class InspectionWorkflowTests(APITestCase):
         self.assertIsNotNone(self.vehicle.last_inspection_at)
         self.assertEqual(self.vehicle.mileage, 71234)
         self.assertEqual(self.vehicle.fuel_level, 65)
+
+    def _png(self):
+        from io import BytesIO
+        from PIL import Image
+        buf = BytesIO()
+        Image.new('RGB', (10, 10), (200, 30, 30)).save(buf, format='PNG')
+        buf.seek(0)
+        buf.name = 'avant.png'
+        return buf
+
+    def test_create_multipart_with_photos_and_notes(self):
+        """Flux réel du formulaire : FormData + uploaded_photos + notes."""
+        response = self.client.post('/api/inspections/', {
+            'booking': str(self.booking.pk),
+            'vehicle': str(self.vehicle.pk),
+            'inspection_type': 'exit',
+            'mileage_at_inspection': '71500',
+            'fuel_level': '40',
+            'condition_score': '72',
+            'checklist': '{"carrosserie": "nok"}',
+            'issues': '[{"text": "Rayure portière", "severity": "minor"}]',
+            'notes': 'Dommage léger constaté au retour',
+            'uploaded_photos': [self._png(), self._png()],
+        }, format='multipart')
+        self.assertEqual(response.status_code, 201, response.data)
+        from apps.inspections.models import VehicleInspection
+        ins = VehicleInspection.objects.get(pk=response.data['id'])
+        self.assertEqual(ins.notes, 'Dommage léger constaté au retour')
+        self.assertEqual(ins.checklist, {'carrosserie': 'nok'})
+        self.assertEqual(ins.issues, [{'text': 'Rayure portière', 'severity': 'minor'}])
+        self.assertEqual(ins.photos.count(), 2)
+        self.assertEqual(ins.controller, self.controller)
+
+    def test_queue_lists_pending_and_excludes_inspected(self):
+        self.booking.status = 'confirmed'
+        self.booking.save(update_fields=['status'])
+        r = self.client.get('/api/inspections/queue/?type=entry')
+        self.assertEqual(r.status_code, 200)
+        ids = [row['id'] for row in r.data['results']]
+        self.assertIn(self.booking.pk, ids)
+        # Après création de la fiche d'entrée, la résa sort de la file
+        self.client.post('/api/inspections/', {
+            'booking': self.booking.pk, 'vehicle': self.vehicle.pk,
+            'inspection_type': 'entry', 'mileage_at_inspection': 71000,
+            'fuel_level': 60, 'condition_score': 90, 'checklist': {}, 'issues': [],
+        }, format='json')
+        r = self.client.get('/api/inspections/queue/?type=entry')
+        ids = [row['id'] for row in r.data['results']]
+        self.assertNotIn(self.booking.pk, ids)
+
+    def test_create_forbidden_for_client(self):
+        self.client.force_authenticate(self.client_user)
+        r = self.client.post('/api/inspections/', {
+            'booking': self.booking.pk, 'vehicle': self.vehicle.pk,
+            'inspection_type': 'entry', 'mileage_at_inspection': 71000,
+            'fuel_level': 60, 'condition_score': 90, 'checklist': {}, 'issues': [],
+        }, format='json')
+        self.assertEqual(r.status_code, 403)
+
+    def test_list_scoped_owner_and_client(self):
+        self.client.post('/api/inspections/', {
+            'booking': self.booking.pk, 'vehicle': self.vehicle.pk,
+            'inspection_type': 'entry', 'mileage_at_inspection': 71000,
+            'fuel_level': 60, 'condition_score': 90, 'checklist': {}, 'issues': [],
+        }, format='json')
+        self.client.force_authenticate(self.owner)
+        self.assertEqual(len(self.client.get('/api/inspections/').data['results']), 1)
+        self.client.force_authenticate(self.client_user)
+        self.assertEqual(len(self.client.get('/api/inspections/').data['results']), 1)
+        stranger = User.objects.create_user(
+            username='inspection-stranger', email='stranger@test.cm', password='x', role='CLIENT')
+        self.client.force_authenticate(stranger)
+        self.assertEqual(len(self.client.get('/api/inspections/').data['results']), 0)
