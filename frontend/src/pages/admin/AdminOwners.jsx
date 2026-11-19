@@ -103,9 +103,9 @@ export default function AdminOwners() {
 
   const refundWithdrawal = async (withdrawal) => {
     const ok = await confirm({
-      title: t('Annuler et recréditer le retrait'),
-      message: t('Le retrait {{ref}} de {{amount}} FCFA déjà marqué payé sera annulé et recrédité sur le solde de l\u2019utilisateur.',
-        { ref: withdrawal.reference, amount: formatNumber(withdrawal.amount) }),
+      title: t('Compenser le retrait (recréditer le solde)'),
+      message: t('Le solde de l\u2019utilisateur sera recrédité de {{amount}} FCFA. À utiliser uniquement si le virement a échoué côté opérateur ou a été fait par erreur — si l\u2019argent est réellement parti sur {{phone}}, la plateforme supporte la perte.',
+        { ref: withdrawal.reference, amount: formatNumber(withdrawal.amount), phone: withdrawal.phone }),
       confirmLabel: t('Recréditer'), danger: true,
     });
     if (!ok) return;
@@ -338,7 +338,7 @@ export default function AdminOwners() {
                         <strong>{formatNumber(w.amount)} F</strong>
                         <span className={w.status === 'paid' ? 'badge-success' : 'badge-error'}>{w.status === 'paid' ? t('Viré') : t('Refusé')}</span>
                         {w.status === 'paid' && (
-                          <button disabled={busy} onClick={() => refundWithdrawal(w)}
+                          <button disabled={busy} onClick={() => refundWithdrawal(w)} title={t('Compenser : recrédite le solde interne sans rappeler le virement externe')}
                             className="text-error font-label-sm text-label-sm font-semibold hover:underline">{t('Recréditer')}</button>
                         )}
                       </span>

@@ -296,7 +296,11 @@ class WithdrawalRequestViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def refund(self, request, pk=None):
-        """Admin : annule un retrait déjà payé — recrédite le solde utilisateur."""
+        """Admin : recrédite le solde interne après un retrait payé.
+
+        Ce n'est PAS un retour d'argent — le virement externe n'est pas
+        rappelé (impossible chez MTN/Orange). Réservé aux virements échoués
+        côté opérateur ou faits par erreur : la plateforme compense la perte."""
         from apps.users.models import User
         if request.user.role != 'ADMIN':
             raise PermissionDenied('Traitement réservé à l\u2019administration.')
@@ -315,9 +319,9 @@ class WithdrawalRequestViewSet(viewsets.ModelViewSet):
             WalletTransaction.objects.create(
                 user=user, kind='refund', amount=withdrawal.amount, balance_after=user.balance,
                 reference=withdrawal.reference, note='Retrait annulé par l\u2019administration — montant recrédité')
-        _notify(withdrawal.user, 'Retrait annulé',
-                f'Votre retrait {withdrawal.reference} de {withdrawal.amount:.0f} FCFA a été annulé '
-                f'et recrédité sur votre solde. {withdrawal.admin_note}')
+        _notify(withdrawal.user, 'Retrait compensé',
+                f'Votre retrait {withdrawal.reference} de {withdrawal.amount:.0f} FCFA a été recrédité '
+                f'sur votre solde par l\u2019administration. {withdrawal.admin_note}')
         return Response(self.get_serializer(withdrawal).data)
 
     @action(detail=True, methods=['post'])
