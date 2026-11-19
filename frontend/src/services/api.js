@@ -305,8 +305,11 @@ export const affiliatesAPI = {
   agents: (params) => api.get('/affiliates/agents/', { params }),
   createAgent: (payload) => api.post('/affiliates/agents/', payload),
   updateAgent: (id, payload) => api.patch(`/affiliates/agents/${id}/`, payload),
+  agent: (id) => api.get(`/affiliates/agents/${id}/`),
+  agentReferrals: (id, params) => api.get(`/affiliates/agents/${id}/referrals/`, { params }),
   payouts: (params) => api.get('/affiliates/payouts/', { params }),
   createPayout: (payload) => api.post('/affiliates/payouts/', payload),
+  deletePayout: (id) => api.delete(`/affiliates/payouts/${id}/`),
 };
 
 export default api;

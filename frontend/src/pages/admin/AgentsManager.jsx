@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Tag, Plus, CheckCircle, XCircle, TrendingUp, DollarSign, Users, Copy, Link2, ToggleLeft, ToggleRight, Search, Loader, Wallet, Eye, Pencil } from 'lucide-react';
 import AdminLayout from '../../components/admindash/AdminLayout';
 import StatCard from '../../components/StatCard';
 import FilterField from '../../components/FilterField';
-import api, { affiliatesAPI } from '../../services/api';
+import { affiliatesAPI } from '../../services/api';
 
 const TYPE_COLORS = {
   'Influenceur': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
@@ -15,6 +16,7 @@ const TYPE_COLORS = {
 const CITIES = ['Douala', 'Yaoundé', 'Bafoussam', 'Bamenda', 'Buea', 'Garoua', 'Kribi', 'Maroua'];
 
 export default function AgentsManager() {
+  const navigate = useNavigate();
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -22,9 +24,6 @@ export default function AgentsManager() {
   const [newAgent, setNewAgent] = useState({ name: '', agent_type: 'Influenceur', phone: '', city: 'Douala', rate: 5 });
   const [paying, setPaying] = useState(null);   // agent → modale versement
   const [payForm, setPayForm] = useState({ amount: '', note: '' });
-  const [detail, setDetail] = useState(null);   // agent → modale détail
-  const [detailData, setDetailData] = useState(null);
-  const [payouts, setPayouts] = useState([]);
   const [editing, setEditing] = useState(null); // agent → modale édition
   const [editForm, setEditForm] = useState({});
   const [copied, setCopied] = useState(null);
@@ -69,18 +68,6 @@ export default function AgentsManager() {
   };
 
   const openPayout = (a) => { setPaying(a); setPayForm({ amount: '', note: '' }); setError(''); };
-
-  const openDetail = async (a) => {
-    setDetail(a); setDetailData(null); setPayouts([]);
-    try {
-      const [d, p] = await Promise.all([
-        api.get(`/affiliates/agents/${a.id}/`),
-        affiliatesAPI.payouts({ agent: a.id }),
-      ]);
-      setDetailData(d.data);
-      setPayouts(p.data.results || p.data);
-    } catch (_) { setDetailData(a); }
-  };
 
   const openEdit = (a) => {
     setEditing(a); setError('');
@@ -220,7 +207,7 @@ export default function AgentsManager() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => openDetail(a)} title="Voir le détail"
+                        <button onClick={() => navigate(`/admin/agents/${a.id}`)} title="Voir le détail"
                           className="text-slate-400 hover:text-primary-600 transition-colors">
                           <Eye size={17} />
                         </button>
@@ -342,60 +329,6 @@ export default function AgentsManager() {
         )}
 
         {/* Detail modal */}
-        {detail && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
-                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2"><Tag size={18} /> {detail.name}</h3>
-                <button onClick={() => setDetail(null)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><XCircle size={18} /></button>
-              </div>
-              <div className="p-5 space-y-4 text-sm">
-                {!detailData ? <p className="text-center text-slate-400 py-4"><Loader size={16} className="animate-spin mx-auto" /></p> : (<>
-                  <div className="bg-slate-50 rounded-xl p-4 space-y-1">
-                    <p><span className="text-slate-500">Code :</span> <code className="font-bold text-primary-700">{detailData.code}</code></p>
-                    <p><span className="text-slate-500">Type :</span> {detailData.agent_type || '—'} · <span className="text-slate-500">Ville :</span> {detailData.city}</p>
-                    <p><span className="text-slate-500">Téléphone :</span> {detailData.phone || '—'} · <span className="text-slate-500">Taux :</span> {ratePct(detailData)}%</p>
-                    <p><span className="text-slate-500">Statut :</span> {detailData.is_active ? 'Actif' : 'Inactif'} · <span className="text-slate-500">Créé le :</span> {detailData.created_at?.slice(0, 10)}</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-emerald-50 rounded-xl p-3"><span className="text-slate-500">Conversions</span><p className="font-black text-emerald-700 text-lg">{detailData.conversions ?? 0}</p></div>
-                    <div className="bg-violet-50 rounded-xl p-3"><span className="text-slate-500">CA filleuls</span><p className="font-black text-violet-700 text-lg">{fmt(detailData.generated_revenue)} F</p></div>
-                    <div className="bg-amber-50 rounded-xl p-3"><span className="text-slate-500">Commission due</span><p className="font-black text-amber-700 text-lg">{fmt(detailData.commission_due)} F</p></div>
-                    <div className="bg-slate-50 rounded-xl p-3"><span className="text-slate-500">Déjà versé</span><p className="font-black text-slate-700 text-lg">{fmt(detailData.payouts_total)} F</p></div>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-slate-800 mb-2">Filleuls ({detailData.referrals_count ?? 0})</h4>
-                    {(detailData.referred_clients || []).length === 0
-                      ? <p className="text-slate-400 text-xs">Aucun client inscrit avec ce code.</p>
-                      : <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                          {detailData.referred_clients.map(c => (
-                            <div key={c.id} className="flex justify-between bg-slate-50 rounded-lg px-3 py-2">
-                              <span className="font-medium">{c.name}</span>
-                              <span className="text-xs text-slate-400">{c.since?.slice(0, 10)}</span>
-                            </div>
-                          ))}
-                        </div>}
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-slate-800 mb-2">Versements ({payouts.length})</h4>
-                    {payouts.length === 0
-                      ? <p className="text-slate-400 text-xs">Aucun versement enregistré.</p>
-                      : <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                          {payouts.map(p => (
-                            <div key={p.id} className="flex justify-between bg-slate-50 rounded-lg px-3 py-2">
-                              <span className="font-bold text-orange-600">{fmt(p.amount)} F</span>
-                              <span className="text-xs text-slate-400">{p.paid_at?.slice(0, 10)} · {p.note || p.paid_by_name || ''}</span>
-                            </div>
-                          ))}
-                        </div>}
-                  </div>
-                </>)}
-              </div>
-              <div className="p-5 border-t border-slate-100 dark:border-slate-700"><button onClick={() => setDetail(null)} className="btn-outline w-full">Fermer</button></div>
-            </div>
-          </div>
-        )}
-
         {/* Edit modal */}
         {editing && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">

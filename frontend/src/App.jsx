@@ -48,6 +48,7 @@ import AdminKyc from './pages/admin/AdminKyc';
 import ControllerDashboard from './pages/controller/ControllerDashboard';
 import CatalogManager from './pages/admin/CatalogManager';
 import AgentsManager from './pages/admin/AgentsManager';
+import AgentDetail from './pages/admin/AgentDetail';
 import Profile from './pages/Profile';
 import OP from './design/owner_profile';
 import Settings from './pages/Settings';
@@ -182,6 +183,7 @@ function AppRoutes() {
       <Route path="/admin/users" element={<Guard roles={['ADMIN']}><ManageUsers /></Guard>} />
       <Route path="/admin/catalog" element={<Guard roles={['ADMIN']}><CatalogManager /></Guard>} />
       <Route path="/admin/agents" element={<Guard roles={['ADMIN']}><AgentsManager /></Guard>} />
+      <Route path="/admin/agents/:id" element={<Guard roles={['ADMIN']}><AgentDetail /></Guard>} />
       <Route path="/admin/settings" element={<Guard roles={['ADMIN']}><AdminSettings /></Guard>} />
 
       <Route path="/controller/dashboard" element={<Guard roles={['ADMIN', 'CONTROLLER']}><ControllerDashboard /></Guard>} />

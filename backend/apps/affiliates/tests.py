@@ -92,3 +92,57 @@ class AffiliateWorkflowTests(APITestCase):
         self.assertEqual(self.client.post('/api/affiliates/payouts/', {
             'agent': 999, 'amount': '1.00',
         }, format='json').status_code, 403)
+
+    def _agent_with_referral(self):
+        agent = Agent.objects.create(
+            name='Agent filleuls', city='Douala', commission_rate=Decimal('0.10'))
+        client = User.objects.create_user(
+            username='filleul', email='filleul@test.cm', password='x',
+            first_name='Brice', last_name='Mballa', phone='+237600001')
+        AgentReferral.objects.create(agent=agent, referred_user=client)
+        owner = User.objects.create_user(
+            username='ref-owner', email='ref-owner@test.cm', password='x', role='OWNER')
+        vehicle = make_vehicle(owner, plate='RF-001-AA')
+        Booking.objects.create(
+            client=client, vehicle=vehicle, status='completed',
+            start_date=date.today(), end_date=date.today() + timedelta(days=2),
+            daily_rate=Decimal('15000'), days=2, subtotal=Decimal('30000'),
+            commission_amount=Decimal('4500'), owner_amount=Decimal('25500'))
+        return agent, client
+
+    def test_agent_referrals_endpoint_lists_stats(self):
+        agent, client = self._agent_with_referral()
+        # Un second filleul sans location
+        other = User.objects.create_user(
+            username='filleul2', email='filleul2@test.cm', password='x')
+        AgentReferral.objects.create(agent=agent, referred_user=other)
+
+        self.client.force_authenticate(self.admin)
+        res = self.client.get(f'/api/affiliates/agents/{agent.pk}/referrals/')
+        self.assertEqual(res.status_code, 200, res.data)
+        rows = res.data['results'] if 'results' in res.data else res.data
+        self.assertEqual(len(rows), 2)
+        first = next(r for r in rows if r['email'] == 'filleul@test.cm')
+        self.assertEqual(first['completed_bookings'], 1)
+        self.assertEqual(Decimal(str(first['generated_revenue'])), Decimal('30000.00'))
+        second = next(r for r in rows if r['email'] == 'filleul2@test.cm')
+        self.assertEqual(second['completed_bookings'], 0)
+        # Recherche
+        res = self.client.get(f'/api/affiliates/agents/{agent.pk}/referrals/', {'q': 'Brice'})
+        rows = res.data['results'] if 'results' in res.data else res.data
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['user_id'], client.pk)
+
+    def test_payout_can_be_deleted_to_recredit_commission(self):
+        agent, _ = self._agent_with_referral()
+        self.client.force_authenticate(self.admin)
+        payout = self.client.post('/api/affiliates/payouts/', {
+            'agent': agent.pk, 'amount': '2000.00', 'note': 'Erreur',
+        }, format='json')
+        self.assertEqual(payout.status_code, 201, payout.data)
+        agent.refresh_from_db()
+        self.assertEqual(agent.commission_due, Decimal('1000.00'))
+        res = self.client.delete(f"/api/affiliates/payouts/{payout.data['id']}/")
+        self.assertEqual(res.status_code, 204)
+        agent.refresh_from_db()
+        self.assertEqual(agent.commission_due, Decimal('3000.00'))

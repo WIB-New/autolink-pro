@@ -26,6 +26,44 @@ class AgentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Agent.objects.all()
 
+    @action(detail=True, methods=['get'])
+    def referrals(self, request, pk=None):
+        """Filleuls rattachés à l'agent — paginé, recherche nom/email,
+        avec leurs stats de locations complétées (CA attribué à l'agent)."""
+        from django.db.models import Count, Q, Sum
+        from apps.bookings.models import Booking
+        agent = self.get_object()
+        qs = agent.referrals.select_related('referred_user').order_by('-created_at')
+        # 'search' est réservé au SearchFilter (il filtrerait les agents → 404).
+        search = request.query_params.get('q', '').strip()
+        if search:
+            qs = qs.filter(
+                Q(referred_user__first_name__icontains=search) |
+                Q(referred_user__last_name__icontains=search) |
+                Q(referred_user__email__icontains=search) |
+                Q(referred_user__username__icontains=search))
+        page = self.paginate_queryset(qs)
+        rows = list(page) if page is not None else list(qs)
+        stats = {
+            s['client']: s for s in Booking.objects
+                .filter(client_id__in=[r.referred_user_id for r in rows], status='completed')
+                .values('client')
+                .annotate(n=Count('id'), total=Sum('subtotal'))
+        }
+        data = [{
+            'user_id': r.referred_user_id,
+            'name': r.referred_user.get_full_name() or r.referred_user.username,
+            'email': r.referred_user.email,
+            'phone': r.referred_user.phone,
+            'city': r.referred_user.city,
+            'since': r.created_at,
+            'completed_bookings': stats.get(r.referred_user_id, {}).get('n', 0),
+            'generated_revenue': stats.get(r.referred_user_id, {}).get('total') or 0,
+        } for r in rows]
+        if page is not None:
+            return self.get_paginated_response(data)
+        return Response(data)
+
 
 class AgentPayoutViewSet(viewsets.ModelViewSet):
     serializer_class = AgentPayoutSerializer
@@ -35,7 +73,7 @@ class AgentPayoutViewSet(viewsets.ModelViewSet):
     search_fields = ['agent__code', 'agent__name', 'note', 'paid_by__email']
     ordering_fields = ['paid_at', 'amount', 'agent__code']
     ordering = ['-paid_at']
-    http_method_names = ['get', 'post', 'head', 'options']
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def get_queryset(self):
         qs = AgentPayout.objects.select_related('agent', 'paid_by').all()
