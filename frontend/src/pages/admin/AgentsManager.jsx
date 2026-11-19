@@ -155,7 +155,7 @@ export default function AgentsManager() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard icon={Users} iconCls="bg-blue-50 text-blue-600" value={actifs.length} label="Agents actifs" />
           <StatCard icon={TrendingUp} iconCls="bg-emerald-50 text-emerald-600" value={totalConversions} label="Conversions" />
-          <StatCard icon={DollarSign} iconCls="bg-violet-50 text-violet-600" value={`${(totalRevenue/1000).toFixed(0)} K`} unit="FCFA" label="CA généré" />
+          <StatCard icon={DollarSign} iconCls="bg-violet-50 text-violet-600" value={`${(totalRevenue/1000).toFixed(0)} K`} unit="FCFA" label="CA filleuls" />
           <StatCard icon={Tag} iconCls="bg-amber-50 text-amber-600" value={fmt(totalDue)} unit="F" label="Commissions dues" />
         </div>
 
@@ -177,7 +177,7 @@ export default function AgentsManager() {
             <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
                 <tr>
-                  {['Code','Agent','Type','Conversions','CA généré','Commission due','Taux','Statut','Actions'].map(h => (
+                  {['Code','Agent','Type','Conversions','CA filleuls','Commission due','Taux','Statut','Actions'].map(h => (
                     <th key={h} className="text-left text-xs font-bold text-slate-500 dark:text-slate-400 px-4 py-3 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -286,7 +286,7 @@ export default function AgentsManager() {
                   <label className="label">Taux de commission (%)</label>
                   <input type="number" className="input-field" min={1} max={100} value={newAgent.rate}
                     onChange={e => setNewAgent(f => ({ ...f, rate: Number(e.target.value) }))} />
-                  <p className="text-xs text-slate-500 mt-1">Versée sur les réservations complétées des filleuls de cet agent</p>
+                  <p className="text-xs text-slate-500 mt-1">Commission = taux × montant des locations terminées par les filleuls de l'agent</p>
                 </div>
                 {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl p-3">{error}</p>}
               </div>
@@ -313,7 +313,7 @@ export default function AgentsManager() {
                 <div className="bg-slate-50 rounded-xl p-4 text-sm space-y-1">
                   <p><span className="text-slate-500">Agent :</span> <strong>{paying.name}</strong> ({paying.code})</p>
                   <p><span className="text-slate-500">Commission due :</span> <strong className="text-orange-600">{fmt(paying.commission_due)} F</strong></p>
-                  <p><span className="text-slate-500">Déjà versé :</span> {fmt(paying.payouts_total)} F · CA généré : {fmt(paying.generated_revenue)} F</p>
+                  <p><span className="text-slate-500">Déjà versé :</span> {fmt(paying.payouts_total)} F · CA filleuls : {fmt(paying.generated_revenue)} F</p>
                 </div>
                 <div>
                   <label className="label">Montant à verser (FCFA)</label>
@@ -359,7 +359,7 @@ export default function AgentsManager() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-emerald-50 rounded-xl p-3"><span className="text-slate-500">Conversions</span><p className="font-black text-emerald-700 text-lg">{detailData.conversions ?? 0}</p></div>
-                    <div className="bg-violet-50 rounded-xl p-3"><span className="text-slate-500">CA généré</span><p className="font-black text-violet-700 text-lg">{fmt(detailData.generated_revenue)} F</p></div>
+                    <div className="bg-violet-50 rounded-xl p-3"><span className="text-slate-500">CA filleuls</span><p className="font-black text-violet-700 text-lg">{fmt(detailData.generated_revenue)} F</p></div>
                     <div className="bg-amber-50 rounded-xl p-3"><span className="text-slate-500">Commission due</span><p className="font-black text-amber-700 text-lg">{fmt(detailData.commission_due)} F</p></div>
                     <div className="bg-slate-50 rounded-xl p-3"><span className="text-slate-500">Déjà versé</span><p className="font-black text-slate-700 text-lg">{fmt(detailData.payouts_total)} F</p></div>
                   </div>
