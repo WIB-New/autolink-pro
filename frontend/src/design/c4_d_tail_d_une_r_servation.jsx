@@ -457,13 +457,22 @@ export default function C4DetailReservation() {
       } else if (t.includes('médiation') || t.includes('Signaler un litige')) {
         e.preventDefault();
         import('../services/api').then(({ messagingAPI }) => {
-          // Litige enregistre cote reservation + conversation client <-> admins
-          bookingsAPI.dispute(id, 'Litige ouvert via la page de réservation').catch(() => {});
-          messagingAPI.open({ support: true, subject: `Litige BK-${String(id).padStart(4, '0')} — ${b?.vehicle_name || ''}` })
-            .then(({ data: conv }) => {
-              const info = `Litige ouvert sur la réservation BK-${String(id).padStart(4, '0')}\nVéhicule : ${b?.vehicle_name || ''} (${b?.vehicle_plate || ''})\nStatut : ${b?.status || ''}\nPériode : ${b?.start_date || ''} → ${b?.end_date || ''}\nMontant : ${b?.subtotal || 0} FCFA\nCaution : ${b?.deposit_amount || 0} FCFA`;
-              messagingAPI.send(conv.id, { content: info }).finally(() => { window.location.href = `/messages?conv=${conv.id}`; });
-            }).catch(() => { window.location.href = '/messages'; });
+          // 1) Le litige est d'abord enregistré sur la réservation (statut
+          //    disputed + caution gelée) — sinon rien n'apparaît côté admin.
+          // 2) Puis seulement la conversation client <-> admins est ouverte.
+          bookingsAPI.dispute(id, 'Litige ouvert via la page de réservation')
+            .then(() => {
+              messagingAPI.open({ support: true, subject: `Litige BK-${String(id).padStart(4, '0')} — ${b?.vehicle_name || ''}` })
+                .then(({ data: conv }) => {
+                  const info = `Litige ouvert sur la réservation BK-${String(id).padStart(4, '0')}\nVéhicule : ${b?.vehicle_name || ''} (${b?.vehicle_plate || ''})\nStatut : ${b?.status || ''}\nPériode : ${b?.start_date || ''} → ${b?.end_date || ''}\nMontant : ${b?.subtotal || 0} FCFA\nCaution : ${b?.deposit_amount || 0} FCFA`;
+                  messagingAPI.send(conv.id, { content: info }).finally(() => { window.location.href = `/messages?conv=${conv.id}`; });
+                })
+                .catch(() => { window.location.href = '/messages'; });
+            })
+            .catch((err) => {
+              const d = err?.response?.data || {};
+              alert(d.status?.[0] || d.detail || 'Impossible d\'ouvrir un litige sur cette réservation.');
+            });
         });
         return;
       }
@@ -628,6 +637,14 @@ ${drvName ? `<div class="flex items-center justify-between mt-1"><span class="fo
     // Annulation : uniquement si le statut le permet
     if (!['pending', 'confirmed'].includes(b.status)) {
       h = h.replace(/<button[^>]*>\s*<span class="material-symbols-outlined text-\[18px\]">cancel<\/span>\s*Demander l'annulation[\s\S]*?<\/button>/, '');
+    }
+    // Litige : uniquement sur réservation confirmée ou en cours ; badge si déjà ouvert
+    const disputeBtn = /<button[^>]*>\s*<span class="material-symbols-outlined text-\[18px\]">gavel<\/span>[\s\S]*?<\/button>/;
+    if (b.status === 'disputed') {
+      h = h.replace(disputeBtn,
+        '<div class="w-full py-2.5 px-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 font-label-md text-label-md font-semibold flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[18px]">gavel</span>Litige en cours d\'arbitrage par AutoLink</div>');
+    } else if (!['confirmed', 'active'].includes(b.status)) {
+      h = h.replace(disputeBtn, '');
     }
     // Bandeau modification en attente de validation proprietaire
     if (b.modification) {

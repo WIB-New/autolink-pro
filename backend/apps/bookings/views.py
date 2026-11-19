@@ -1334,7 +1334,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     def disputes(self, request):
         if request.user.role != 'ADMIN':
             raise PermissionDenied('Liste réservée à l’administration.')
-        queryset = self.get_queryset().filter(dispute_reason__gt='')
+        queryset = self.get_queryset().filter(dispute_opened_at__isnull=False)
         state = request.query_params.get('state', 'open')
         if state == 'open':
             queryset = queryset.filter(status='disputed')
