@@ -81,6 +81,7 @@ export default function RequestDetail({ b, onComplete, busy, onRefresh }) {
   const net = ownerNet(b);
   const gross = Number(b.subtotal || 0);
   const commission = Number(b.commission_amount ?? gross - net);
+  const ratePct = gross > 0 ? Math.round(commission / gross * 1000) / 10 : null;
   const started = new Date(b.start_date) <= new Date();
   const canComplete = ['confirmed', 'active'].includes(b.status) && started;
 
@@ -129,7 +130,7 @@ export default function RequestDetail({ b, onComplete, busy, onRefresh }) {
         <div className="mt-2.5 space-y-1.5 text-[11px]">
           <div className="flex justify-between text-slate-600"><span>Location ({fmt(b.daily_rate)} FCFA × {b.days || '—'} j)</span><strong>{fmt(gross)} FCFA</strong></div>
           {Number(b.discount_percent) > 0 && <div className="flex justify-between text-emerald-600"><span>Remise longue durée −{b.discount_percent} %</span><strong>incluse</strong></div>}
-          <div className="flex justify-between text-slate-600"><span>Commission AutoLink ({COMMISSION_LABEL})</span><strong className="text-red-500">− {fmt(commission)} FCFA</strong></div>
+          <div className="flex justify-between text-slate-600"><span>Commission AutoLink ({ratePct !== null ? `${ratePct} %` : COMMISSION_LABEL})</span><strong className="text-red-500">− {fmt(commission)} FCFA</strong></div>
           <div className="flex justify-between pt-2 border-t border-slate-100 font-black text-slate-900 text-sm"><span>Net propriétaire</span><span className="text-teal-600">{fmt(net)} FCFA</span></div>
           <p className="text-[10px] text-slate-400 pt-1">Versé sur votre solde à la clôture de la location.</p>
         </div>

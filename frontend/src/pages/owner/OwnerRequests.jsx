@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { OwnerLayout } from '../../components/ownerdash';
 import { RequestCard, RequestDetail } from '../../components/ownerrequests';
-import { RefreshCw, Car, ArrowUpDown } from 'lucide-react';
+import { RefreshCw, Car, ArrowUpDown, Search } from 'lucide-react';
 import FilterField from '../../components/FilterField';
 import { bookingsAPI, vehiclesAPI } from '../../services/api';
 import { ownerNet } from '../../utils/commission';
@@ -25,6 +25,7 @@ export default function OwnerRequests() {
   const [vehicles, setVehicles] = useState([]);
   const [tab, setTab] = useState('upcoming');
   const [vehicle, setVehicle] = useState('');
+  const [search, setSearch] = useState('');
   const [tri, setTri] = useState('date');
   const [selected, setSelected] = useState(null);
   const [busy, setBusy] = useState(null);
@@ -55,11 +56,14 @@ export default function OwnerRequests() {
 
   const visible = useMemo(() => {
     const t = TABS.find(x => x.id === tab);
+    const q = search.trim().toLowerCase();
     return bookings
       .filter(t.match)
       .filter(b => !vehicle || String(b.vehicle) === vehicle)
+      .filter(b => !q || [b.client_name, b.vehicle_name, b.vehicle_plate, `bk-${b.id}`, String(b.id)]
+        .some(v => String(v || '').toLowerCase().includes(q)))
       .sort(SORTS[tri]);
-  }, [bookings, tab, vehicle, tri]);
+  }, [bookings, tab, vehicle, tri, search]);
 
   const counts = useMemo(() => Object.fromEntries(TABS.map(t => [t.id, bookings.filter(t.match).length])), [bookings]);
 
@@ -85,7 +89,9 @@ export default function OwnerRequests() {
               </button>
             ))}
           </div>
-          <div className="p-4 grid sm:grid-cols-2 gap-3.5">
+          <div className="p-4 grid sm:grid-cols-3 gap-3.5">
+            <FilterField label="Recherche" icon={Search} value={search} onChange={setSearch}
+              placeholder="Client, véhicule, plaque, BK-…" />
             <FilterField label="Véhicule" icon={Car} type="select" value={vehicle} onChange={setVehicle}
               options={[{ value: '', label: 'Tous les véhicules' }, ...vehicles.map(v => ({ value: String(v.id), label: `${v.brand} ${v.model}` }))]} />
             <FilterField label="Tri" icon={ArrowUpDown} type="select" value={tri} onChange={setTri}
