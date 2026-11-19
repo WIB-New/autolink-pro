@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import AutoLinkLogo from '../AutoLinkLogo';
+import { mediaUrl } from '../../utils/media';
 import i18next from '../../i18n';
 import {
   LayoutDashboard, CalendarCheck, Car, Building2, Users, UserCheck,
@@ -166,9 +167,11 @@ export default function AdminLayout({ title, subtitle, children, badges = {}, fl
       {/* Utilisateur */}
       <div className={`p-4 border-t border-outline-variant/30 dark:border-slate-800 shrink-0 ${mini ? 'lg:px-3' : ''}`}>
         <div className={`flex items-center gap-3 ${mini ? 'lg:justify-center' : 'bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl p-3'}`}>
-          <div className="w-9 h-9 bg-teal-600 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0" title={`${firstName} ${lastName}`}>
-            {initials}
-          </div>
+          {user?.avatar
+            ? <img src={mediaUrl(user.avatar)} alt="" title={`${firstName} ${lastName}`} className="w-9 h-9 rounded-xl object-cover shrink-0" />
+            : <div className="w-9 h-9 bg-teal-600 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0" title={`${firstName} ${lastName}`}>
+                {initials}
+              </div>}
           <div className={`min-w-0 flex-1 ${mini ? 'lg:hidden' : ''}`}>
             <div className="text-[12px] font-black text-slate-900 dark:text-slate-100 truncate">{firstName} {lastName[0] || ''}{lastName ? '.' : ''}</div>
             <div className="text-[10px] text-slate-400">Super Admin</div>
@@ -286,9 +289,11 @@ export default function AdminLayout({ title, subtitle, children, badges = {}, fl
               <div className="relative">
                 <button onClick={() => setMenuOpen(o => !o)}
                   className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                  <span className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center text-white text-[11px] font-black">
-                    {initials}
-                  </span>
+                  {user?.avatar
+                    ? <img src={mediaUrl(user.avatar)} alt="" className="w-8 h-8 rounded-full object-cover" />
+                    : <span className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center text-white text-[11px] font-black">
+                        {initials}
+                      </span>}
                   <span className="hidden md:block text-left leading-tight">
                     <span className="block text-xs font-bold text-slate-800 dark:text-slate-100">{firstName} {lastName[0] || ''}{lastName ? '.' : ''}</span>
                   </span>

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import AutoLinkLogo from '../AutoLinkLogo';
+import { mediaUrl } from '../../utils/media';
 import i18next from '../../i18n';
 import {
   LayoutDashboard, Car, FileText, Wallet,
@@ -152,9 +153,11 @@ export default function OwnerLayout({ children, badges = {}, balance = null }) {
             <div className="relative">
               <button onClick={() => setMenuOpen(o => !o)}
                 className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                <span className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center text-white text-xs font-black">
-                  {firstName.charAt(0)}{lastName.charAt(0)}
-                </span>
+                {user?.avatar
+                  ? <img src={mediaUrl(user.avatar)} alt="" className="w-8 h-8 rounded-full object-cover" />
+                  : <span className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center text-white text-xs font-black">
+                      {firstName.charAt(0)}{lastName.charAt(0)}
+                    </span>}
                 <span className="hidden md:block text-left leading-tight">
                   <span className="block text-xs font-bold text-slate-800 dark:text-slate-100">{firstName} {lastName.charAt(0)}{lastName ? '.' : ''}</span>
                 </span>

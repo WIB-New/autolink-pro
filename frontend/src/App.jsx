@@ -104,7 +104,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 const RolePage = ({ yves, moko, driver }) => {
   const { user } = useAuth();
   if (user?.role === 'DRIVER') return driver || yves;
-  return user?.role === 'CLIENT' ? yves : moko;
+  if (user?.role === 'OWNER') return moko || yves;
+  return yves;
 };
 
 const Guard = ({ roles, children }) => <ProtectedRoute allowedRoles={roles}>{children}</ProtectedRoute>;
@@ -123,6 +124,9 @@ function AppRoutes() {
       <Route path="/devenir-proprietaire" element={<BecomeOwner />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/terms" element={<LegalPages />} />
+      <Route path="/privacy" element={<LegalPages />} />
+      <Route path="/cookies" element={<LegalPages />} />
 
       <Route path="/client/dashboard" element={<Guard roles={['CLIENT']}><D1 /></Guard>} />
       <Route path="/client/search" element={<Guard roles={['CLIENT']}><SearchVehicles /></Guard>} />

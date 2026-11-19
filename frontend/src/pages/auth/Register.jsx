@@ -243,8 +243,8 @@ export default function Register() {
             <input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)}
               className="mt-0.5 w-4 h-4 accent-teal-600 rounded" />
             <span className="text-xs text-slate-500 leading-relaxed">
-              J'accepte les <a href="#" className="text-teal-600 font-semibold hover:underline">Conditions Générales</a> et la{' '}
-              <a href="#" className="text-teal-600 font-semibold hover:underline">Politique de confidentialité</a> conforme à la
+              J'accepte les <a href="/terms" target="_blank" rel="noreferrer" className="text-teal-600 font-semibold hover:underline">Conditions Générales</a> et la{' '}
+              <a href="/privacy" target="_blank" rel="noreferrer" className="text-teal-600 font-semibold hover:underline">Politique de confidentialité</a> conforme à la
               loi 2010/012 régissant les données numériques au Cameroun.
             </span>
           </label>

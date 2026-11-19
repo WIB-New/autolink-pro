@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import AdminLayout from '../../components/admindash/AdminLayout';
-import { bookingsAPI } from '../../services/api';
+import { bookingsAPI, withdrawalsAPI } from '../../services/api';
 import {
   Landmark, Wallet, Download, FileText, Eye, X,
   ChevronLeft, ChevronRight, Lock, CheckCircle2, AlertTriangle, Loader, Wifi, WifiOff,
@@ -17,6 +17,7 @@ const TABS = [
   { id: 'recharge', label: 'Recharges clients' },
   { id: 'payout', label: 'Reversements bailleurs' },
   { id: 'escrow', label: 'Mouvements caution' },
+  { id: 'retrait', label: 'Retraits utilisateurs' },
 ];
 
 const TYPE_STYLE = {
@@ -24,6 +25,7 @@ const TYPE_STYLE = {
   escrow:   { l: 'Prélèvement Caution',  cls: 'bg-amber-100 text-amber-700' },
   recharge: { l: 'Recharge Portefeuille', cls: 'bg-teal-100 text-teal-700' },
   lien:     { l: 'Rétention Litige',      cls: 'bg-red-100 text-red-600' },
+  retrait:  { l: 'Retrait utilisateur',  cls: 'bg-purple-100 text-purple-700' },
 };
 const ROW_STATUS = {
   attente:   { l: 'Attente Approb.', cls: 'bg-amber-100 text-amber-700' },
@@ -31,7 +33,10 @@ const ROW_STATUS = {
   succes:    { l: 'Succès',         cls: 'bg-emerald-100 text-emerald-700' },
   transfere: { l: 'Transféré',      cls: 'bg-blue-100 text-blue-700' },
   gele:      { l: 'Gelé / Arbitrage', cls: 'bg-red-500 text-white' },
+  refuse:    { l: 'Refusé',         cls: 'bg-red-100 text-red-600' },
 };
+
+const METHOD_LABEL = { mtn: 'MTN MoMo', orange: 'Orange Money', card: 'Carte bancaire', wallet: 'Portefeuille' };
 
 /* Page « Supervision Financière & Trésorerie » — console finance admin. */
 export default function Finance() {
@@ -42,10 +47,16 @@ export default function Finance() {
   const [page, setPage] = useState(1);
   const [detail, setDetail] = useState(null);
 
+  const [withdrawals, setWithdrawals] = useState([]);
+
   const fetchAll = useCallback(async () => {
     try {
-      const res = await bookingsAPI.list({ page_size: 200 });
+      const [res, wd] = await Promise.all([
+        bookingsAPI.list({ page_size: 200 }),
+        withdrawalsAPI.list({ page_size: 200 }),
+      ]);
       setBookings(res.data.results || res.data);
+      setWithdrawals(wd.data.results || wd.data || []);
       setOnline(true);
     } catch (_) { setOnline(false); }
     setLoading(false);
@@ -60,11 +71,11 @@ export default function Finance() {
       const ref = String(b.id).padStart(4, '0');
       const commission = Number(b.commission_amount || 0) || Math.round(Number(b.subtotal || 0) * 0.15);
       const net = Number(b.owner_amount || 0) || Number(b.subtotal || 0) - commission;
-      const momo = b.id % 2 === 0 ? 'MTN MoMo' : 'Orange Money';
+      const momo = METHOD_LABEL[b.payment_method] || b.payment_method || '—';
       // Reversement bailleur
       if (['completed', 'active', 'confirmed'].includes(b.status)) {
         rows.push({ id: `REV-${ref}`, at: b.end_date || b.created_at, type: 'payout',
-          who: `BK-${ref} · Bailleur Flotte Douala`, method: momo,
+          who: `BK-${ref} · ${b.owner_name || 'Propriétaire'}`, method: momo,
           gross: net, fees: `-${fmt(commission)} FCFA (15 %)`, net,
           status: b.status === 'completed' ? 'transfere' : 'attente' });
       }
@@ -83,12 +94,21 @@ export default function Finance() {
           status: 'succes' });
       }
     });
+    // Retraits utilisateurs (demandes réelles — WalletTransaction lié par référence)
+    withdrawals.forEach((w) => {
+      rows.push({ id: w.reference, at: w.created_at, type: 'retrait',
+        who: `${w.user_name || 'Utilisateur'} · ${w.user_role === 'OWNER' ? 'Propriétaire' : w.user_role === 'DRIVER' ? 'Chauffeur' : 'Client'}`,
+        method: METHOD_LABEL[w.method] || w.method,
+        gross: Number(w.amount || 0), fees: '0 FCFA', net: Number(w.amount || 0),
+        status: w.status === 'paid' ? 'transfere' : w.status === 'rejected' ? 'refuse' : 'attente' });
+    });
     return rows.sort((a, b) => new Date(b.at) - new Date(a.at));
-  }, [bookings]);
+  }, [bookings, withdrawals]);
 
   const filtered = useMemo(() => ops.filter(r => tab === 'all' ||
     (tab === 'payout' && r.type === 'payout') ||
     (tab === 'escrow' && (r.type === 'escrow' || r.type === 'lien')) ||
+    (tab === 'retrait' && r.type === 'retrait') ||
     (tab === 'recharge' && r.type === 'recharge')), [ops, tab]);
 
   useEffect(() => { setPage(1); }, [tab]);
