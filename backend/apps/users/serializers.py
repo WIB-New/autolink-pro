@@ -268,9 +268,16 @@ class RegisterSerializer(serializers.ModelSerializer):
         ref = attrs.get('ref_code', '').strip()
         if ref:
             parrain = User.objects.filter(referral_code__iexact=ref).first()
-            if not parrain:
-                raise serializers.ValidationError({'ref_code': 'Code parrain invalide.'})
-            attrs['referred_by'] = parrain
+            if parrain:
+                attrs['referred_by'] = parrain
+            else:
+                # Le champ "code de parrainage" accepte aussi un code agent
+                # (AGT-VILLE-###) créé depuis l'espace admin.
+                from apps.affiliates.models import Agent
+                agent = Agent.objects.filter(code__iexact=ref, is_active=True).first()
+                if not agent:
+                    raise serializers.ValidationError({'ref_code': 'Code parrain ou agent invalide.'})
+                attrs['referring_agent'] = agent
         return attrs
 
     def create(self, validated_data):

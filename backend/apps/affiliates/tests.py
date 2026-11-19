@@ -35,6 +35,22 @@ class AffiliateWorkflowTests(APITestCase):
         user = User.objects.get(email='referred@example.com')
         self.assertEqual(user.agent_referral.agent, agent)
 
+    def test_agent_code_accepted_in_ref_code_field(self):
+        """Le champ parrainage du formulaire n'envoie que ref_code — un code
+        agent saisi doit être accepté et créer le lien AgentReferral."""
+        agent = Agent.objects.create(name='Agent via ref_code', city='Douala')
+        response = self.client.post('/api/users/register/', {
+            'username': 'agent-ref-user',
+            'email': 'agent-ref@example.com',
+            'first_name': 'Client', 'last_name': 'Agenté',
+            'password': 'SecurePass2026!', 'password2': 'SecurePass2026!',
+            'role': 'CLIENT',
+            'ref_code': agent.code,
+        }, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        user = User.objects.get(email='agent-ref@example.com')
+        self.assertEqual(user.agent_referral.agent, agent)
+
     def test_commission_due_decreases_after_payout(self):
         agent = Agent.objects.create(
             name='Agent test', city='Yaoundé', commission_rate=Decimal('0.10'))

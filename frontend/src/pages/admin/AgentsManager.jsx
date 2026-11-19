@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Tag, Plus, CheckCircle, XCircle, TrendingUp, DollarSign, Users, Copy, ToggleLeft, ToggleRight, Search, Loader } from 'lucide-react';
+import { Tag, Plus, CheckCircle, XCircle, TrendingUp, DollarSign, Users, Copy, ToggleLeft, ToggleRight, Search, Loader, Wallet } from 'lucide-react';
 import AdminLayout from '../../components/admindash/AdminLayout';
 import StatCard from '../../components/StatCard';
 import FilterField from '../../components/FilterField';
-import { agentsAPI } from '../../services/api';
+import { affiliatesAPI } from '../../services/api';
 
 const TYPE_COLORS = {
   'Influenceur': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
@@ -12,28 +12,24 @@ const TYPE_COLORS = {
   'Chauffeur partenaire': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
 };
 
+const CITIES = ['Douala', 'Yaoundé', 'Bafoussam', 'Bamenda', 'Buea', 'Garoua', 'Kribi', 'Maroua'];
+
 export default function AgentsManager() {
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [newAgent, setNewAgent] = useState({ name: '', type: 'Influenceur', phone: '', rate: 5 });
+  const [newAgent, setNewAgent] = useState({ name: '', agent_type: 'Influenceur', phone: '', city: 'Douala', rate: 5 });
+  const [paying, setPaying] = useState(null);   // agent → modale versement
+  const [payForm, setPayForm] = useState({ amount: '', note: '' });
   const [copied, setCopied] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-  // Charge les vrais agents depuis la DB (admin)
   const load = () => {
     setLoading(true);
-    agentsAPI.list()
-      .then(res => {
-        const list = res.data.results || res.data;
-        setAgents(list.map(a => ({
-          ...a,
-          totalAmount: Number(a.total_amount) || 0,
-          commission: Number(a.commission) || 0,
-          joined: a.created_at?.slice(0, 10) || '',
-        })));
-      })
+    affiliatesAPI.agents()
+      .then(res => setAgents(res.data.results || res.data))
       .catch(() => setAgents([]))
       .finally(() => setLoading(false));
   };
@@ -41,19 +37,46 @@ export default function AgentsManager() {
 
   const toggleAgent = async (a) => {
     try {
-      await agentsAPI.update(a.id, { active: !a.active });
-      setAgents(prev => prev.map(x => x.id === a.id ? { ...x, active: !x.active } : x));
+      await affiliatesAPI.updateAgent(a.id, { is_active: !a.is_active });
+      setAgents(prev => prev.map(x => x.id === a.id ? { ...x, is_active: !x.is_active } : x));
     } catch (_) { /* réessaie au prochain clic */ }
   };
 
   const createAgent = async () => {
     if (!newAgent.name || !newAgent.phone) return;
-    setBusy(true);
+    setBusy(true); setError('');
     try {
-      await agentsAPI.create({ name: newAgent.name, type: newAgent.type, phone: newAgent.phone, rate: Number(newAgent.rate) });
+      await affiliatesAPI.createAgent({
+        name: newAgent.name,
+        agent_type: newAgent.agent_type,
+        phone: newAgent.phone,
+        city: newAgent.city,
+        commission_rate: (Number(newAgent.rate) / 100).toFixed(4),
+      });
       load();
-      setShowCreate(false); setNewAgent({ name: '', type: 'Influenceur', phone: '', rate: 5 });
-    } catch (_) {}
+      setShowCreate(false);
+      setNewAgent({ name: '', agent_type: 'Influenceur', phone: '', city: 'Douala', rate: 5 });
+    } catch (err) {
+      const d = err?.response?.data;
+      setError(typeof d === 'string' ? d : Object.values(d || {}).flat()[0] || 'Création impossible.');
+    }
+    setBusy(false);
+  };
+
+  const openPayout = (a) => { setPaying(a); setPayForm({ amount: '', note: '' }); setError(''); };
+
+  const createPayout = async () => {
+    const amount = Number(payForm.amount);
+    if (!amount || amount <= 0) return;
+    setBusy(true); setError('');
+    try {
+      await affiliatesAPI.createPayout({ agent: paying.id, amount: amount.toFixed(2), note: payForm.note });
+      load();
+      setPaying(null);
+    } catch (err) {
+      const d = err?.response?.data;
+      setError(typeof d === 'string' ? d : Object.values(d || {}).flat()[0] || 'Versement impossible.');
+    }
     setBusy(false);
   };
 
@@ -63,15 +86,19 @@ export default function AgentsManager() {
     setTimeout(() => setCopied(null), 2000);
   };
 
+  const fmt = (v) => Number(v || 0).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
+  const ratePct = (a) => Math.round(Number(a.commission_rate || 0) * 10000) / 100;
+
   const filtered = agents.filter(a =>
     a.name.toLowerCase().includes(search.toLowerCase()) ||
     a.code.toLowerCase().includes(search.toLowerCase()) ||
-    a.type.toLowerCase().includes(search.toLowerCase())
+    (a.agent_type || '').toLowerCase().includes(search.toLowerCase())
   );
 
-  const totalConversions = agents.filter(a => a.active).reduce((s, a) => s + a.conversions, 0);
-  const totalCommissions = agents.filter(a => a.active).reduce((s, a) => s + a.commission, 0);
-  const totalAmount      = agents.filter(a => a.active).reduce((s, a) => s + a.totalAmount, 0);
+  const actifs = agents.filter(a => a.is_active);
+  const totalConversions = actifs.reduce((s, a) => s + (a.conversions || 0), 0);
+  const totalRevenue     = actifs.reduce((s, a) => s + Number(a.generated_revenue || 0), 0);
+  const totalDue         = actifs.reduce((s, a) => s + Number(a.commission_due || 0), 0);
 
   return (
     <AdminLayout title="Agents et Parrainage" subtitle="Parrainage & commissions">
@@ -79,10 +106,10 @@ export default function AgentsManager() {
 
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard icon={Users} iconCls="bg-blue-50 text-blue-600" value={agents.filter(a=>a.active).length} label="Agents actifs" />
+          <StatCard icon={Users} iconCls="bg-blue-50 text-blue-600" value={actifs.length} label="Agents actifs" />
           <StatCard icon={TrendingUp} iconCls="bg-emerald-50 text-emerald-600" value={totalConversions} label="Conversions" />
-          <StatCard icon={DollarSign} iconCls="bg-violet-50 text-violet-600" value={`${(totalAmount/1000).toFixed(0)} K`} unit="FCFA" label="CA généré" />
-          <StatCard icon={Tag} iconCls="bg-amber-50 text-amber-600" value={totalCommissions.toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'))} unit="F" label="Commissions dues" />
+          <StatCard icon={DollarSign} iconCls="bg-violet-50 text-violet-600" value={`${(totalRevenue/1000).toFixed(0)} K`} unit="FCFA" label="CA généré" />
+          <StatCard icon={Tag} iconCls="bg-amber-50 text-amber-600" value={fmt(totalDue)} unit="F" label="Commissions dues" />
         </div>
 
         {/* Header */}
@@ -90,7 +117,7 @@ export default function AgentsManager() {
           <div className="flex-1 min-w-52">
             <FilterField label="Recherche" icon={Search} value={search} onChange={setSearch} placeholder="Agent ou code…" />
           </div>
-          <button onClick={() => setShowCreate(true)}
+          <button onClick={() => { setShowCreate(true); setError(''); }}
             className="btn-primary flex items-center gap-2 py-2.5 px-5">
             <Plus size={18} /> Créer un code agent
           </button>
@@ -114,41 +141,43 @@ export default function AgentsManager() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <code className="text-xs font-bold text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-2 py-1 rounded">{a.code}</code>
-                        <button onClick={() => copyCode(a.code)} className="text-slate-400 hover:text-primary-600 transition-colors">
+                        <button onClick={() => copyCode(a.code)} title="Copier le code" className="text-slate-400 hover:text-primary-600 transition-colors">
                           {copied === a.code ? <CheckCircle size={13} className="text-emerald-500" /> : <Copy size={13} />}
                         </button>
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-semibold text-slate-900 dark:text-white text-sm">{a.name}</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">{a.phone}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{a.phone}{a.city ? ` · ${a.city}` : ''}</div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[a.type] || 'bg-slate-100 text-slate-600'}`}>{a.type}</span>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[a.agent_type] || 'bg-slate-100 text-slate-600'}`}>{a.agent_type || '—'}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-bold text-slate-900 dark:text-white">{a.conversions}</span>
+                      <span className="font-bold text-slate-900 dark:text-white">{a.conversions ?? 0}</span>
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
-                      {a.totalAmount.toLocaleString()} F
+                      {fmt(a.generated_revenue)} F
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-bold text-orange-600">{a.commission.toLocaleString()} F</span>
+                      <span className="font-bold text-orange-600">{fmt(a.commission_due)} F</span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{a.rate} %</td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{ratePct(a)} %</td>
                     <td className="px-4 py-3">
-                      {a.active
+                      {a.is_active
                         ? <span className="flex items-center gap-1 text-xs font-bold text-emerald-600"><CheckCircle size={13} /> Actif</span>
                         : <span className="flex items-center gap-1 text-xs font-bold text-red-500"><XCircle size={13} /> Inactif</span>}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => toggleAgent(a)} title={a.active ? 'Désactiver' : 'Activer'}
+                        <button onClick={() => toggleAgent(a)} title={a.is_active ? 'Désactiver' : 'Activer'}
                           className="text-slate-400 hover:text-primary-600 transition-colors">
-                          {a.active ? <ToggleRight size={20} className="text-emerald-500" /> : <ToggleLeft size={20} />}
+                          {a.is_active ? <ToggleRight size={20} className="text-emerald-500" /> : <ToggleLeft size={20} />}
                         </button>
-                        <button className="text-xs bg-primary-600 text-white px-3 py-1.5 rounded-lg hover:bg-primary-700 transition-colors font-semibold">
-                          Verser
+                        <button onClick={() => openPayout(a)} disabled={Number(a.commission_due) <= 0}
+                          title={Number(a.commission_due) > 0 ? 'Verser la commission' : 'Aucune commission due'}
+                          className="text-xs bg-primary-600 text-white px-3 py-1.5 rounded-lg hover:bg-primary-700 transition-colors font-semibold disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1">
+                          <Wallet size={12} /> Verser
                         </button>
                       </div>
                     </td>
@@ -157,7 +186,7 @@ export default function AgentsManager() {
               </tbody>
             </table>
           </div>
-          {filtered.length === 0 && (
+          {filtered.length === 0 && !loading && (
             <div className="text-center py-12 text-slate-500 dark:text-slate-400">Aucun agent trouvé.</div>
           )}
         </div>
@@ -176,11 +205,19 @@ export default function AgentsManager() {
                   <input type="text" className="input-field" placeholder="Ex: Jean Nkounga"
                     value={newAgent.name} onChange={e => setNewAgent(f => ({ ...f, name: e.target.value }))} />
                 </div>
-                <div>
-                  <label className="label">Type d'agent</label>
-                  <select className="input-field" value={newAgent.type} onChange={e => setNewAgent(f => ({ ...f, type: e.target.value }))}>
-                    {Object.keys(TYPE_COLORS).map(t => <option key={t}>{t}</option>)}
-                  </select>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Type d'agent</label>
+                    <select className="input-field" value={newAgent.agent_type} onChange={e => setNewAgent(f => ({ ...f, agent_type: e.target.value }))}>
+                      {Object.keys(TYPE_COLORS).map(t => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Ville</label>
+                    <select className="input-field" value={newAgent.city} onChange={e => setNewAgent(f => ({ ...f, city: e.target.value }))}>
+                      {CITIES.map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <label className="label">Numéro de téléphone (+237)</label>
@@ -189,16 +226,57 @@ export default function AgentsManager() {
                 </div>
                 <div>
                   <label className="label">Taux de commission (%)</label>
-                  <input type="number" className="input-field" min={1} max={15} value={newAgent.rate}
+                  <input type="number" className="input-field" min={1} max={100} value={newAgent.rate}
                     onChange={e => setNewAgent(f => ({ ...f, rate: Number(e.target.value) }))} />
-                  <p className="text-xs text-slate-500 mt-1">Prélevé sur la part AutoLink — transparent pour le gestionnaire</p>
+                  <p className="text-xs text-slate-500 mt-1">Versée sur les réservations complétées des filleuls de cet agent</p>
                 </div>
+                {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl p-3">{error}</p>}
               </div>
               <div className="p-5 border-t border-slate-100 dark:border-slate-700 flex gap-3">
                 <button onClick={() => setShowCreate(false)} className="btn-outline flex-1 py-3">Annuler</button>
                 <button onClick={createAgent} disabled={busy || !newAgent.name || !newAgent.phone}
                   className="btn-primary flex-1 py-3 flex items-center justify-center gap-2 disabled:opacity-50">
                   {busy ? <Loader size={16} className="animate-spin" /> : <Plus size={16} />} Créer le code
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Payout modal */}
+        {paying && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
+              <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
+                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2"><Wallet size={18} /> Verser la commission</h3>
+                <button onClick={() => setPaying(null)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><XCircle size={18} /></button>
+              </div>
+              <div className="p-5 space-y-4">
+                <div className="bg-slate-50 rounded-xl p-4 text-sm space-y-1">
+                  <p><span className="text-slate-500">Agent :</span> <strong>{paying.name}</strong> ({paying.code})</p>
+                  <p><span className="text-slate-500">Commission due :</span> <strong className="text-orange-600">{fmt(paying.commission_due)} F</strong></p>
+                  <p><span className="text-slate-500">Déjà versé :</span> {fmt(paying.payouts_total)} F · CA généré : {fmt(paying.generated_revenue)} F</p>
+                </div>
+                <div>
+                  <label className="label">Montant à verser (FCFA)</label>
+                  <input type="number" className="input-field" min={1} max={Number(paying.commission_due)}
+                    value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
+                    placeholder={fmt(paying.commission_due)} />
+                  <button type="button" onClick={() => setPayForm(f => ({ ...f, amount: String(Math.floor(Number(paying.commission_due))) }))}
+                    className="text-xs text-primary-600 font-semibold mt-1 hover:underline">Tout verser ({fmt(paying.commission_due)} F)</button>
+                </div>
+                <div>
+                  <label className="label">Note / référence du virement</label>
+                  <input type="text" className="input-field" placeholder="Ex: MTN MoMo +237 6XX…"
+                    value={payForm.note} onChange={e => setPayForm(f => ({ ...f, note: e.target.value }))} />
+                </div>
+                {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl p-3">{error}</p>}
+              </div>
+              <div className="p-5 border-t border-slate-100 dark:border-slate-700 flex gap-3">
+                <button onClick={() => setPaying(null)} className="btn-outline flex-1 py-3">Annuler</button>
+                <button onClick={createPayout} disabled={busy || !Number(payForm.amount) || Number(payForm.amount) <= 0}
+                  className="btn-primary flex-1 py-3 flex items-center justify-center gap-2 disabled:opacity-50">
+                  {busy ? <Loader size={16} className="animate-spin" /> : <Wallet size={16} />} Confirmer le versement
                 </button>
               </div>
             </div>
