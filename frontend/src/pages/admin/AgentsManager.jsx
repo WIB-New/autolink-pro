@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tag, Plus, CheckCircle, XCircle, TrendingUp, DollarSign, Users, Copy, ToggleLeft, ToggleRight, Search, Loader, Wallet } from 'lucide-react';
+import { Tag, Plus, CheckCircle, XCircle, TrendingUp, DollarSign, Users, Copy, Link2, ToggleLeft, ToggleRight, Search, Loader, Wallet } from 'lucide-react';
 import AdminLayout from '../../components/admindash/AdminLayout';
 import StatCard from '../../components/StatCard';
 import FilterField from '../../components/FilterField';
@@ -86,6 +86,13 @@ export default function AgentsManager() {
     setTimeout(() => setCopied(null), 2000);
   };
 
+  const copyLink = (code) => {
+    const link = `${window.location.origin}/register?ref=${code}`;
+    navigator.clipboard.writeText(link);
+    setCopied(`link-${code}`);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
   const fmt = (v) => Number(v || 0).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
   const ratePct = (a) => Math.round(Number(a.commission_rate || 0) * 10000) / 100;
 
@@ -143,6 +150,9 @@ export default function AgentsManager() {
                         <code className="text-xs font-bold text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-2 py-1 rounded">{a.code}</code>
                         <button onClick={() => copyCode(a.code)} title="Copier le code" className="text-slate-400 hover:text-primary-600 transition-colors">
                           {copied === a.code ? <CheckCircle size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                        </button>
+                        <button onClick={() => copyLink(a.code)} title="Copier le lien d'inscription" className="text-slate-400 hover:text-primary-600 transition-colors">
+                          {copied === `link-${a.code}` ? <CheckCircle size={13} className="text-emerald-500" /> : <Link2 size={13} />}
                         </button>
                       </div>
                     </td>
