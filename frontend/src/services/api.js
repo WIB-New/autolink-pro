@@ -291,6 +291,8 @@ export const inspectionsAPI = {
   list: (params) => api.get('/inspections/', { params }),
   create: (payload) => api.post('/inspections/', payload, payload instanceof FormData
     ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
+  update: (id, payload) => api.patch(`/inspections/${id}/`, payload, payload instanceof FormData
+    ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
 };
 
 export const controllerVehiclesAPI = {

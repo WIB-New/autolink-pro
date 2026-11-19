@@ -76,6 +76,32 @@ class InspectionWorkflowTests(APITestCase):
         self.assertEqual(ins.photos.count(), 2)
         self.assertEqual(ins.controller, self.controller)
 
+    def test_update_inspection_resyncs_vehicle_and_appends_photos(self):
+        """Réédition d'une fiche : nouveau score/km propagés au véhicule,
+        nouvelles photos ajoutées sans supprimer les anciennes."""
+        r = self.client.post('/api/inspections/', {
+            'booking': self.booking.pk, 'vehicle': self.vehicle.pk,
+            'inspection_type': 'entry', 'mileage_at_inspection': 71000,
+            'fuel_level': 60, 'condition_score': 90,
+            'checklist': {}, 'issues': [],
+        }, format='json')
+        ins_id = r.data['id']
+        r = self.client.patch(f'/api/inspections/{ins_id}/', {
+            'mileage_at_inspection': '72000',
+            'condition_score': '55',
+            'notes': 'Score revu après contre-expertise',
+            'uploaded_photos': [self._png()],
+        }, format='multipart')
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data['condition_score'], 55)
+        self.vehicle.refresh_from_db()
+        self.assertEqual(self.vehicle.condition_score, 55)
+        self.assertEqual(self.vehicle.mileage, 72000)
+        from apps.inspections.models import VehicleInspection
+        ins = VehicleInspection.objects.get(pk=ins_id)
+        self.assertEqual(ins.notes, 'Score revu après contre-expertise')
+        self.assertEqual(ins.photos.count(), 1)
+
     def test_queue_lists_pending_and_excludes_inspected(self):
         self.booking.status = 'confirmed'
         self.booking.save(update_fields=['status'])

@@ -44,8 +44,7 @@ class VehicleInspectionViewSet(viewsets.ModelViewSet):
             return VehicleInspection.objects.select_related('booking__client', 'vehicle', 'controller').filter(booking__client=user)
         return VehicleInspection.objects.none()
 
-    def perform_create(self, serializer):
-        inspection = serializer.save(controller=self.request.user)
+    def _sync_vehicle(self, inspection):
         Vehicle.objects.filter(pk=inspection.vehicle_id).update(
             condition_score=inspection.condition_score,
             mileage=inspection.mileage_at_inspection,
@@ -53,6 +52,15 @@ class VehicleInspectionViewSet(viewsets.ModelViewSet):
             last_inspection_at=inspection.inspection_date,
             last_inspection_score=inspection.condition_score,
         )
+
+    def perform_create(self, serializer):
+        inspection = serializer.save(controller=self.request.user)
+        self._sync_vehicle(inspection)
+
+    def perform_update(self, serializer):
+        # Réédition d'une fiche : l'état courant du véhicule reflète
+        # les valeurs corrigées (kilométrage, carburant, score).
+        self._sync_vehicle(serializer.save())
 
     def _queue_items(self, inspection_type):
         today = timezone.localdate()
