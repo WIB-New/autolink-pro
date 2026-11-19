@@ -1,28 +1,52 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import DashboardLayout from '../../components/DashboardLayout';
-import { ClipboardList, CheckCircle, Clock, AlertTriangle, Car, ArrowRight, LogIn, LogOut, MapPin, User } from 'lucide-react';
+import { ClipboardList, CheckCircle, Clock, AlertTriangle, Car, ArrowRight, LogIn, LogOut, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-const TODAY_TASKS = [
-  { id: 'INS001', type: 'entry', vehicle: 'Toyota Corolla 2022', plate: 'LT-4523-A', client: 'Marie Ngo Bell', time: '08:00', location: 'Agence AutoLink — Akwa, Douala', priority: 'high' },
-  { id: 'INS003', type: 'entry', vehicle: 'BMW Série 5 2022', plate: 'CE-8810-K', client: 'Awa Mbarga', time: '10:30', location: 'Agence AutoLink — Akwa, Douala', priority: 'high' },
-  { id: 'INS002', type: 'exit', vehicle: 'Hyundai Tucson 2023', plate: 'LT-2210-G', client: 'Yves Kamga', time: '14:00', location: 'Résidence client — Bonanjo, Douala', priority: 'normal' },
-];
-
-const WEEKLY_STATS = { done: 18, pending: 3, issues: 2, avgScore: 89 };
+import { inspectionsAPI } from '../../services/api';
+import { formatDate } from '../../i18n';
 
 export default function ControllerDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [tasks, setTasks] = useState([]);
+  const [stats, setStats] = useState({ entry_pending: 0, exit_pending: 0, completed_week: 0, issues_week: 0, average_score_week: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [dash, entry, exit] = await Promise.all([
+          inspectionsAPI.dashboard(),
+          inspectionsAPI.queue({ type: 'entry' }),
+          inspectionsAPI.queue({ type: 'exit' }),
+        ]);
+        setStats(dash.data);
+        const rows = r => r.data.results ?? r.data;
+        const today = new Date().toISOString().slice(0, 10);
+        setTasks(
+          [...rows(entry), ...rows(exit)]
+            .map(t => ({ ...t, priority: (t.start_date || '') <= today ? 'high' : 'normal' }))
+            .sort((a, b) => String(a.start_date).localeCompare(String(b.start_date)))
+        );
+      } catch (e) {
+        console.error('Dashboard contrôleur:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const pendingCount = (stats.entry_pending || 0) + (stats.exit_pending || 0);
 
   return (
     <DashboardLayout title="Tableau de bord Contrôleur">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="bg-gradient-to-br from-slate-900 to-primary-900 rounded-2xl p-6 text-white">
-          <h2 className="text-2xl font-bold mb-1">Bonjour, {user?.firstName}</h2>
-          <p className="text-primary-200 mb-5">Vous avez <strong className="text-white">{TODAY_TASKS.length} inspections</strong> à effectuer aujourd'hui.</p>
+          <h2 className="text-2xl font-bold mb-1">Bonjour, {user?.firstName || user?.first_name}</h2>
+          <p className="text-primary-200 mb-5">Vous avez <strong className="text-white">{pendingCount} inspection{pendingCount > 1 ? 's' : ''}</strong> à effectuer.</p>
           <button onClick={() => navigate('/admin/inspections')} className="flex items-center gap-2 bg-white text-primary-700 font-semibold py-2.5 px-5 rounded-xl hover:bg-primary-50 transition-all shadow-md">
             <ClipboardList size={18} /> Voir toutes les inspections
           </button>
@@ -31,10 +55,10 @@ export default function ControllerDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'Faites cette semaine', value: WEEKLY_STATS.done, icon: CheckCircle, color: 'text-emerald-600 bg-emerald-50' },
-            { label: 'En attente', value: WEEKLY_STATS.pending, icon: Clock, color: 'text-amber-600 bg-amber-50' },
-            { label: 'Problèmes signalés', value: WEEKLY_STATS.issues, icon: AlertTriangle, color: 'text-red-600 bg-red-50' },
-            { label: 'Score moyen', value: `${WEEKLY_STATS.avgScore}/100`, icon: ClipboardList, color: 'text-primary-600 bg-primary-50' },
+            { label: 'Faites cette semaine', value: stats.completed_week, icon: CheckCircle, color: 'text-emerald-600 bg-emerald-50' },
+            { label: 'En attente', value: pendingCount, icon: Clock, color: 'text-amber-600 bg-amber-50' },
+            { label: 'Problèmes signalés (7 j)', value: stats.issues_week, icon: AlertTriangle, color: 'text-red-600 bg-red-50' },
+            { label: 'Score moyen', value: `${Math.round(stats.average_score_week || 0)}/100`, icon: ClipboardList, color: 'text-primary-600 bg-primary-50' },
           ].map(({ label, value, icon: Icon, color }) => (
             <div key={label} className="card">
               <div className={`w-10 h-10 ${color} rounded-xl flex items-center justify-center mb-3`}><Icon size={18} /></div>
@@ -46,25 +70,29 @@ export default function ControllerDashboard() {
 
         {/* Today's tasks */}
         <div className="card">
-          <h3 className="font-bold text-slate-900 mb-5">Programme du jour — {new Date().toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+          <h3 className="font-bold text-slate-900 mb-5">Inspections à effectuer — {new Date().toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+          {loading && <p className="text-sm text-slate-400 text-center py-6">Chargement…</p>}
+          {!loading && tasks.length === 0 && (
+            <p className="text-sm text-slate-400 text-center py-6">Aucune inspection en attente — toutes les locations couvertes sont inspectées.</p>
+          )}
           <div className="space-y-4">
-            {TODAY_TASKS.sort((a, b) => a.time.localeCompare(b.time)).map(task => (
-              <div key={task.id} className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${task.priority === 'high' ? 'border-primary-200 bg-primary-50' : 'border-slate-100 bg-white'}`}>
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${task.type === 'entry' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
-                  {task.type === 'entry' ? <LogIn size={22} /> : <LogOut size={22} />}
+            {tasks.map(task => (
+              <div key={`${task.inspection_type}-${task.id}`} className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${task.priority === 'high' ? 'border-primary-200 bg-primary-50' : 'border-slate-100 bg-white'}`}>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${task.inspection_type === 'entry' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+                  {task.inspection_type === 'entry' ? <LogIn size={22} /> : <LogOut size={22} />}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${task.type === 'entry' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                      {task.type === 'entry' ? 'ENTRÉE' : 'SORTIE'}
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${task.inspection_type === 'entry' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                      {task.inspection_type === 'entry' ? 'ENTRÉE' : 'SORTIE'}
                     </span>
                     <span className="font-semibold text-slate-900">{task.vehicle}</span>
                     {task.priority === 'high' && <span className="badge-warning">Priorité haute</span>}
                   </div>
                   <div className="text-sm text-slate-500 flex items-center gap-3 flex-wrap">
-                    <span className="inline-flex items-center gap-1"><Clock size={12} /> {task.time}</span>
+                    <span className="inline-flex items-center gap-1"><Clock size={12} /> {formatDate(task.start_date)} → {formatDate(task.end_date)}</span>
                     <span className="inline-flex items-center gap-1"><User size={12} /> {task.client}</span>
-                    <span className="inline-flex items-center gap-1"><MapPin size={12} /> {task.location}</span>
+                    <span>{task.booking_reference}</span>
                   </div>
                   <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1"><Car size={12} /> {task.plate}</div>
                 </div>
