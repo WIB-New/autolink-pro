@@ -14,11 +14,11 @@ from apps.vehicles.models import Vehicle
 # Identifiants du super admin — configurables via les variables
 # d'environnement Dokploy (ADMIN_USERNAME / ADMIN_EMAIL / ADMIN_PASSWORD).
 ADMIN_USERNAME = config('ADMIN_USERNAME', default='admin')
-ADMIN_EMAIL = config('ADMIN_EMAIL', default='wibchallenge@gmail.com')
+ADMIN_EMAIL = config('ADMIN_EMAIL', default='demo.admin@autolink.com')
 ADMIN_PASSWORD = config('ADMIN_PASSWORD', default='')
 # Mot de passe de démonstration quand ADMIN_PASSWORD n'est pas défini —
 # identifiants documentés, à changer depuis le profil admin si besoin.
-ADMIN_DEFAULT_PASSWORD = 'Admin2026!'
+ADMIN_DEFAULT_PASSWORD = 'Demo2026!'
 
 # Propriétaire de la flotte plateforme — les véhicules seedés et tous ceux
 # encore rattachés à un compte ADMIN lui sont réassignés pour que la flotte

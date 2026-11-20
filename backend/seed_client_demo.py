@@ -57,11 +57,12 @@ driver.role = 'DRIVER'; driver.is_verified = True; driver.is_active = True
 driver.set_password(PW); driver.save()
 
 admin, _ = User.objects.get_or_create(username='admin', defaults={
-    'email': 'admin@autolink.cm', 'role': 'ADMIN', 'first_name': 'Support',
+    'email': 'demo.admin@autolink.com', 'role': 'ADMIN', 'first_name': 'Support',
     'last_name': 'AutoLink', 'is_staff': True, 'is_superuser': True,
 })
 admin.role = 'ADMIN'; admin.is_staff = True; admin.is_superuser = True
-admin.is_active = True; admin.set_password(PW); admin.save()
+admin.is_active = True; admin.email = 'demo.admin@autolink.com'
+admin.set_password('Demo2026!'); admin.save()
 
 print('Users OK')
 
