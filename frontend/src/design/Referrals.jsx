@@ -10,6 +10,7 @@ export default function Referrals({ role = 'client' }) {
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
   const [copiedInv, setCopiedInv] = useState(null);
+  const [qrHint, setQrHint] = useState(false);
   const code = data?.code || '';
   const refs = data?.referred || [];
   const offerList = offers?.results || (Array.isArray(offers) ? offers : []);
@@ -33,9 +34,23 @@ export default function Referrals({ role = 'client' }) {
     } catch (_) { return true; /* annulé par l'utilisateur */ }
   };
   const share = async () => { if (!(await shareWithQr(inviteText, link))) copy(link, setShared); };
-  // Bouton WhatsApp : ouvre WhatsApp directement (app/web) — pas le panneau
-  // de partage OS, réservé au bouton « Partager ».
-  const whatsappShare = () => window.open(whatsapp, '_blank');
+  // wa.me ne transporte que du texte — impossible d'attacher le QR par URL.
+  // Mobile : le share sheet permet de viser WhatsApp avec l'image jointe.
+  // Desktop : l'image QR est copiée dans le presse-papiers — un Ctrl+V dans
+  // la conversation WhatsApp l'insère.
+  const copyQrImage = async () => {
+    try {
+      const blob = await (await fetch(qr)).blob();
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      return true;
+    } catch (_) { return false; }
+  };
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const whatsappShare = async () => {
+    if (isMobile && (await shareWithQr(inviteText, link))) return;
+    if (await copyQrImage()) { setQrHint(true); setTimeout(() => setQrHint(false), 5000); }
+    window.open(whatsapp, '_blank');
+  };
   const relaunch = async (first) => {
     const msg = `Salut ${first} ! Termine ta première location AutoLink pour débloquer ton bonus. ${link}`;
     if (!(await shareWithQr(msg, link))) {
@@ -76,6 +91,11 @@ export default function Referrals({ role = 'client' }) {
                   <Icon name="link" size={16} />Copier le lien
                 </button>
               </div>
+              {qrHint && (
+                <p className="flex items-center gap-1.5 font-label-sm text-[11px] text-primary-fixed">
+                  <Icon name="check_circle" size={14} />QR copié — collez-le (Ctrl+V) dans la conversation WhatsApp.
+                </p>
+              )}
               <div className="flex items-center gap-4 mt-1">
                 {qr && <img src={qr} alt={`QR code — ${link}`} className="w-24 h-24 rounded-xl bg-white p-1" loading="lazy" />}
                 <div className="flex flex-col gap-1">
