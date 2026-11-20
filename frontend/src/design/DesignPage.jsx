@@ -380,12 +380,23 @@ export default function DesignPage({ html, links = {}, modalHtml = null, role = 
       cleanups.push(() => customInput.removeEventListener('input', handler));
     }
 
-    // 5) Suppression de favoris + badge
+    // 5) Suppression de favoris + badge — DELETE API réel : la carte ne
+    // disparaît qu'après le 204, sinon elle reviendrait au prochain chargement.
     root.querySelectorAll('.remove-fav-btn, [data-remove-id]').forEach((btn) => {
-      on(btn, (e) => {
+      on(btn, async (e) => {
         e.stopPropagation();
         const card = btn.closest('.fav-card, article');
-        if (!card) return;
+        const id = btn.dataset.removeId || card?.dataset.cardId;
+        if (!card || !id || btn.disabled) return;
+        btn.disabled = true;
+        try {
+          const { vehiclesAPI } = await import('../services/api');
+          await vehiclesAPI.removeFavorite(id);
+        } catch (_) {
+          btn.disabled = false;
+          alert('La suppression a échoué — le véhicule reste dans vos favoris.');
+          return;
+        }
         card.style.transition = 'all .25s ease';
         card.style.opacity = '0';
         card.style.transform = 'scale(0.95)';
