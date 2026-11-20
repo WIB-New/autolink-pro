@@ -256,8 +256,11 @@ export default function C11VehiculeDetail() {
     };
     document.addEventListener('click', gate);
     document.addEventListener('click', click);
-    document.addEventListener('click', gate);
-    ['veh-date-start', 'veh-date-end', 'veh-time-start', 'veh-time-end', 'veh-driver-opt'].forEach((i) => document.getElementById(i)?.addEventListener('change', calc));
+    // 'input' en plus de 'change' : recalcul live dès la saisie (les change
+    // ne partent qu'au blur sur les <input type=time>).
+    const calcEls = ['veh-date-start', 'veh-date-end', 'veh-time-start', 'veh-time-end', 'veh-driver-opt']
+      .map((i) => document.getElementById(i)).filter(Boolean);
+    calcEls.forEach((el) => { el.addEventListener('change', calc); el.addEventListener('input', calc); });
     // Effacer le highlight des dates quand saisies
     ['veh-date-start', 'veh-date-end'].forEach((i) => document.getElementById(i)?.addEventListener('input', (e) => e.target.classList.remove('ring-2', 'ring-error')));
     // Etat favori initial
@@ -266,8 +269,14 @@ export default function C11VehiculeDetail() {
       const t = document.getElementById('veh-fav-txt'); const b = document.getElementById('veh-fav-btn');
       if (t) t.textContent = 'Retirer des favoris'; if (b) b.classList.add('bg-error-container');
     }
-    return () => document.removeEventListener('click', click);
-  }, [v, favs, rev]);
+    return () => {
+      document.removeEventListener('click', click);
+      document.removeEventListener('click', gate);
+      calcEls.forEach((el) => { el.removeEventListener('change', calc); el.removeEventListener('input', calc); });
+    };
+    // sim (véhicules similaires) DOIT être en deps : chaque rebuild du html
+    // remplace tout le DOM et détruit les listeners — il faut les rattacher.
+  }, [v, favs, rev, sim]);
 
   return <DesignPage html={html} links={{}} />;
 }
