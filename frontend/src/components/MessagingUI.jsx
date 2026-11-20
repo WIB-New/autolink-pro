@@ -85,6 +85,10 @@ export default function MessagingUI({ scope, basePath = '/messages', isAdmin = f
   const peer = activeConv ? other(activeConv) : null;
   const name = activeConv ? convName(activeConv) : '';
   const unread = convs.reduce((a, c) => a + (c.unread_count || 0), 0);
+  // scope='all' (admin) : les conversations des autres utilisateurs sont
+  // lisibles — il faut le repasser à chaque appel sinon le backend filtre
+  // sur participants=admin et renvoie 404 pour les fils où il n'est pas.
+  const scopeParams = scope === 'all' ? { scope: 'all' } : undefined;
 
   useEffect(() => {
     const wanted = Number(params.get('conv'));
@@ -94,30 +98,30 @@ export default function MessagingUI({ scope, basePath = '/messages', isAdmin = f
 
   useEffect(() => {
     if (!active) return undefined;
-    messagingAPI.messages(active)
+    messagingAPI.messages(active, scopeParams)
       .then(({ data: d }) => setMsgs(Array.isArray(d) ? d : d?.results || []))
       .catch(() => setMsgs([]));
     return undefined;
-  }, [active]);
+  }, [active, scope]); // eslint-disable-line
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs]);
 
   const refresh = () => {
     messagingAPI.conversations(scope === 'all' ? { scope: 'all' } : undefined)
       .then(({ data: d }) => setConvs(d?.results || d || [])).catch(() => {});
-    if (active) messagingAPI.messages(active).then(({ data: d }) => setMsgs(Array.isArray(d) ? d : d?.results || [])).catch(() => {});
+    if (active) messagingAPI.messages(active, scopeParams).then(({ data: d }) => setMsgs(Array.isArray(d) ? d : d?.results || [])).catch(() => {});
   };
   const send = () => {
     const content = text.trim();
     if (!content || !active) return;
-    messagingAPI.send(active, { content }).then(() => { setText(''); refresh(); }).catch(() => {});
+    messagingAPI.send(active, { content }, scopeParams).then(() => { setText(''); refresh(); }).catch(() => {});
   };
   const sendFiles = (files) => {
     if (!active || !files?.length) return;
     [...files].reduce((p, f) => p.then(() => {
       const fd = new FormData();
       fd.append('attachment', f); fd.append('content', f.name);
-      return messagingAPI.send(active, fd).catch(() => {});
+      return messagingAPI.send(active, fd, scopeParams).catch(() => {});
     }), Promise.resolve()).then(refresh);
   };
   const loadUsers = (q, r) => messagingAPI.users({ search: q, role: r }).then((res) => setUsers(res.data || [])).catch(() => setUsers([]));

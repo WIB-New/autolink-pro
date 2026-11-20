@@ -129,9 +129,11 @@ export const messagingAPI = {
   conversations: (params) => api.get('/messaging/conversations/', { params }),
   open: (payload) => api.post('/messaging/conversations/', payload),
   users: (params) => api.get('/messaging/conversations/users/', { params }),
-  messages: (id) => api.get(`/messaging/conversations/${id}/messages/`),
-  send: (id, payload) => api.post(`/messaging/conversations/${id}/messages/`, payload,
-    payload instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
+  messages: (id, params) => api.get(`/messaging/conversations/${id}/messages/`, { params }),
+  send: (id, payload, params) => api.post(`/messaging/conversations/${id}/messages/`, payload,
+    payload instanceof FormData
+      ? { headers: { 'Content-Type': 'multipart/form-data' }, params }
+      : { params }),
   unread: () => api.get('/messaging/unread/'),
 };
 

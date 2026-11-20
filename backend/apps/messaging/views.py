@@ -114,7 +114,12 @@ class ConversationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
     def messages(self, request, pk=None):
         conversation = self.get_object()
         if request.method == 'GET':
-            conversation.messages.filter(is_read=False).exclude(sender=request.user).update(is_read=True)
+            # Marquage « lu » seulement pour un participant : un admin qui
+            # consulte le fil d'autrui (scope=all) ne doit pas changer les
+            # accusés de lecture ni l'indicateur non-lu du destinataire.
+            if conversation.participants.filter(pk=request.user.pk).exists():
+                conversation.messages.filter(is_read=False).exclude(
+                    sender=request.user).update(is_read=True)
             data = MessageSerializer(conversation.messages.select_related('sender'), many=True,
                                      context={'request': request}).data
             return Response(data)
@@ -136,7 +141,9 @@ class ConversationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
     @action(detail=True, methods=['post'])
     def read(self, request, pk=None):
         conversation = self.get_object()
-        conversation.messages.filter(is_read=False).exclude(sender=request.user).update(is_read=True)
+        if conversation.participants.filter(pk=request.user.pk).exists():
+            conversation.messages.filter(is_read=False).exclude(
+                sender=request.user).update(is_read=True)
         return Response({'status': 'ok'})
 
 
