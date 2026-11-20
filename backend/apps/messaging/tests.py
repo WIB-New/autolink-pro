@@ -2,7 +2,6 @@ from datetime import date, timedelta
 from decimal import Decimal
 from rest_framework.test import APITestCase
 from apps.bookings.models import Booking
-from apps.payments.models import WithdrawalRequest
 from apps.users.models import Notification, PlatformSettings, User
 from apps.vehicles.tests import make_vehicle
 
@@ -61,10 +60,16 @@ class MessagingTests(APITestCase):
         self.assertEqual(r.status_code, 201, r.data)
         self.assertIn(self.admin.pk, [p['id'] for p in r.data['participants']])
 
-    def test_only_staff_can_open_direct_conversation(self):
+    def test_direct_conversation_open_to_all_roles(self):
+        """La composition « Nouvel échange » est disponible pour tous les rôles —
+        un client peut ouvrir une conversation directe avec un propriétaire."""
         self.client.force_authenticate(self.client_user)
         r = self.client.post('/api/messaging/conversations/', {'user': self.owner.pk}, format='json')
-        self.assertEqual(r.status_code, 403)
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertIn(self.owner.pk, [p['id'] for p in r.data['participants']])
+        # Réutilisation : un second POST renvoie la même conversation.
+        again = self.client.post('/api/messaging/conversations/', {'user': self.owner.pk}, format='json')
+        self.assertEqual(again.data['id'], r.data['id'])
 
 
 class OwnerRequestTests(APITestCase):
@@ -125,46 +130,9 @@ class OwnerRequestTests(APITestCase):
         self.assertEqual(len(r.data['monthly_series']), 6)
 
 
-class WithdrawalTests(APITestCase):
-    def setUp(self):
-        self.owner = make_user('owner3', 'OWNER', balance=Decimal('100000'))
-        self.admin = make_user('admin3', 'ADMIN')
-
-    def _request(self, amount):
-        self.client.force_authenticate(self.owner)
-        return self.client.post('/api/payments/withdrawals/', {
-            'amount': amount, 'method': 'mtn', 'phone': '237690000000'}, format='json')
-
-    def test_request_reserves_balance_and_admin_rejection_refunds(self):
-        r = self._request(40000)
-        self.assertEqual(r.status_code, 201, r.data)
-        self.owner.refresh_from_db()
-        self.assertEqual(self.owner.balance, Decimal('60000'))
-        self.client.force_authenticate(self.admin)
-        rejected = self.client.post(f'/api/payments/withdrawals/{r.data["id"]}/reject/', {'note': 'Numéro invalide'})
-        self.assertEqual(rejected.data['status'], 'rejected')
-        self.owner.refresh_from_db()
-        self.assertEqual(self.owner.balance, Decimal('100000'))
-
-    def test_admin_approval_marks_paid_once(self):
-        r = self._request(40000)
-        self.client.force_authenticate(self.admin)
-        url = f'/api/payments/withdrawals/{r.data["id"]}/approve/'
-        self.assertEqual(self.client.post(url).data['status'], 'paid')
-        self.assertEqual(self.client.post(url).status_code, 400)
-        self.owner.refresh_from_db()
-        self.assertEqual(self.owner.balance, Decimal('60000'))
-
-    def test_insufficient_balance_and_minimum(self):
-        self.assertEqual(self._request(200000).status_code, 400)
-        self.assertEqual(self._request(100).status_code, 400)
-        self.assertFalse(WithdrawalRequest.objects.exists())
-
-    def test_clients_cannot_withdraw(self):
-        self.client.force_authenticate(make_user('cli4', 'CLIENT', balance=Decimal('90000')))
-        r = self.client.post('/api/payments/withdrawals/', {
-            'amount': 10000, 'method': 'mtn', 'phone': '237690000000'}, format='json')
-        self.assertEqual(r.status_code, 403)
+# Les tests des retraits (réserve de solde, approbation, rejet + recrédit,
+# auto-approbation, plafonds min/max, remboursement admin) sont maintenus
+# dans apps/payments/tests.py::WithdrawalTests.
 
 
 class PlatformAndKycTests(APITestCase):

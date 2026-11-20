@@ -29,6 +29,32 @@ const convName = (c) => {
 };
 const other = (c) => (c.participants || [])[0] || null;
 
+/* Extensions affichables nativement par le navigateur ; tout le reste
+ * (docx, xlsx, zip…) est servi en téléchargement par le backend. */
+const PREVIEWABLE = ['.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.txt'];
+const attExt = (u) => { const n = String(u).split('?')[0]; return n.slice(n.lastIndexOf('.')).toLowerCase(); };
+const attName = (u) => decodeURIComponent(String(u).split('?')[0].split('/').pop() || 'Pièce jointe');
+const attIcon = (ext) => {
+  if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'].includes(ext)) return 'image';
+  if (ext === '.pdf') return 'picture_as_pdf';
+  if (['.doc', '.docx'].includes(ext)) return 'article';
+  if (['.xls', '.xlsx', '.csv'].includes(ext)) return 'table';
+  return 'description';
+};
+const AttachmentLink = ({ url, mine }) => {
+  const ext = attExt(url);
+  const preview = PREVIEWABLE.includes(ext);
+  return (
+    <a href={url} target={preview ? '_blank' : undefined} rel="noreferrer"
+      download={preview ? undefined : attName(url)}
+      className={`flex items-center gap-2 mt-1.5 px-2.5 py-2 rounded-xl transition-colors ${mine ? 'bg-white/15 hover:bg-white/25' : 'bg-surface-container-high hover:bg-surface-container-highest'}`}>
+      <span className="material-symbols-outlined text-[22px] shrink-0">{attIcon(ext)}</span>
+      <span className="flex-1 min-w-0 font-label-sm truncate">{attName(url)}</span>
+      <span className="material-symbols-outlined text-[16px] shrink-0 opacity-80">{preview ? 'open_in_new' : 'download'}</span>
+    </a>
+  );
+};
+
 /* UI messagerie complète (conversations, messages, pièces jointes, nouvel
  * échange) — partagée entre les espaces client, propriétaire, chauffeur et
  * admin. Le layout autour (sidebar/topbar) est laissé au composant parent.
@@ -185,7 +211,7 @@ export default function MessagingUI({ scope, basePath = '/messages', isAdmin = f
                       <div className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl shadow-sm font-body-md text-body-md ${mine ? 'bg-primary text-on-primary rounded-br-sm' : 'bg-surface-container-low text-on-surface rounded-bl-sm'}`}>
                         {!mine && <span className="block font-label-sm text-[11px] font-bold opacity-70">{m.sender_name || ''}</span>}
                         {m.content && <span className="whitespace-pre-wrap break-words">{m.content}</span>}
-                        {m.attachment && <a href={m.attachment} target="_blank" rel="noreferrer" className="block mt-1 underline font-label-sm">{String(m.attachment).split('/').pop() || 'Pièce jointe'}</a>}
+                        {m.attachment && <AttachmentLink url={m.attachment} mine={mine} />}
                         <span className={`block text-right font-label-sm text-[10px] mt-1 ${mine ? 'opacity-70' : 'text-outline'}`}>{hh(m.created_at)}</span>
                       </div>
                     </div>

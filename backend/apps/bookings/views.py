@@ -206,6 +206,8 @@ class BookingViewSet(viewsets.ModelViewSet):
         booking = self.get_object()
         if booking.client_id != request.user.id:
             raise PermissionDenied('Cette réservation ne vous appartient pas.')
+        if booking.status != 'completed':
+            raise ValidationError({'detail': "Vous pourrez noter cette location une fois terminée."})
 
         def _note(key):
             try:
