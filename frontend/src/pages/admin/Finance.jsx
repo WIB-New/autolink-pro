@@ -6,6 +6,7 @@ import {
   ChevronLeft, ChevronRight, Lock, CheckCircle2, AlertTriangle, Loader, Wifi, WifiOff,
 } from 'lucide-react';
 import StatCard from '../../components/StatCard';
+import useCommissionRate from '../../utils/useCommissionRate';
 
 const PAGE_SIZE = 8;
 const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
@@ -48,6 +49,9 @@ export default function Finance() {
   const [detail, setDetail] = useState(null);
 
   const [withdrawals, setWithdrawals] = useState([]);
+  // Taux configuré — utilisé en secours quand une résa n'a pas de
+  // commission_amount ; les libellés affichent le taux effectif réel.
+  const commissionRate = useCommissionRate();
 
   const fetchAll = useCallback(async () => {
     try {
@@ -100,14 +104,15 @@ export default function Finance() {
     const rows = [];
     bookings.forEach(b => {
       const ref = String(b.id).padStart(4, '0');
-      const commission = Number(b.commission_amount || 0) || Math.round(Number(b.subtotal || 0) * 0.15);
+      const commission = Number(b.commission_amount || 0) || Math.round(Number(b.subtotal || 0) * commissionRate);
       const net = Number(b.owner_amount || 0) || Number(b.subtotal || 0) - commission;
+      const pct = Number(b.subtotal) ? Math.round(commission / Number(b.subtotal) * 100) : Math.round(commissionRate * 100);
       const momo = METHOD_LABEL[b.payment_method] || b.payment_method || '—';
       // Reversement bailleur
       if (['completed', 'active', 'confirmed'].includes(b.status)) {
         rows.push({ id: `REV-${ref}`, at: b.end_date || b.created_at, type: 'payout',
           who: `BK-${ref} · ${b.owner_name || 'Propriétaire'}`, method: momo,
-          gross: net, fees: `-${fmt(commission)} FCFA (15 %)`, net,
+          gross: net, fees: `-${fmt(commission)} FCFA (${pct} %)`, net,
           status: b.status === 'completed' ? 'transfere' : 'attente' });
       }
       // Caution séquestre
@@ -134,7 +139,7 @@ export default function Finance() {
         status: w.status === 'paid' ? 'transfere' : w.status === 'rejected' ? 'refuse' : 'attente' });
     });
     return rows.sort((a, b) => new Date(b.at) - new Date(a.at));
-  }, [bookings, withdrawals]);
+  }, [bookings, withdrawals, commissionRate]);
 
   const filtered = useMemo(() => ops.filter(r => tab === 'all' ||
     (tab === 'payout' && r.type === 'payout') ||
@@ -148,9 +153,10 @@ export default function Finance() {
 
   /* KPIs réels */
   const gross = bookings.reduce((s, b) => s + Number(b.subtotal || 0), 0);
-  const commission = bookings.reduce((s, b) => s + (Number(b.commission_amount || 0) || Number(b.subtotal || 0) * 0.15), 0);
+  const commission = bookings.reduce((s, b) => s + (Number(b.commission_amount || 0) || Number(b.subtotal || 0) * commissionRate), 0);
+  const commissionPct = gross ? Math.round(commission / gross * 100) : Math.round(commissionRate * 100);
   const payouts = bookings.filter(b => ['completed', 'active', 'confirmed'].includes(b.status))
-    .reduce((s, b) => s + (Number(b.owner_amount || 0) || Number(b.subtotal || 0) * 0.85), 0);
+    .reduce((s, b) => s + (Number(b.owner_amount || 0) || Number(b.subtotal || 0) * (1 - commissionRate)), 0);
   const escrowActive = bookings.filter(b => b.escrow_status === 'held').reduce((s, b) => s + Number(b.deposit_amount || 0), 0);
   const escrowCount = bookings.filter(b => b.escrow_status === 'held').length;
   const escrowReleased = bookings.filter(b => ['released', 'refunded'].includes(b.escrow_status)).reduce((s, b) => s + Number(b.deposit_amount || 0), 0);
@@ -165,7 +171,7 @@ export default function Finance() {
       {/* KPIs */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <StatCard icon={Wallet} iconCls="bg-blue-50 text-blue-600" value={fmt(gross)} unit="FCFA" label="Volume brut (GMV)" />
-        <StatCard icon={Landmark} iconCls="bg-emerald-50 text-emerald-600" value={fmt(commission)} unit="FCFA" label="Commissions nettes (15 %)" />
+        <StatCard icon={Landmark} iconCls="bg-emerald-50 text-emerald-600" value={fmt(commission)} unit="FCFA" label={`Commissions nettes (${commissionPct} %)`} />
         <StatCard icon={CheckCircle2} iconCls="bg-amber-50 text-amber-600" value={fmt(payouts)} unit="FCFA" label="Reversements bailleurs" />
         <StatCard icon={Lock} iconCls="bg-red-50 text-red-600" value={fmt(escrowActive)} unit={`FCFA · ${escrowCount}`} label="Cautions séquestrées" />
       </div>

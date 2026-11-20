@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Tag, ShieldCheck } from 'lucide-react';
 import { TIERS } from '../../utils/carImages';
+import useCommissionRate from '../../utils/useCommissionRate';
 
 const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 
@@ -10,7 +11,9 @@ export default function PricingPanel({ vehicle: v, onSave }) {
   const [rate, setRate] = useState(Number(v.daily_rate) || 60000);
   const [deposit, setDeposit] = useState(Number(v.deposit_amount) || 150000);
   const [saved, setSaved] = useState(false);
-  const commission = Math.round(rate * 0.15);
+  const commissionRate = useCommissionRate();
+  const pct = Math.round(commissionRate * 100);
+  const commission = Math.round(rate * commissionRate);
   const net = rate - commission;
 
   const save = async () => {
@@ -50,8 +53,8 @@ export default function PricingPanel({ vehicle: v, onSave }) {
       </div>
 
       <div className="space-y-1.5 text-[11px] mb-4">
-        <div className="flex justify-between"><span className="text-slate-500">Net Propriétaire (85 %)</span><span className="font-black text-teal-700">{fmt(net)} FCFA</span></div>
-        <div className="flex justify-between"><span className="text-slate-500">Commission AutoLink (15 %)</span><span className="font-black text-slate-900">{fmt(commission)} FCFA</span></div>
+        <div className="flex justify-between"><span className="text-slate-500">Net Propriétaire ({100 - pct} %)</span><span className="font-black text-teal-700">{fmt(net)} FCFA</span></div>
+        <div className="flex justify-between"><span className="text-slate-500">Commission AutoLink ({pct} %)</span><span className="font-black text-slate-900">{fmt(commission)} FCFA</span></div>
       </div>
 
       <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">

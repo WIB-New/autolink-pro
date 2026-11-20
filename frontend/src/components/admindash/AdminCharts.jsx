@@ -108,7 +108,7 @@ export function TierRepartition({ vehicles = [] }) {
 }
 
 /* Carte accent « Revenus plateforme » — sparkline + commission + CTA (maquette). */
-export function PlatformRevenue({ commission = 0, grossRevenue = 0, sparkData = [] }) {
+export function PlatformRevenue({ commission = 0, grossRevenue = 0, commissionPct = 0, sparkData = [] }) {
   const navigate = useNavigate();
   return (
     <div className="bg-gradient-to-br from-teal-600 to-teal-800 rounded-2xl shadow-sm p-5 text-white flex flex-col">
@@ -133,7 +133,7 @@ export function PlatformRevenue({ commission = 0, grossRevenue = 0, sparkData = 
         {fmt(commission)} <span className="text-[11px] font-bold text-teal-100">FCFA</span>
       </div>
       <div className="text-[10px] font-semibold text-teal-100 mt-1.5 mb-4">
-        15 % prélevés sur {fmt(grossRevenue)} FCFA
+        {commissionPct} % prélevés sur {fmt(grossRevenue)} FCFA
       </div>
       <button onClick={() => navigate('/admin/finance')}
         className="mt-auto w-full flex items-center justify-center gap-1.5 bg-white text-teal-700 hover:bg-teal-50 text-[11px] font-black py-2.5 rounded-xl transition-colors">

@@ -62,6 +62,9 @@ export default function AdminDashboard() {
     bookings.reduce((s, b) => s + Number(b.subtotal || 0), 0), [bookings]);
   const commission = useMemo(() =>
     bookings.reduce((s, b) => s + Number(b.commission_amount || 0), 0), [bookings]);
+  // Taux effectif réellement prélevé — reflète les chiffres affichés même
+  // si le taux configuré a changé entre les réservations.
+  const commissionPct = grossRevenue ? Math.round((commission / grossRevenue) * 100) : 0;
   const activeFleet = vehicles.filter(v => v.status === 'approved').length;
 
   const sparkData = useMemo(() =>
@@ -101,6 +104,7 @@ export default function AdminDashboard() {
       <KpiCards
         grossRevenue={grossRevenue}
         commission={commission || (stats?.commission_total ?? 0)}
+        commissionPct={commissionPct}
         activeFleet={activeFleet}
         totalFleet={vehicles.length}
         interventions={bookings.length}
@@ -113,6 +117,7 @@ export default function AdminDashboard() {
         <RevenueChart bookings={bookings} />
         <PlatformRevenue
           commission={commission || (stats?.commission_total ?? 0)}
+          commissionPct={commissionPct}
           grossRevenue={grossRevenue}
           sparkData={sparkData}
         />

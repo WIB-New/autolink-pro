@@ -1,14 +1,18 @@
 import React from 'react';
 import { Wallet, ShieldCheck, Smartphone } from 'lucide-react';
+import useCommissionRate from '../../utils/useCommissionRate';
 
 const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 
 /* Décomposition financière — total client, commission, net bailleur, caution. */
 export default function FinancePanel({ booking: b }) {
+  const commissionRate = useCommissionRate();
   const days = b.days || Math.max(1, Math.round((new Date(b.end_date) - new Date(b.start_date)) / 86400000));
   const daily = b.daily_rate || Math.round(Number(b.subtotal || 0) / days);
-  const commission = Number(b.commission_amount || 0) || Math.round(Number(b.subtotal || 0) * 0.15);
+  const commission = Number(b.commission_amount || 0) || Math.round(Number(b.subtotal || 0) * commissionRate);
   const net = Number(b.owner_amount || 0) || Number(b.subtotal || 0) - commission;
+  // Taux effectif prélevé sur CETTE réservation (le taux peut avoir changé depuis).
+  const pct = Number(b.subtotal) ? Math.round(commission / Number(b.subtotal) * 100) : Math.round(commissionRate * 100);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
@@ -29,11 +33,11 @@ export default function FinancePanel({ booking: b }) {
       <div className="space-y-2 text-[11px] border-t border-slate-100 pt-3 mb-4">
         <div className="flex justify-between"><span className="text-slate-500">Tarif journalier : {fmt(daily)} FCFA</span><span className="font-bold text-slate-700">Durée : {days} jours</span></div>
         <div className="flex justify-between bg-amber-50 -mx-2 px-2 py-1.5 rounded-lg">
-          <span className="text-slate-600">Commission AutoLink (15 %)</span>
+          <span className="text-slate-600">Commission AutoLink ({pct} %)</span>
           <span className="font-black text-slate-900">{fmt(commission)} FCFA</span>
         </div>
         <div className="flex justify-between bg-teal-50 -mx-2 px-2 py-1.5 rounded-lg">
-          <span className="text-teal-800 font-bold">Net Bailleur Propriétaire (85 %)</span>
+          <span className="text-teal-800 font-bold">Net Bailleur Propriétaire ({100 - pct} %)</span>
           <span className="font-black text-teal-700">{fmt(net)} FCFA</span>
         </div>
       </div>
