@@ -267,7 +267,7 @@ for sender, content, read in msgs2:
         defaults=dict(is_read=read))
 # === PARRAINAGE : code + filleuls pour tester la page Parrainage ===
 if not client.referral_code:
-    client.referral_code = 'ALP-EMMANUEL-A1B2C3'
+    client.referral_code = 'ALP-A1B2C3D4'
     client.referral_credits = Decimal('15000')
     client.save(update_fields=['referral_code', 'referral_credits'])
 for uname, fname, lname, city_ in [('rachid', 'Rachid', 'Mbappé', 'Douala'), ('sandra', 'Sandra', 'Ngono', 'Yaoundé'), ('fred', 'Fred', 'Essomba', 'Douala')]:

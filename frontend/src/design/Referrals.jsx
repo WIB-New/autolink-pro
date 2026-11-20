@@ -33,7 +33,9 @@ export default function Referrals({ role = 'client' }) {
     } catch (_) { return true; /* annulé par l'utilisateur */ }
   };
   const share = async () => { if (!(await shareWithQr(inviteText, link))) copy(link, setShared); };
-  const whatsappShare = async () => { if (!(await shareWithQr(inviteText, link))) window.open(whatsapp, '_blank'); };
+  // Bouton WhatsApp : ouvre WhatsApp directement (app/web) — pas le panneau
+  // de partage OS, réservé au bouton « Partager ».
+  const whatsappShare = () => window.open(whatsapp, '_blank');
   const relaunch = async (first) => {
     const msg = `Salut ${first} ! Termine ta première location AutoLink pour débloquer ton bonus. ${link}`;
     if (!(await shareWithQr(msg, link))) {

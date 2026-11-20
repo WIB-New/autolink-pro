@@ -46,7 +46,7 @@ class User(AbstractUser):
     city = models.CharField(max_length=80, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
     address = models.TextField(blank=True)
-    referral_code = models.CharField(max_length=20, blank=True, default='')
+    referral_code = models.CharField(max_length=12, blank=True, default='')
     referred_by = models.ForeignKey(
         'self', null=True, blank=True, on_delete=models.SET_NULL, related_name='referrals')
     referral_credits = models.DecimalField(max_digits=12, decimal_places=2, default=0)
