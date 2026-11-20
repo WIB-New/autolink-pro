@@ -45,6 +45,10 @@ class ContactAPIView(APIView):
         serializer = ContactMessageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         message = serializer.save()
+        try:
+            self._relay_to_messaging(request, message)
+        except Exception:
+            logger.exception('Contact message %s not relayed to admin messaging', message.pk)
         body = (
             f"Nom : {message.last_name}\n"
             f"Prénom : {message.first_name}\n"
@@ -85,6 +89,41 @@ class ContactAPIView(APIView):
             )
         return Response({'detail': 'Votre message a bien été envoyé.'},
                         status=status.HTTP_201_CREATED)
+
+    def _relay_to_messaging(self, request, message):
+        """Fait remonter la demande dans la Messagerie admin (conversation
+        Support) — en plus de l'email vers CONTACT_EMAIL.
+
+        Utilisateur connecté : sa conversation Support est réutilisée et
+        l'admin peut lui répondre directement. Anonyme : conversation
+        réservée aux admins, portant les coordonnées du visiteur."""
+        from apps.messaging.models import Conversation, Message
+        admins = list(User.objects.filter(role='ADMIN', is_active=True))
+        if not admins:
+            return
+        user = request.user if request.user.is_authenticated else None
+        conversation = (Conversation.objects.filter(kind='support', participants=user).first()
+                        if user is not None else None)
+        if not conversation:
+            who = (user.get_full_name() or user.username) if user else \
+                f'{message.first_name} {message.last_name}'.strip() or 'Visiteur'
+            conversation = Conversation.objects.create(
+                kind='support', subject=f'Contact site — {who}')
+            conversation.participants.add(*admins, *([user] if user else []))
+        content = message.message
+        if user is None:
+            content = (f'Formulaire de contact — {message.first_name} {message.last_name}\n'
+                       f'Tél : {message.phone} · Email : {message.email or "—"}\n\n'
+                       f'{message.message}')
+        msg = Message.objects.create(
+            conversation=conversation, sender=user or admins[0], content=content)
+        conversation.save(update_fields=['updated_at'])
+        Notification.objects.bulk_create([
+            Notification(user=a, title='Demande de contact',
+                         message=f'{message.first_name} {message.last_name} : '
+                                 f'{(message.message or "")[:110]}')
+            for a in admins if a.pk != msg.sender_id
+        ])
 
 
 class SiteConfigAPIView(APIView):
