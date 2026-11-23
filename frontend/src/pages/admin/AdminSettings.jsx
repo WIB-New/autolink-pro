@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../components/admindash/AdminLayout';
 import { platformAPI, usersAPI, walletAPI } from '../../services/api';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import {
   Percent, Smartphone, Tag, MapPin, UserCog,
   CheckCircle2, Save, User,
@@ -17,13 +18,29 @@ const GATEWAYS = [
 
 const inputCls = 'bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black text-slate-900 w-full text-center focus:outline-none focus:ring-2 focus:ring-teal-500';
 
+/* Champs persistés par bloc — un PATCH ne transporte que le bloc sauvegardé. */
+const BLOCK_KEYS = {
+  commissions: ['commission_rate', 'driver_daily_fee', 'delivery_fee', 'cancel_deposit_keep_percent'],
+  gateways: ['min_withdrawal_amount', 'max_withdrawal_amount', 'withdrawal_daily_cap', 'withdrawal_auto_approve'],
+  tiers: ['pricing'],
+  agencies: ['addresses'],
+};
+const BLOCK_LABELS = {
+  commissions: 'Commissions & frais',
+  gateways: 'Passerelles & seuils de retrait',
+  tiers: 'Grille tarifaire & cautions',
+  agencies: 'Agences & points de retrait',
+};
+
 export default function AdminSettings() {
+  const confirm = useConfirm();
   const [form, setForm] = useState(null);
   const [initial, setInitial] = useState(null);
   const [configured, setConfigured] = useState([]);
   const [team, setTeam] = useState([]);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [savingBlock, setSavingBlock] = useState(null);
+  const [savedBlock, setSavedBlock] = useState(null);
+  const [errorBlock, setErrorBlock] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -34,28 +51,54 @@ export default function AdminSettings() {
       .then(([a, c]) => setTeam([...(a.data.results || a.data || []), ...(c.data.results || c.data || [])])).catch(() => {});
   }, []);
 
-  const set = (key) => (value) => { setForm((f) => ({ ...f, [key]: value })); setSaved(false); };
-  const patchPricing = (key, sub, value) => { setForm((f) => ({ ...f, pricing: { ...f.pricing, [key]: { ...(f.pricing?.[key] || {}), [sub]: Number(value) } } })); setSaved(false); };
+  const touch = () => setSavedBlock(null);
+  const set = (key) => (value) => { setForm((f) => ({ ...f, [key]: value })); touch(); };
+  const patchPricing = (key, sub, value) => { setForm((f) => ({ ...f, pricing: { ...f.pricing, [key]: { ...(f.pricing?.[key] || {}), [sub]: Number(value) } } })); touch(); };
   const patchKm = (tier, idx, value) => { setForm((f) => {
     const km = [...(f.pricing?.tier_km?.[tier] || [0, 0])];
     km[idx] = Number(value);
     return { ...f, pricing: { ...f.pricing, tier_km: { ...(f.pricing?.tier_km || {}), [tier]: km } } };
-  }); setSaved(false); };
-  const patchScalar = (key, value) => { setForm((f) => ({ ...f, pricing: { ...f.pricing, [key]: Number(value) } })); setSaved(false); };
-  const dirty = form && initial && JSON.stringify(form) !== JSON.stringify(initial);
+  }); touch(); };
+  const patchScalar = (key, value) => { setForm((f) => ({ ...f, pricing: { ...f.pricing, [key]: Number(value) } })); touch(); };
+  const blockDirty = (keys) => form && initial && keys.some((k) => JSON.stringify(form[k]) !== JSON.stringify(initial[k]));
 
-  const save = async () => {
-    setSaving(true); setError('');
-    const { tiers, pricing_overrides, updated_at: _u, ...payload } = form;
+  /* Sauvegarde un seul bloc : confirmation puis PATCH partiel. Les champs des
+     autres blocs (modifiés ou non) ne sont ni envoyés ni écrasés. */
+  const saveBlock = async (block) => {
+    const keys = BLOCK_KEYS[block];
+    if (!(await confirm({
+      title: 'Enregistrer ce bloc ?',
+      message: `Les paramètres « ${BLOCK_LABELS[block]} » seront appliqués immédiatement à la plateforme.`,
+      confirmLabel: 'Sauvegarder',
+    }))) return;
+    setSavingBlock(block); setError(''); setErrorBlock(null);
+    const payload = Object.fromEntries(keys.map((k) => [k, form[k]]));
     try {
       const { data } = await platformAPI.update(payload);
-      setForm(data); setInitial(data); setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      const merge = (prev) => {
+        const next = { ...prev, tiers: data.tiers, updated_at: data.updated_at };
+        keys.forEach((k) => { next[k] = data[k]; });
+        return next;
+      };
+      setForm(merge); setInitial(merge);
+      setSavedBlock(block);
+      setTimeout(() => setSavedBlock((b) => (b === block ? null : b)), 3000);
     } catch (e) {
       setError(Object.values(e.response?.data || {}).flat()[0] || 'Enregistrement impossible.');
+      setErrorBlock(block);
     }
-    setSaving(false);
+    setSavingBlock(null);
   };
+
+  const SaveBtn = ({ block }) => (
+    <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-slate-100">
+      {errorBlock === block && error && <span className="text-[11px] font-bold text-red-500 mr-auto">{error}</span>}
+      <button onClick={() => saveBlock(block)} disabled={!blockDirty(BLOCK_KEYS[block]) || savingBlock === block}
+        className={`flex items-center gap-1.5 text-[11px] font-black px-4 py-2 rounded-xl transition-colors disabled:opacity-40 ${savedBlock === block ? 'bg-emerald-500 text-white' : 'bg-teal-600 hover:bg-teal-700 text-white'}`}>
+        {savedBlock === block ? <><CheckCircle2 size={13} /> Sauvegardé</> : <><Save size={13} /> {savingBlock === block ? 'Enregistrement…' : 'Sauvegarder'}</>}
+      </button>
+    </div>
+  );
 
   if (!form) {
     return (
@@ -71,14 +114,7 @@ export default function AdminSettings() {
 
   return (
     <AdminLayout title="Paramètres de la plateforme" subtitle="Commissions, passerelles, tarifs & équipe">
-      {/* Action sauvegarde */}
-      <div className="flex items-center justify-end gap-3 mb-5">
-        {error && <span className="text-[11px] font-bold text-red-500">{error}</span>}
-        <button onClick={save} disabled={!dirty || saving}
-          className={`flex items-center gap-1.5 text-[11px] font-black px-4 py-2 rounded-xl transition-colors disabled:opacity-40 ${saved ? 'bg-emerald-500 text-white' : 'bg-teal-600 hover:bg-teal-700 text-white'}`}>
-          {saved ? <><CheckCircle2 size={13} /> Sauvegardé</> : <><Save size={13} /> {saving ? 'Enregistrement…' : 'Sauvegarder'}</>}
-        </button>
-      </div>
+      {error && !errorBlock && <div className="rounded-xl px-4 py-3 mb-5 bg-red-50 text-red-700 text-[11px] font-bold">{error}</div>}
 
       <div className="grid lg:grid-cols-2 gap-5 mb-5">
         {/* Commissions */}
@@ -120,6 +156,7 @@ export default function AdminSettings() {
             <div className="flex justify-between text-[11px]"><span className="text-slate-500">Chauffeur (par jour de location)</span><strong className="text-slate-900">{fmt(form.driver_daily_fee)} F/j</strong></div>
             <div className="flex justify-between text-[11px]"><span className="text-slate-500">Livraison (→ plateforme)</span><strong className="text-slate-900">{fmt(form.delivery_fee)} F</strong></div>
           </div>
+          <SaveBtn block="commissions" />
         </div>
 
         {/* Passerelles */}
@@ -169,6 +206,7 @@ export default function AdminSettings() {
             })}
           </div>
           <p className="text-[9px] text-slate-400 mt-3">État lu depuis la configuration serveur (variables d'environnement).</p>
+          <SaveBtn block="gateways" />
         </div>
       </div>
 
@@ -278,6 +316,7 @@ export default function AdminSettings() {
           <CheckCircle2 size={11} className="shrink-0 mt-0.5 text-teal-600" />
           La nouvelle grille s'applique au recalcul des tarifs conseillés : nouveaux véhicules et prochaines sauvegardes. Les tarifs affichés existants sont bornés, jamais écrasés.
         </p>
+        <SaveBtn block="tiers" />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-5">
@@ -301,6 +340,7 @@ export default function AdminSettings() {
           <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Adresses (séparées par |)</label>
           <textarea rows={2} value={form.addresses || ''} onChange={(e) => set('addresses')(e.target.value)}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-[12px] font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500" />
+          <SaveBtn block="agencies" />
         </div>
 
         {/* Équipe */}
