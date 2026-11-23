@@ -18,8 +18,6 @@ export const SIM_GAMMES = [
   { id: 'premium',  label: 'SUV — Premium',       dayPrice: 55000 },
   { id: 'gold',     label: 'Prestige — Gold',     dayPrice: 95000 },
 ];
-export { OWNER_SHARE } from '../../utils/commission';
-
 /* ── 4 étapes partenaire ─────────────────────────────── */
 export const PARTNER_STEPS = [
   { icon: PenLine,     title: 'Inscription en ligne',        desc: 'Créez votre compte propriétaire et décrivez votre véhicule en 5 minutes — photos incluses.' },

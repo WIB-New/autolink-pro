@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlusCircle, SlidersHorizontal, Car, RefreshCw } from 'lucide-react';
 import { OwnerLayout } from '../../components/ownerdash';
-import { FleetKpis, FleetToolbar, FleetCard, filterByTab } from '../../components/ownerfleet';
+import { FleetKpis, FleetToolbar, FleetCard, PricingModal, filterByTab } from '../../components/ownerfleet';
 import { vehiclesAPI, bookingsAPI } from '../../services/api';
 import { useConfirm } from '../../contexts/ConfirmContext';
 
@@ -24,6 +24,7 @@ export default function MyVehicles() {
   const [city, setCity] = useState('');
   const [sort, setSort] = useState('revenue');
   const [grid, setGrid] = useState(false);
+  const [pricingOpen, setPricingOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -90,7 +91,8 @@ export default function MyVehicles() {
             {!online && <button onClick={load} className="inline-flex items-center gap-1 text-[11px] text-red-500 font-bold"><RefreshCw size={11} /> Hors ligne</button>}
           </div>
           <div className="flex gap-3 flex-wrap">
-            <button className="flex items-center gap-2 bg-white border border-slate-200 hover:border-teal-400 hover:text-teal-700 text-slate-600 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors">
+            <button onClick={() => setPricingOpen(true)}
+              className="flex items-center gap-2 bg-white border border-slate-200 hover:border-teal-400 hover:text-teal-700 text-slate-600 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors">
               <SlidersHorizontal size={14} /> Tarification dynamique
             </button>
             <button onClick={() => navigate('/owner/add-vehicle')}
@@ -146,6 +148,10 @@ export default function MyVehicles() {
 
         {/* Upsell chauffeur */}
         {/* <DriverUpsell /> */}
+
+        {pricingOpen && (
+          <PricingModal vehicles={vehicles} onClose={() => setPricingOpen(false)} onApplied={load} />
+        )}
       </div>
     </OwnerLayout>
   );

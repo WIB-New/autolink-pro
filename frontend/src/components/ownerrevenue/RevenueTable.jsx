@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import { getVehicleImage } from '../../utils/carImages';
 
-import { COMMISSION_LABEL, ownerNet } from '../../utils/commission';
+import { ownerNet } from '../../utils/commission';
+import useCommissionRate from '../../utils/useCommissionRate';
 
 const bookingImage = (b) => b.vehicle_image || getVehicleImage('default');
 
@@ -14,11 +15,19 @@ const PAGE = 4;
 export default function RevenueTable({ bookings }) {
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
+  const commissionRate = useCommissionRate();
+  const share = 1 - commissionRate;
 
   const rows = bookings
     .filter(b => ['completed', 'active', 'confirmed'].includes(b.status))
     .filter(b => !q || `${b.client_name} ${b.vehicle_name}`.toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+
+  // Taux effectif prélevé sur les lignes affichées (les montants réels
+  // priment — le taux peut avoir varié d'une réservation à l'autre).
+  const totalSub = rows.reduce((s, b) => s + Number(b.subtotal || 0), 0);
+  const totalComm = rows.reduce((s, b) => s + (Number(b.commission_amount || 0) || Number(b.subtotal || 0) * commissionRate), 0);
+  const ratePct = totalSub ? Math.round(totalComm / totalSub * 100) : Math.round(commissionRate * 100);
 
   const pages = Math.max(1, Math.ceil(rows.length / PAGE));
   const slice = rows.slice((page - 1) * PAGE, page * PAGE);
@@ -45,7 +54,7 @@ export default function RevenueTable({ bookings }) {
               <th className="px-4 py-3">Véhicule loué</th>
               <th className="px-4 py-3">Locataire</th>
               <th className="px-4 py-3">Montant brut</th>
-              <th className="px-4 py-3">Commission ({COMMISSION_LABEL})</th>
+              <th className="px-4 py-3">Commission ({ratePct} %)</th>
               <th className="px-6 py-3 text-right">Net propriétaire</th>
             </tr>
           </thead>
@@ -74,7 +83,7 @@ export default function RevenueTable({ bookings }) {
                 </td>
                 <td className="px-4 py-4 text-[11px] font-bold text-slate-800">{fmt(b.subtotal)} FCFA</td>
                 <td className="px-4 py-4 text-[11px] font-bold text-red-500">− {fmt(b.commission_amount)} FCFA</td>
-                <td className="px-6 py-4 text-right text-[12px] font-black text-teal-700">{fmt(ownerNet(b))} FCFA</td>
+                <td className="px-6 py-4 text-right text-[12px] font-black text-teal-700">{fmt(ownerNet(b, share))} FCFA</td>
               </tr>
             ))}
           </tbody>

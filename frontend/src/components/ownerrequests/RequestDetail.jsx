@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Phone, Mail, MapPin, StickyNote, UserCheck, CheckCircle2, AlertTriangle, Clock, Star, Send } from 'lucide-react';
 import { STATUS, DRIVER_LABEL } from './RequestCard';
-import { COMMISSION_LABEL, ownerNet } from '../../utils/commission';
+import { ownerNet } from '../../utils/commission';
+import useCommissionRate from '../../utils/useCommissionRate';
 import { bookingsAPI } from '../../services/api';
 
 const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
@@ -114,6 +115,7 @@ function DisputeResponse({ b, onDone }) {
 /* Panneau droit — dossier de la réservation, décomposition financière et
    seule action propriétaire autorisée par le backend : confirmer la restitution. */
 export default function RequestDetail({ b, onComplete, busy, onRefresh }) {
+  const commissionRate = useCommissionRate();
   if (!b) return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 text-center text-slate-400 text-sm sticky top-4">
       Sélectionnez une réservation pour consulter le dossier.
@@ -176,7 +178,7 @@ export default function RequestDetail({ b, onComplete, busy, onRefresh }) {
         <div className="mt-2.5 space-y-1.5 text-[11px]">
           <div className="flex justify-between text-slate-600"><span>Location ({fmt(b.daily_rate)} FCFA × {b.days || '—'} j)</span><strong>{fmt(gross)} FCFA</strong></div>
           {Number(b.discount_percent) > 0 && <div className="flex justify-between text-emerald-600"><span>Remise longue durée −{b.discount_percent} %</span><strong>incluse</strong></div>}
-          <div className="flex justify-between text-slate-600"><span>Commission AutoLink ({ratePct !== null ? `${ratePct} %` : COMMISSION_LABEL})</span><strong className="text-red-500">− {fmt(commission)} FCFA</strong></div>
+          <div className="flex justify-between text-slate-600"><span>Commission AutoLink ({ratePct !== null ? `${ratePct} %` : `${Math.round(commissionRate * 100)} %`})</span><strong className="text-red-500">− {fmt(commission)} FCFA</strong></div>
           <div className="flex justify-between pt-2 border-t border-slate-100 font-black text-slate-900 text-sm"><span>Net propriétaire</span><span className="text-teal-600">{fmt(net)} FCFA</span></div>
           <p className="text-[10px] text-slate-400 pt-1">Versé sur votre solde à la clôture de la location.</p>
         </div>

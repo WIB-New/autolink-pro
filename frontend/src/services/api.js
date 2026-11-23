@@ -85,6 +85,7 @@ export const vehiclesAPI = {
   removeFavorite: (vehicle) => api.delete(`/vehicles/favorites/${vehicle}/`),
   reviews: (id) => api.get(`/vehicles/${id}/reviews/`),
   similar: (id) => api.get(`/vehicles/${id}/similar/`),
+  bulkPricing: (payload) => api.post('/vehicles/bulk-pricing/', payload),
 };
 
 export const adminVehiclesAPI = {

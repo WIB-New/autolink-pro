@@ -110,6 +110,34 @@ class VehicleViewSet(ModelViewSet):
         vehicle.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=False, methods=['post'], url_path='bulk-pricing')
+    def bulk_pricing(self, request):
+        """Tarification dynamique : réaligne les tarifs du propriétaire sur le
+        tarif conseillé AutoLink, avec ajustement optionnel (borne ±20 %)."""
+        if request.user.role != 'OWNER':
+            raise PermissionDenied('Réservé aux propriétaires.')
+        delta = request.data.get('delta_pct')
+        try:
+            delta = None if delta in (None, '') else float(delta)
+        except (TypeError, ValueError):
+            return Response({'delta_pct': 'Valeur numérique attendue.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if delta is not None and abs(delta) > 20:
+            return Response({'delta_pct': 'Ajustement limité à ±20 % du tarif conseillé.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        ids = request.data.get('vehicle_ids') or []
+        qs = Vehicle.objects.filter(owner=request.user)
+        if ids:
+            qs = qs.filter(id__in=ids)
+        updated = []
+        for v in qs:
+            base = float(v.computed_rate or v.compute_rate())
+            v.daily_rate = base if delta is None else base * (1 + delta / 100)
+            v.save()  # save() borne daily_rate à ±20 % de computed_rate
+            updated.append({'id': v.id, 'daily_rate': str(v.daily_rate),
+                            'computed_rate': str(v.computed_rate)})
+        return Response({'updated': len(updated), 'vehicles': updated})
+
     @action(detail=True, methods=['get'], url_path='reviews', permission_classes=[permissions.AllowAny])
     def reviews(self, request, pk=None):
         vehicle = self.get_object()

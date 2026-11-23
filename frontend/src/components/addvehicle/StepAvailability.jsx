@@ -4,7 +4,7 @@ import {
   Calculator, TrendingUp, Smartphone, Building2, Check,
 } from 'lucide-react';
 import { fleetImage } from '../ownerfleet/FleetCard';
-import { OWNER_SHARE, COMMISSION_LABEL } from '../../utils/commission';
+import useCommissionRate from '../../utils/useCommissionRate';
 
 const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'));
 const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -31,8 +31,10 @@ const Block = ({ icon: Icon, title, sub, children }) => (
 
 /* Étape 5 — « Disponibilités & Tarification » + calculateur de revenus nets. */
 export default function StepAvailability({ form, set, v }) {
+  const commissionRate = useCommissionRate();
+  const commissionPct = Math.round(commissionRate * 100);
   const rate = Number(form.dailyRate || 0);
-  const net = rate * OWNER_SHARE;
+  const net = rate * (1 - commissionRate);
   const monthly = net * 15; // 15 jours loués estimés
   const enabledDays = form.availDays || { Lun: 1, Mar: 1, Mer: 1, Jeu: 1, Ven: 1, Sam: 1, Dim: 0 };
 
@@ -219,7 +221,7 @@ export default function StepAvailability({ form, set, v }) {
           <h4 className="font-black text-slate-900 text-sm mb-4">Calculateur de Revenus Nets</h4>
           <div className="space-y-2.5 text-[11px] mb-4">
             <div className="flex justify-between text-slate-600"><span>Tarif public facturé</span><strong>{fmt(rate)} FCFA/j</strong></div>
-            <div className="flex justify-between text-slate-600"><span>Commission AutoLink Pro ({COMMISSION_LABEL})</span><strong className="text-red-500">− {fmt(rate - net)} FCFA</strong></div>
+            <div className="flex justify-between text-slate-600"><span>Commission AutoLink Pro ({commissionPct} %)</span><strong className="text-red-500">− {fmt(rate - net)} FCFA</strong></div>
             <div className="flex justify-between pt-2 border-t border-slate-100 font-black"><span className="text-slate-700">Votre gain net garanti<br /><span className="text-[9px] font-semibold text-slate-400">Viré chaque lundi sur MTN MoMo</span></span><span className="text-teal-600 text-lg">{fmt(net)}<br /><span className="text-[9px] text-slate-400 font-semibold">FCFA / jour</span></span></div>
           </div>
           <div className="bg-slate-900 rounded-2xl p-4 text-white mb-3">
