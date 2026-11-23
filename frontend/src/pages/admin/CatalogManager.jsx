@@ -69,8 +69,26 @@ function AddVehicleModal({ onClose, onCreated }) {
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [preview, setPreview] = useState(null);
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
   const valid = f.brand && f.model && f.year && f.plate && f.daily_rate && f.insurance_type && f.insurance_expiry;
+
+  // Aperçu tarifaire réel (même endpoint que le wizard propriétaire)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      vehiclesAPI.ratePreview({
+        brand: f.brand, model: f.model, year: f.year, category: f.category,
+        fuel: f.fuel, city: f.city, insurance_type: f.insurance_type,
+        mileage: f.mileage, seats: f.seats,
+      }).then(({ data }) => setPreview(data)).catch(() => setPreview(null));
+    }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [f.brand, f.model, f.year, f.category, f.fuel, f.city, f.insurance_type, f.mileage, f.seats]);
+
+  const fmtK = n => Math.round(Number(n || 0)).toLocaleString('fr-FR');
+  const outOfRange = preview && f.daily_rate &&
+    (Number(f.daily_rate) < Number(preview.price_min) || Number(f.daily_rate) > Number(preview.price_max));
 
   const submit = async (e) => {
     e.preventDefault();
@@ -114,7 +132,15 @@ function AddVehicleModal({ onClose, onCreated }) {
               <select className={inputCls} value={f.mode} onChange={e => set('mode', e.target.value)}>
                 <option value="platform">Plateforme (géré AutoLink)</option><option value="home">Domicile (libre-service)</option>
               </select></div>
-            <div><label className={labelCls}>Tarif journalier (FCFA) *</label><input type="number" className={inputCls} value={f.daily_rate} onChange={e => set('daily_rate', e.target.value)} placeholder="25000" /></div>
+            <div><label className={labelCls}>Tarif journalier (FCFA) *</label>
+              <input type="number" className={`${inputCls} ${outOfRange ? '!border-red-300 !ring-red-200' : ''}`} value={f.daily_rate} onChange={e => set('daily_rate', e.target.value)} placeholder="25000" />
+              {preview && (
+                <div className={`mt-1.5 text-[10px] font-bold ${outOfRange ? 'text-red-500' : 'text-teal-600'}`}>
+                  {preview.tier_label} · indicatif {fmtK(preview.computed_rate)} F · plage {fmtK(preview.price_min)}–{fmtK(preview.price_max)} F
+                  {outOfRange && ' — tarif hors plage'}
+                </div>
+              )}
+            </div>
             <div><label className={labelCls}>Ville</label><input className={inputCls} value={f.city} onChange={e => set('city', e.target.value)} /></div>
             <div><label className={labelCls}>Kilométrage</label><input type="number" className={inputCls} value={f.mileage} onChange={e => set('mileage', e.target.value)} /></div>
             <div><label className={labelCls}>Type d'assurance *</label>

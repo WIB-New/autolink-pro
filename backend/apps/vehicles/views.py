@@ -116,8 +116,8 @@ class VehicleViewSet(ModelViewSet):
         """Aperçu tarifaire pour le wizard propriétaire : gamme attribuée,
         prix indicatif, plage autorisée, caution et forfait km — calculés
         sur les attributs saisis, sans créer le véhicule."""
-        if request.user.role != 'OWNER':
-            raise PermissionDenied('Réservé aux propriétaires.')
+        if request.user.role not in ('OWNER', 'ADMIN'):
+            raise PermissionDenied('Réservé aux propriétaires et administrateurs.')
         probe = Vehicle()
         for f in ('brand', 'model', 'category', 'fuel', 'city', 'gear', 'insurance_type'):
             if request.data.get(f):

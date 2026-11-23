@@ -71,9 +71,9 @@ class VehicleSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         request = self.context.get('request')
-        if request and request.user.role == 'OWNER':
-            if attrs.get('status') not in (None, 'suspended'):
-                raise serializers.ValidationError({'status': 'Le statut est géré par AutoLink.'})
+        if request and request.user.role == 'OWNER' and attrs.get('status') not in (None, 'suspended'):
+            raise serializers.ValidationError({'status': 'Le statut est géré par AutoLink.'})
+        if request and request.user.role in ('OWNER', 'ADMIN'):
             if 'daily_rate' in attrs:
                 # Rejette explicitement un tarif hors plage plutôt que de le
                 # borner silencieusement dans save().
