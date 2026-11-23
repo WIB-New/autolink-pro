@@ -8,6 +8,7 @@ export const TABS = [
   { id: 'rented',      label: 'En location en ce moment' },
   { id: 'pending',     label: 'En attente de validation' },
   { id: 'maintenance', label: 'En maintenance' },
+  { id: 'drafts',      label: 'Brouillons' },
 ];
 
 const matchTab = (v, tab) =>
@@ -17,13 +18,13 @@ const matchTab = (v, tab) =>
 export const filterByTab = (vehicles, tab) => vehicles.filter(v => matchTab(v, tab));
 
 /* Barre d'outils flotte — carte unique : onglets soulignés en haut, filtres en dessous. */
-export default function FleetToolbar({ vehicles, tab, setTab, search, setSearch, city, setCity, cities, sort, setSort, grid, setGrid }) {
+export default function FleetToolbar({ vehicles, tab, setTab, search, setSearch, city, setCity, cities, sort, setSort, grid, setGrid, drafts = [] }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
       {/* Onglets + toggle vue */}
       <div className="flex items-center gap-1 px-2 border-b border-slate-100 overflow-x-auto">
         {TABS.map(t => {
-          const count = filterByTab(vehicles, t.id).length;
+          const count = t.id === 'drafts' ? drafts.length : filterByTab(vehicles, t.id).length;
           const active = tab === t.id;
           return (
             <button key={t.id} onClick={() => setTab(t.id)}

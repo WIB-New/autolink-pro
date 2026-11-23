@@ -89,6 +89,8 @@ export const vehiclesAPI = {
   ratePreview: (payload) => api.post('/vehicles/rate-preview/', payload),
   draft: {
     get: (vehicleId) => api.get('/vehicles/draft/', { params: vehicleId ? { vehicle: vehicleId } : {} }),
+    list: () => api.get('/vehicles/draft/', { params: { all: 1 } }),
+    remove: (draftId) => api.delete('/vehicles/draft/', { params: { draft: draftId } }),
     save: (payload) => api.put('/vehicles/draft/', payload),
     clear: (vehicleId) => api.delete('/vehicles/draft/', { params: vehicleId ? { vehicle: vehicleId } : {} }),
   },

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, SlidersHorizontal, Car, RefreshCw } from 'lucide-react';
+import { PlusCircle, SlidersHorizontal, Car, RefreshCw, FileEdit, Trash2, Play } from 'lucide-react';
 import { OwnerLayout } from '../../components/ownerdash';
 import { FleetKpis, FleetToolbar, FleetCard, PricingModal, filterByTab } from '../../components/ownerfleet';
 import { vehiclesAPI, bookingsAPI } from '../../services/api';
@@ -18,6 +18,7 @@ export default function MyVehicles() {
   const confirm = useConfirm();
   const [vehicles, setVehicles] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [drafts, setDrafts] = useState([]);
   const [online, setOnline] = useState(true);
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
@@ -28,12 +29,14 @@ export default function MyVehicles() {
 
   const load = useCallback(async () => {
     try {
-      const [v, b] = await Promise.all([
+      const [v, b, d] = await Promise.all([
         vehiclesAPI.list({ mine: 1, page_size: 100 }),
         bookingsAPI.list({ page_size: 50 }),
+        vehiclesAPI.draft.list().catch(() => ({ data: { drafts: [] } })),
       ]);
       setVehicles(v.data.results || v.data || []);
       setBookings(b.data.results || b.data || []);
+      setDrafts(d.data.drafts || []);
       setOnline(true);
     } catch (_) { setOnline(false); }
   }, []);
@@ -58,6 +61,22 @@ export default function MyVehicles() {
       });
     }
   };
+
+  const deleteDraft = async (d) => {
+    if (!(await confirm({
+      title: 'Supprimer ce brouillon ?',
+      message: `Le brouillon « ${d.title} » (étape ${d.step}/6) sera définitivement supprimé.`,
+      confirmLabel: 'Supprimer',
+      danger: true,
+    }))) return;
+    try {
+      await vehiclesAPI.draft.remove(d.id);
+      setDrafts(ds => ds.filter(x => x.id !== d.id));
+    } catch (_) { /* silencieux */ }
+  };
+
+  const resumeDraft = (d) =>
+    navigate(d.vehicle ? `/owner/edit-vehicle/${d.vehicle}` : '/owner/add-vehicle');
 
   const activeBookingFor = useCallback((v) =>
     bookings.find(b => ['active', 'confirmed'].includes(b.status) && (b.vehicle === v.id || b.vehicle_id === v.id)),
@@ -121,10 +140,47 @@ export default function MyVehicles() {
           city={city} setCity={setCity} cities={cities}
           sort={sort} setSort={setSort}
           grid={grid} setGrid={setGrid}
+          drafts={drafts}
         />
 
         {/* Liste */}
-        {vehicles.length === 0 ? (
+        {tab === 'drafts' ? (
+          drafts.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-dashed border-slate-200 text-center py-14 text-slate-400">
+              <FileEdit size={40} className="mx-auto mb-4 opacity-40" />
+              <p className="font-bold text-slate-500">Aucun brouillon enregistré</p>
+              <p className="text-sm mt-1">Les brouillons du wizard « Ajouter un véhicule » apparaîtront ici.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {drafts.map(d => (
+                <div key={d.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4 flex-wrap">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                    <FileEdit size={17} className="text-amber-600" />
+                  </div>
+                  <div className="flex-1 min-w-[180px]">
+                    <div className="text-sm font-black text-slate-900">{d.title}</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      {d.vehicle ? 'Modification d\'un véhicule existant' : 'Création d\'un nouveau véhicule'}
+                      {' · '}Étape {d.step}/6
+                      {d.updated_at && ` · Modifié le ${new Date(d.updated_at).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={() => resumeDraft(d)}
+                      className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold px-4 py-2 rounded-xl transition-colors">
+                      <Play size={12} /> Reprendre
+                    </button>
+                    <button onClick={() => deleteDraft(d)}
+                      className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-red-300 hover:text-red-600 text-slate-500 text-[11px] font-bold px-4 py-2 rounded-xl transition-colors">
+                      <Trash2 size={12} /> Supprimer
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        ) : vehicles.length === 0 ? (
           <div className="bg-white rounded-2xl border border-dashed border-slate-200 text-center py-16 text-slate-400">
             <Car size={44} className="mx-auto mb-4 opacity-40" />
             <p className="font-bold text-slate-500">Aucun véhicule enregistré</p>

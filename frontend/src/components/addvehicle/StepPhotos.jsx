@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Camera, CheckCircle2, Eye, Trash2, Plus, ImagePlus, Lightbulb, ShieldCheck, UserCheck } from 'lucide-react';
+import { Camera, CheckCircle2, Eye, Trash2, Plus, ImagePlus } from 'lucide-react';
 import { mediaUrl } from '../../utils/media';
 
 export const SLOTS = [
@@ -129,7 +129,7 @@ export default function StepPhotos({ photos, setPhotos, existing = [] }) {
 
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
           <h4 className="text-xs font-black text-slate-900 mb-3">Conseils pour des photos qui louent</h4>
-          <p className="text-[10px] text-slate-500 mb-3">Les véhicules dotés de photos certifiées enregistrent jusqu'à <strong>3,8× plus de réservations</strong> sur Douala et Yaoundé.</p>
+          <p className="text-[10px] text-slate-500 mb-3">Des photos nettes et variées rassurent les locataires et accélèrent la validation de votre annonce.</p>
           <div className="space-y-3">
             {TIPS.map(t => (
               <div key={t.t} className="flex gap-2.5">
@@ -148,14 +148,6 @@ export default function StepPhotos({ photos, setPhotos, existing = [] }) {
           <p className="text-[10px] text-slate-500 leading-relaxed">Les visuels de vos passagers doivent être floutés publiquement à votre demande après validation par notre service d'audit.</p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3">
-          <div className="w-9 h-9 bg-teal-50 rounded-xl flex items-center justify-center"><UserCheck size={15} className="text-teal-600" /></div>
-          <div className="flex-1">
-            <div className="text-[10px] font-black text-slate-800">Besoin d'un photographe ?</div>
-            <div className="text-[9px] text-slate-400">Service-conseil disponible à Douala &amp; Yaoundé</div>
-          </div>
-          <button className="text-[10px] font-black bg-slate-900 text-white px-3 py-2 rounded-lg">Réserver</button>
-        </div>
       </div>
     </div>
   );

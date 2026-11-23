@@ -184,15 +184,31 @@ class VehicleViewSet(ModelViewSet):
         """Brouillon du wizard « Ajouter un véhicule » — persisté côté serveur.
 
         GET    ?vehicle=<id>  → brouillon du propriétaire (création si sans param)
+        GET    ?all=1         → liste de tous les brouillons du propriétaire
         PUT    {vehicle, step, data} → crée/met à jour le brouillon
-        DELETE ?vehicle=<id>  → supprime le brouillon (après soumission)
+        DELETE ?vehicle=<id> ou ?draft=<id> → supprime le brouillon
         """
         if request.user.role != 'OWNER':
             raise PermissionDenied('Réservé aux propriétaires.')
         vehicle_id = (request.data.get('vehicle') if request.method == 'PUT'
                       else request.query_params.get('vehicle'))
+
+        if request.method == 'GET' and request.query_params.get('all'):
+            drafts = (VehicleDraft.objects.filter(owner=request.user)
+                      .select_related('vehicle').order_by('-updated_at'))
+            return Response({'drafts': [{
+                'id': d.id, 'vehicle': d.vehicle_id,
+                'title': (f'{d.vehicle.brand} {d.vehicle.model}'.strip() if d.vehicle_id
+                          else f"{(d.data.get('form') or {}).get('brand', '')} {(d.data.get('form') or {}).get('model', '')}".strip() or 'Nouveau véhicule'),
+                'step': d.step, 'updated_at': d.updated_at,
+            } for d in drafts]})
+
         qs = VehicleDraft.objects.filter(owner=request.user)
-        qs = qs.filter(vehicle_id=vehicle_id) if vehicle_id else qs.filter(vehicle__isnull=True)
+        draft_id = request.query_params.get('draft')
+        if draft_id:
+            qs = qs.filter(pk=draft_id)
+        else:
+            qs = qs.filter(vehicle_id=vehicle_id) if vehicle_id else qs.filter(vehicle__isnull=True)
 
         if request.method == 'GET':
             d = qs.first()

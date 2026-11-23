@@ -82,7 +82,19 @@ export default function AddVehicle() {
         }));
         setExistingPhotos(v.photos || []);
         setCertifyState(true);
-        setLoading(false);
+        // Restaure le brouillon d'édition éventuel par-dessus les données en base
+        vehiclesAPI.draft.get(id).then(({ data }) => {
+          const d = data?.draft;
+          if (d?.data?.form) {
+            setForm(f => ({ ...f, ...d.data.form }));
+            if (d.step >= 1 && d.step <= 6) setStepState(d.step);
+            const when = d.updated_at ? new Date(d.updated_at).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+            setDraftNotice(`Brouillon de modification du ${when} restauré — publiez ou sauvegardez à nouveau.`);
+            setSavedAt(new Date(d.updated_at));
+            setSaveState('saved');
+          }
+          setLoading(false);
+        }).catch(() => setLoading(false));
       }).catch(() => { setLoading(false); setApiError('Véhicule introuvable ou accès refusé.'); });
       return;
     }
