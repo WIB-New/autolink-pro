@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import AdminLayout from '../../components/admindash/AdminLayout';
-import { TechSheet, HubReport, PhotoChecklist, DocsPanel, PricingPanel, HomologationChecklist, InternalNotes } from '../../components/adminveh';
-import { vehiclesAPI } from '../../services/api';
+import { TechSheet, HubReport, PhotoChecklist, DocsPanel, PricingPanel } from '../../components/adminveh';
+import { vehiclesAPI, inspectionsAPI, messagingAPI } from '../../services/api';
 import {
   ChevronRight, ChevronLeft, Hourglass, XCircle, MessageSquare,
   Rocket, Loader, Phone, MessageCircle, Star,
@@ -20,6 +20,7 @@ export default function AdminVehicleDetail() {
   const navigate = useNavigate();
   const [vehicle, setVehicle] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [inspections, setInspections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -33,6 +34,11 @@ export default function AdminVehicleDetail() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { vehiclesAPI.reviews(id).then(({ data }) => setReviews(data || [])).catch(() => {}); }, [id]);
+  useEffect(() => { inspectionsAPI.list({ vehicle: id, page_size: 10 }).then(({ data }) => setInspections(data.results || data || [])).catch(() => {}); }, [id]);
+
+  const messageOwner = async () => {
+    try { await messagingAPI.open({ user: vehicle.owner }); navigate('/admin/messages'); } catch (_) {}
+  };
 
   const setStatus = async (status) => {
     setBusy(true);
@@ -76,7 +82,7 @@ export default function AdminVehicleDetail() {
           <span className="bg-slate-100 text-slate-500 text-[10px] font-black px-2 py-1 rounded-md align-middle">#{ref}</span>
         </span>
       }
-      subtitle={`Soumission Hub ${v.city || 'Douala'} Akwa · Dossier d'homologation prioritaire`}
+      subtitle={`Soumission ${v.city || '—'} · Dossier d'homologation`}
     >
       {/* Fil d'ariane + actions */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4 -mt-3">
@@ -95,7 +101,7 @@ export default function AdminVehicleDetail() {
                 className="flex items-center gap-1.5 bg-red-500 hover:bg-red-600 text-white text-[11px] font-black px-4 py-2 rounded-xl transition-colors disabled:opacity-50">
                 <XCircle size={13} /> Refuser l'homologation
               </button>
-              <button className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-white text-[11px] font-black px-4 py-2 rounded-xl transition-colors">
+              <button onClick={messageOwner} className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-white text-[11px] font-black px-4 py-2 rounded-xl transition-colors">
                 <MessageSquare size={13} /> Demander modifications
               </button>
               <button onClick={() => setStatus('approved')} disabled={busy}
@@ -128,14 +134,18 @@ export default function AdminVehicleDetail() {
           <div>
             <div className="text-sm font-black">Statut : {band.label}</div>
             <div className="text-[10px] opacity-80">
-              Soumis le {v.created_at ? new Date(v.created_at).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short', year: 'numeric' }) : '24 Oct 2025'} par {v.owner_name || 'le bailleur'} — Partenaire Flotte Certifié
+              Soumis le {v.created_at ? new Date(v.created_at).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short', year: 'numeric' }) : '—'} par {v.owner_name || 'le bailleur'}
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2 text-[10px] font-black">
           <span className="bg-white/70 rounded-xl px-3 py-2">{v.owner_name || 'Bailleur'}</span>
-          <span className="bg-white/70 rounded-xl px-3 py-2 flex items-center gap-1"><Phone size={10} /> +237 6·· ·· ·· 22</span>
-          <button className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-3 py-2 flex items-center gap-1 transition-colors">
+          {v.owner_phone && (
+            <a href={`tel:${v.owner_phone}`} className="bg-white/70 rounded-xl px-3 py-2 flex items-center gap-1 hover:text-teal-700">
+              <Phone size={10} /> {v.owner_phone}
+            </a>
+          )}
+          <button onClick={messageOwner} className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-3 py-2 flex items-center gap-1 transition-colors">
             <MessageCircle size={10} /> Message direct
           </button>
         </div>
@@ -147,10 +157,9 @@ export default function AdminVehicleDetail() {
           <TechSheet vehicle={v} />
           <PhotoChecklist vehicle={v} />
           <DocsPanel vehicle={v} />
-          <HomologationChecklist />
         </div>
         <div className="space-y-5">
-          <HubReport vehicle={v} />
+          <HubReport vehicle={v} inspections={inspections} />
           <PricingPanel vehicle={v} onSave={savePricing} />
           {/* Avis clients */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
@@ -172,7 +181,6 @@ export default function AdminVehicleDetail() {
               {!reviews.length && <p className="text-[10px] text-slate-400 text-center py-3">Aucun avis pour ce véhicule.</p>}
             </div>
           </div>
-          <InternalNotes vehicle={v} />
         </div>
       </div>
     </AdminLayout>

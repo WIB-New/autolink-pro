@@ -55,7 +55,20 @@ class VehicleViewSet(ModelViewSet):
         return [IsOwnerOrAdmin()]
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user, status='pending')
+        vehicle = serializer.save(owner=self.request.user, status='pending')
+        # Photos téléversées avec la création (wizard propriétaire / modale admin)
+        uploads = self.request.FILES.getlist('photos') or self.request.FILES.getlist('files')
+        slots = self.request.data.getlist('photo_slots') if hasattr(self.request.data, 'getlist') else []
+        interior_slots = {'interior', 'rear'}
+        for i, f in enumerate(uploads):
+            slot = slots[i] if i < len(slots) else ''
+            VehiclePhoto.objects.create(
+                vehicle=vehicle, image=f,
+                position='interior' if slot in interior_slots else ('other' if slot == 'extra' else 'exterior'),
+                caption=(getattr(f, 'name', '') or '')[:100])
+        if uploads and not vehicle.image_url:
+            vehicle.image_url = self.request.build_absolute_uri(vehicle.photos.first().image.url)
+            vehicle.save(update_fields=['image_url', 'updated_at'])
 
     def get_queryset(self):
         qs = Vehicle.objects.all()
@@ -100,6 +113,16 @@ class VehicleViewSet(ModelViewSet):
             serializer.save(status='pending')
         else:
             serializer.save()
+        # Nouvelles photos téléversées avec la mise à jour (wizard édition)
+        uploads = self.request.FILES.getlist('photos') or self.request.FILES.getlist('files')
+        slots = self.request.data.getlist('photo_slots') if hasattr(self.request.data, 'getlist') else []
+        interior_slots = {'interior', 'rear'}
+        for i, f in enumerate(uploads):
+            slot = slots[i] if i < len(slots) else ''
+            VehiclePhoto.objects.create(
+                vehicle=vehicle, image=f,
+                position='interior' if slot in interior_slots else ('other' if slot == 'extra' else 'exterior'),
+                caption=(getattr(f, 'name', '') or '')[:100])
 
     def destroy(self, request, *args, **kwargs):
         vehicle = self.get_object()

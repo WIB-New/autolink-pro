@@ -55,6 +55,7 @@ class VehicleSerializer(serializers.ModelSerializer):
         return obj.favorites.filter(user=user).exists()
     photos = VehiclePhotoSerializer(many=True, read_only=True)
     owner_name = serializers.SerializerMethodField()
+    owner_phone = serializers.SerializerMethodField()
     price_min = serializers.ReadOnlyField()
     price_max = serializers.ReadOnlyField()
     tier_label = serializers.CharField(source='get_tier_display', read_only=True)
@@ -68,6 +69,10 @@ class VehicleSerializer(serializers.ModelSerializer):
 
     def get_owner_name(self, obj):
         return obj.owner.get_full_name()
+
+    def get_owner_phone(self, obj):
+        user = self.context.get('request').user if self.context.get('request') else None
+        return obj.owner.phone if user and user.is_authenticated and user.role in ('ADMIN', 'CONTROLLER') else ''
 
     def validate(self, attrs):
         request = self.context.get('request')

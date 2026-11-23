@@ -70,6 +70,7 @@ function AddVehicleModal({ onClose, onCreated }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState(null);
+  const [files, setFiles] = useState({ photos: [], registration_doc: null, insurance_doc: null, technical_control_doc: null });
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
   const valid = f.brand && f.model && f.year && f.plate && f.daily_rate && f.insurance_type && f.insurance_expiry;
 
@@ -98,6 +99,9 @@ function AddVehicleModal({ onClose, onCreated }) {
       const fd = new FormData();
       Object.entries({ ...f, plate: f.plate.toUpperCase(), seats: Number(f.seats), year: Number(f.year), daily_rate: Number(f.daily_rate), mileage: Number(f.mileage) || 0 })
         .forEach(([k, v]) => { if (v !== '') fd.append(k, v); });
+      files.photos.forEach(p => fd.append('photos', p));
+      ['registration_doc', 'insurance_doc', 'technical_control_doc']
+        .forEach(k => { if (files[k]) fd.append(k, files[k]); });
       const res = await vehiclesAPI.create(fd);
       onCreated(res.data);
     } catch (err) {
@@ -148,6 +152,18 @@ function AddVehicleModal({ onClose, onCreated }) {
             <div><label className={labelCls}>Expiration assurance *</label><input type="date" className={inputCls} value={f.insurance_expiry} onChange={e => set('insurance_expiry', e.target.value)} /></div>
             <div className="sm:col-span-2"><label className={labelCls}>Description</label>
               <textarea rows={2} className={`${inputCls} resize-none`} value={f.description} onChange={e => set('description', e.target.value)} placeholder="État, équipements…" /></div>
+            <div className="sm:col-span-2"><label className={labelCls}>Photos (optionnel)</label>
+              <input type="file" accept="image/*" multiple className={inputCls}
+                onChange={e => setFiles(s => ({ ...s, photos: Array.from(e.target.files || []) }))} />
+              {files.photos.length > 0 && <div className="mt-1 text-[10px] font-bold text-teal-600">{files.photos.length} photo{files.photos.length > 1 ? 's' : ''} sélectionnée{files.photos.length > 1 ? 's' : ''}</div>}
+            </div>
+            {[['registration_doc', 'Carte grise'], ['insurance_doc', 'Attestation d\'assurance'], ['technical_control_doc', 'Visite technique']].map(([k, lbl]) => (
+              <div key={k}><label className={labelCls}>{lbl} (optionnel)</label>
+                <input type="file" accept="image/*,.pdf" className={inputCls}
+                  onChange={e => setFiles(s => ({ ...s, [k]: e.target.files?.[0] || null }))} />
+                {files[k] && <div className="mt-1 text-[10px] font-bold text-teal-600 truncate">{files[k].name}</div>}
+              </div>
+            ))}
           </div>
           {error && <div className="mt-4 bg-red-50 border border-red-200 text-red-600 text-xs font-bold px-4 py-3 rounded-xl text-center">{error}</div>}
         </form>

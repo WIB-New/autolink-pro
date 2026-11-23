@@ -19,19 +19,19 @@ export default function TechSheet({ vehicle: v }) {
           <Car size={15} className="text-teal-600" /> Fiche Technique Déclarée
         </h3>
         <span className="bg-slate-100 text-slate-500 text-[9px] font-black px-2 py-1 rounded-md">
-          Immatriculation {v.city || 'Douala'} (LT)
+          {v.city ? `Immatriculation ${v.city}` : 'Immatriculation —'}
         </span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <F l="Modèle & Année" val={`${v.brand} ${v.model} (${v.year || '—'})`} />
         <F l="Plaque d'immatriculation" val={v.plate} />
-        <F l="Kilométrage contrôlé" val={v.mileage ? `${fmt(v.mileage)} km` : '42 350 km'} />
-        <F l="Numéro de Châssis (VIN)" val={v.vin || '4T3B1WR38N920492'} />
-        <F l="Motorisation" val={`${v.fuel || 'Essence'} ${v.engine || ''}`} />
-        <F l="Transmission" val={v.transmission || v.gear || 'Automatique'} />
-        <F l="Configuration Habitacle" val={`${v.seats || 5} Places + Cuir Noir`} />
-        <F l="Climatisation" val="Automatique Bizone" />
-        <F l="Catégorie déclarée" val={v.category || 'SUV'} />
+        <F l="Kilométrage contrôlé" val={v.mileage ? `${fmt(v.mileage)} km` : null} />
+        <F l="Ville" val={v.city} />
+        <F l="Motorisation" val={v.fuel} />
+        <F l="Transmission" val={v.gear} />
+        <F l="Configuration Habitacle" val={v.seats ? `${v.seats} places${v.color ? ` · ${v.color}` : ''}` : v.color} />
+        <F l="Mode de gestion" val={v.mode === 'platform' ? 'Plateforme AutoLink' : 'Domicile'} />
+        <F l="Catégorie déclarée" val={v.category} />
       </div>
       <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-teal-700 bg-teal-50 rounded-xl px-3 py-2">
         <BadgeCheck size={12} /> Données déclarées par le bailleur — à contre-vérifier avec la visite physique du Hub.
