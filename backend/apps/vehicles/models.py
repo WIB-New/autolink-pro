@@ -66,6 +66,56 @@ PRICE_MARGIN = Decimal('0.20')
 # Socle valeur marchande : un véhicule se loue ≈ 0,15 % de sa valeur par jour
 MARKET_VALUE_RATE = Decimal('0.0015')
 
+DEFAULT_PRICING = {
+    'tier_base': dict(TIER_BASE),
+    'tier_deposit': dict(TIER_DEPOSIT),
+    'tier_km': {k: list(v) for k, v in TIER_KM.items()},
+    'city_coef': {k: str(v) for k, v in CITY_COEF.items()},
+    'price_margin': str(PRICE_MARGIN),
+    'market_value_rate': str(MARKET_VALUE_RATE),
+}
+
+
+def _build_pricing():
+    cfg = {k: (dict(v) if isinstance(v, dict) else v) for k, v in DEFAULT_PRICING.items()}
+    try:
+        from apps.users.models import PlatformSettings
+        row = PlatformSettings.objects.only('pricing_overrides').first()
+        overrides = row.pricing_overrides if row else {}
+    except Exception:
+        overrides = {}
+    for key in ('tier_base', 'tier_deposit', 'tier_km', 'city_coef'):
+        if isinstance(overrides.get(key), dict):
+            cfg[key].update(overrides[key])
+    for key in ('price_margin', 'market_value_rate'):
+        if overrides.get(key) not in (None, ''):
+            cfg[key] = overrides[key]
+    cfg['tier_base'] = {k: float(v) for k, v in cfg['tier_base'].items()}
+    cfg['tier_deposit'] = {k: int(v) for k, v in cfg['tier_deposit'].items()}
+    cfg['tier_km'] = {k: (int(v[0]), int(v[1])) for k, v in cfg['tier_km'].items()}
+    cfg['city_coef'] = {k.lower(): Decimal(str(v)) for k, v in cfg['city_coef'].items()}
+    cfg['price_margin'] = Decimal(str(cfg['price_margin']))
+    cfg['market_value_rate'] = Decimal(str(cfg['market_value_rate']))
+    return cfg
+
+
+_PRICING = None
+
+
+def pricing_config():
+    """Grille tarifaire effective : surcharges persistées (PlatformSettings)
+    fusionnées sur les constantes par défaut. Cachée en mémoire — invalidée
+    par PlatformSettings.save()."""
+    global _PRICING
+    if _PRICING is None:
+        _PRICING = _build_pricing()
+    return _PRICING
+
+
+def invalidate_pricing_cache():
+    global _PRICING
+    _PRICING = None
+
 
 class Vehicle(models.Model):
     class Mode(models.TextChoices):
@@ -230,10 +280,12 @@ class Vehicle(models.Model):
     # ─── Tarification ──────────────────────────────────────────────────────
     def compute_rate(self):
         """Prix indicatif AutoLink (FCFA/jour) : base catégorie + valeur
-        marchande + ajustements année/km/état/assurance, coefficient ville."""
-        base = float(TIER_BASE.get(self.tier, TIER_BASE['standard']))
+        marchande + ajustements année/km/état/assurance, coefficient ville.
+        Lit la grille persistée dans PlatformSettings si configurée."""
+        cfg = pricing_config()
+        base = cfg['tier_base'].get(self.tier, cfg['tier_base']['standard'])
         if self.market_value:
-            base = max(base, float(self.market_value) * float(MARKET_VALUE_RATE))
+            base = max(base, float(self.market_value) * float(cfg['market_value_rate']))
         age = timezone.now().year - self.year
         if age <= 1:
             base += 5000
@@ -246,33 +298,35 @@ class Vehicle(models.Model):
         base += round((self.condition_score or 0) / 100 * 5000)
         if self.insurance_type in ('premium', 'all_risk'):
             base += 2000
-        coef = float(CITY_COEF.get((self.city or '').strip().lower(), Decimal('0.90')))
+        coef = float(cfg['city_coef'].get((self.city or '').strip().lower(), Decimal('0.90')))
         return max(round(base * coef / 500) * 500, 8000)
 
     @property
     def price_min(self):
-        return round(float(self.computed_rate or 0) * (1 - float(PRICE_MARGIN)))
+        return round(float(self.computed_rate or 0) * (1 - float(pricing_config()['price_margin'])))
 
     @property
     def price_max(self):
-        return round(float(self.computed_rate or 0) * (1 + float(PRICE_MARGIN)))
+        return round(float(self.computed_rate or 0) * (1 + float(pricing_config()['price_margin'])))
 
     def save(self, *args, **kwargs):
+        cfg = pricing_config()
         # 1) Catégorie : toujours recalculée — attribution objective, pas manuelle
         self.tier = self.classify()
         # 2) Prix indicatif recalculé
         self.computed_rate = self.compute_rate()
-        # 3) Prix affiché : ajustement propriétaire encadré à ±20 % de l'indicatif
+        # 3) Prix affiché : ajustement propriétaire encadré à ±marge de l'indicatif
         indicative = float(self.computed_rate)
+        margin = float(cfg['price_margin'])
         if not self.daily_rate:
             self.daily_rate = indicative
         else:
-            lo, hi = indicative * (1 - float(PRICE_MARGIN)), indicative * (1 + float(PRICE_MARGIN))
+            lo, hi = indicative * (1 - margin), indicative * (1 + margin)
             self.daily_rate = min(max(float(self.daily_rate), lo), hi)
         # 4) Défauts liés à la catégorie si non renseignés
         if self.deposit_amount is None:
-            self.deposit_amount = TIER_DEPOSIT[self.tier]
-        km_def = TIER_KM[self.tier]
+            self.deposit_amount = cfg['tier_deposit'][self.tier]
+        km_def = cfg['tier_km'][self.tier]
         if not self.km_included_per_day:
             self.km_included_per_day = km_def[0]
         if not self.extra_km_rate:

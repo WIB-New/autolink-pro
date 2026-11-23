@@ -115,27 +115,78 @@ class OfferSerializer(serializers.ModelSerializer):
 
 class PlatformSettingsSerializer(serializers.ModelSerializer):
     tiers = serializers.SerializerMethodField()
+    pricing = serializers.SerializerMethodField()
 
     class Meta:
         model = PlatformSettings
         exclude = ['id']
-        read_only_fields = ['updated_at']
+        read_only_fields = ['updated_at', 'pricing_overrides']
+
+    def get_pricing(self, obj):
+        """Grille tarifaire effective (constantes + surcharges persistées)."""
+        from apps.vehicles.models import pricing_config
+        cfg = pricing_config()
+        return {
+            'tier_base': cfg['tier_base'],
+            'tier_deposit': cfg['tier_deposit'],
+            'tier_km': {k: list(v) for k, v in cfg['tier_km'].items()},
+            'city_coef': {k: float(v) for k, v in cfg['city_coef'].items()},
+            'price_margin': float(cfg['price_margin']),
+            'market_value_rate': float(cfg['market_value_rate']),
+        }
 
     def get_tiers(self, obj):
-        """Barème de classification véhicules (lecture seule, défini dans apps.vehicles)."""
-        from apps.vehicles.models import PRICE_MARGIN, TIER_BASE, TIER_DEPOSIT, TIER_KM, Vehicle
+        """Barème effectif pour l'affichage (lecture seule)."""
+        from apps.vehicles.models import Vehicle, pricing_config
+        cfg = pricing_config()
         labels = dict(Vehicle.Tier.choices)
+        margin = float(cfg['price_margin'])
         return [{
             'tier': tier,
             'label': labels.get(tier, tier),
             'base_rate': base,
-            'min_rate': int(base * (1 - PRICE_MARGIN)),
-            'max_rate': int(base * (1 + PRICE_MARGIN)),
-            'deposit': TIER_DEPOSIT[tier],
-            'km_included': TIER_KM[tier][0],
-            'extra_km_rate': TIER_KM[tier][1],
+            'min_rate': int(base * (1 - margin)),
+            'max_rate': int(base * (1 + margin)),
+            'deposit': cfg['tier_deposit'][tier],
+            'km_included': cfg['tier_km'][tier][0],
+            'extra_km_rate': cfg['tier_km'][tier][1],
             'vehicles': Vehicle.objects.filter(tier=tier).count(),
-        } for tier, base in TIER_BASE.items()]
+        } for tier, base in cfg['tier_base'].items()]
+
+    def update(self, instance, validated_data):
+        pricing = self.context['request'].data.get('pricing')
+        if isinstance(pricing, dict):
+            instance.pricing_overrides = self._clean_pricing(pricing, instance)
+        return super().update(instance, validated_data)
+
+    @staticmethod
+    def _clean_pricing(pricing, instance):
+        """Ne persiste que les clés/valeurs valides, bornées."""
+        from apps.vehicles.models import Vehicle
+        tiers = set(dict(Vehicle.Tier.choices).keys())
+        clean = dict(instance.pricing_overrides or {})
+
+        def num(v, lo, hi):
+            v = float(v)
+            if not lo <= v <= hi:
+                raise serializers.ValidationError({'pricing': f'Valeur {v} hors limites [{lo}, {hi}].'})
+            return v
+
+        if 'tier_base' in pricing:
+            clean['tier_base'] = {t: num(v, 1000, 10_000_000) for t, v in pricing['tier_base'].items() if t in tiers}
+        if 'tier_deposit' in pricing:
+            clean['tier_deposit'] = {t: int(num(v, 0, 100_000_000)) for t, v in pricing['tier_deposit'].items() if t in tiers}
+        if 'tier_km' in pricing:
+            clean['tier_km'] = {t: [int(num(v[0], 0, 10000)), int(num(v[1], 0, 100000))]
+                                for t, v in pricing['tier_km'].items()
+                                if t in tiers and isinstance(v, (list, tuple)) and len(v) == 2}
+        if 'city_coef' in pricing:
+            clean['city_coef'] = {str(k).lower()[:50]: num(v, 0.5, 1.5) for k, v in pricing['city_coef'].items()}
+        if 'price_margin' in pricing:
+            clean['price_margin'] = num(pricing['price_margin'], 0, 0.5)
+        if 'market_value_rate' in pricing:
+            clean['market_value_rate'] = num(pricing['market_value_rate'], 0, 0.02)
+        return clean
 
     def validate_commission_rate(self, value):
         if not 0 <= value <= 1:

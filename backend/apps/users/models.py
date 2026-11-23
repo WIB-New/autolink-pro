@@ -108,6 +108,10 @@ class PlatformSettings(models.Model):
     delivery_fee = models.DecimalField(
         max_digits=12, decimal_places=2, default=5000,
         help_text='Frais de livraison du véhicule facturés au client.')
+    pricing_overrides = models.JSONField(
+        default=dict, blank=True,
+        help_text='Surcharges de la grille tarifaire (tier_base, tier_deposit, tier_km, '
+                  'city_coef, price_margin, market_value_rate). Vide = valeurs par défaut du code.')
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -120,6 +124,11 @@ class PlatformSettings(models.Model):
     def save(self, *args, **kwargs):
         self.pk = 1
         super().save(*args, **kwargs)
+        try:
+            from apps.vehicles.models import invalidate_pricing_cache
+            invalidate_pricing_cache()
+        except Exception:
+            pass
 
     @classmethod
     def current(cls):

@@ -35,11 +35,18 @@ export default function AdminSettings() {
   }, []);
 
   const set = (key) => (value) => { setForm((f) => ({ ...f, [key]: value })); setSaved(false); };
+  const patchPricing = (key, sub, value) => { setForm((f) => ({ ...f, pricing: { ...f.pricing, [key]: { ...(f.pricing?.[key] || {}), [sub]: Number(value) } } })); setSaved(false); };
+  const patchKm = (tier, idx, value) => { setForm((f) => {
+    const km = [...(f.pricing?.tier_km?.[tier] || [0, 0])];
+    km[idx] = Number(value);
+    return { ...f, pricing: { ...f.pricing, tier_km: { ...(f.pricing?.tier_km || {}), [tier]: km } } };
+  }); setSaved(false); };
+  const patchScalar = (key, value) => { setForm((f) => ({ ...f, pricing: { ...f.pricing, [key]: Number(value) } })); setSaved(false); };
   const dirty = form && initial && JSON.stringify(form) !== JSON.stringify(initial);
 
   const save = async () => {
     setSaving(true); setError('');
-    const { tiers, updated_at: _u, ...payload } = form;
+    const { tiers, pricing_overrides, updated_at: _u, ...payload } = form;
     try {
       const { data } = await platformAPI.update(payload);
       setForm(data); setInitial(data); setSaved(true);
@@ -169,36 +176,108 @@ export default function AdminSettings() {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-black text-slate-900 text-sm flex items-center gap-2"><Tag size={15} className="text-teal-600" /> Grille tarifaire &amp; cautions</h3>
+          <span className="text-[9px] text-slate-400 font-bold">Prix indicatif, caution et forfait km modifiables</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
                 <th className="py-2.5 pr-4">Gamme</th>
-                <th className="py-2.5 pr-4">Min / jour</th>
-                <th className="py-2.5 pr-4">Indicatif</th>
-                <th className="py-2.5 pr-4">Max / jour</th>
+                <th className="py-2.5 pr-4">Indicatif / jour</th>
+                <th className="py-2.5 pr-4">Plage propriétaire</th>
                 <th className="py-2.5 pr-4">Km inclus</th>
+                <th className="py-2.5 pr-4">Km supplémentaire</th>
                 <th className="py-2.5 pr-4">Véhicules</th>
                 <th className="py-2.5 text-right">Caution</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {tiers.map((g) => (
+              {tiers.map((g) => {
+                const base = Number(form.pricing?.tier_base?.[g.tier] ?? g.base_rate ?? 0);
+                const km = form.pricing?.tier_km?.[g.tier] || [g.km_included, g.extra_km_rate];
+                const dep = Number(form.pricing?.tier_deposit?.[g.tier] ?? g.deposit ?? 0);
+                const margin = Number(form.pricing?.price_margin ?? 0.2);
+                return (
                 <tr key={g.tier} className="hover:bg-slate-50/60">
                   <td className="py-3 pr-4"><span className="text-[11px] font-black text-teal-700">{g.label || g.tier}</span><br /><span className="text-[10px] text-slate-500">{g.tier}</span></td>
-                  <td className="py-3 pr-4 text-[11px] font-black text-slate-900">{fmt(g.min_rate)} F</td>
-                  <td className="py-3 pr-4 text-[11px] text-slate-500">{fmt(g.base_rate)} F</td>
-                  <td className="py-3 pr-4 text-[11px] font-black text-slate-900">{fmt(g.max_rate)} F</td>
-                  <td className="py-3 pr-4 text-[10px] text-slate-500">{fmt(g.km_included)} km/j · {fmt(g.extra_km_rate)} F/km sup.</td>
+                  <td className="py-3 pr-4">
+                    <span className="inline-flex items-center gap-1">
+                      <input type="number" min={1000} step={500} value={base}
+                        onChange={(e) => patchPricing('tier_base', g.tier, e.target.value)} className={`${inputCls} !w-24`} />
+                      <span className="text-[9px] text-slate-400 font-bold">F</span>
+                    </span>
+                  </td>
+                  <td className="py-3 pr-4 text-[10px] text-slate-500 font-bold whitespace-nowrap">{fmt(Math.round(base * (1 - margin)))} – {fmt(Math.round(base * (1 + margin)))} F</td>
+                  <td className="py-3 pr-4">
+                    <span className="inline-flex items-center gap-1">
+                      <input type="number" min={0} step={10} value={km[0]}
+                        onChange={(e) => patchKm(g.tier, 0, e.target.value)} className={`${inputCls} !w-16`} />
+                      <span className="text-[9px] text-slate-400 font-bold">km</span>
+                    </span>
+                  </td>
+                  <td className="py-3 pr-4">
+                    <span className="inline-flex items-center gap-1">
+                      <input type="number" min={0} step={10} value={km[1]}
+                        onChange={(e) => patchKm(g.tier, 1, e.target.value)} className={`${inputCls} !w-16`} />
+                      <span className="text-[9px] text-slate-400 font-bold">F</span>
+                    </span>
+                  </td>
                   <td className="py-3 pr-4 text-[11px] font-black text-slate-900">{g.vehicles}</td>
-                  <td className="py-3 text-right text-[11px] font-black text-slate-900">{fmt(g.deposit)} F</td>
+                  <td className="py-3 text-right">
+                    <span className="inline-flex items-center gap-1 justify-end">
+                      <input type="number" min={0} step={5000} value={dep}
+                        onChange={(e) => patchPricing('tier_deposit', g.tier, e.target.value)} className={`${inputCls} !w-24`} />
+                      <span className="text-[9px] text-slate-400 font-bold">F</span>
+                    </span>
+                  </td>
                 </tr>
-              ))}
+                );
+              })}
               {!tiers.length && <tr><td colSpan="7" className="py-8 text-center text-[11px] text-slate-400">Aucune gamme configurée.</td></tr>}
             </tbody>
           </table>
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+          <div className="bg-slate-50 rounded-xl p-3">
+            <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">Marge de réglage propriétaire</div>
+            <div className="flex items-center gap-2 mt-1">
+              <input type="number" min={0} max={50} step={1} value={Math.round(Number(form.pricing?.price_margin ?? 0.2) * 100)}
+                onChange={(e) => patchScalar('price_margin', Math.min(50, Math.max(0, Number(e.target.value))) / 100)}
+                className="bg-transparent text-sm font-black text-slate-900 w-16 focus:outline-none" />
+              <span className="text-[9px] text-slate-400 font-bold">% autour du prix indicatif</span>
+            </div>
+          </div>
+          <div className="bg-slate-50 rounded-xl p-3">
+            <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">Taux valeur marchande</div>
+            <div className="flex items-center gap-2 mt-1">
+              <input type="number" min={0} max={2} step={0.01} value={Number((form.pricing?.market_value_rate ?? 0.0015) * 100).toFixed(2)}
+                onChange={(e) => patchScalar('market_value_rate', Math.min(2, Math.max(0, Number(e.target.value))) / 100)}
+                className="bg-transparent text-sm font-black text-slate-900 w-16 focus:outline-none" />
+              <span className="text-[9px] text-slate-400 font-bold">% de la valeur du véhicule / jour</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Coefficients ville</div>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {Object.entries(form.pricing?.city_coef || {}).map(([city, coef]) => (
+              <label key={city} className="inline-flex items-center gap-1.5">
+                <span className="text-[10px] text-slate-500 font-bold capitalize w-20 truncate">{city}</span>
+                <input type="number" min={0.5} max={1.5} step={0.05} value={coef}
+                  onChange={(e) => patchPricing('city_coef', city, e.target.value)}
+                  className="w-16 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] font-black text-slate-900 text-center focus:outline-none focus:ring-2 focus:ring-teal-500" />
+              </label>
+            ))}
+          </div>
+          <p className="text-[9px] text-slate-400 mt-2">Multiplicateur du prix indicatif selon la ville (défaut 0,90 pour les villes non listées).</p>
+        </div>
+
+        <p className="text-[9px] text-slate-400 mt-4 flex items-start gap-1.5">
+          <CheckCircle2 size={11} className="shrink-0 mt-0.5 text-teal-600" />
+          La nouvelle grille s'applique au recalcul des tarifs conseillés : nouveaux véhicules et prochaines sauvegardes. Les tarifs affichés existants sont bornés, jamais écrasés.
+        </p>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-5">
