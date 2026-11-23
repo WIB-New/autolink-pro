@@ -1,8 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Camera, ShieldCheck, Zap, CalendarClock, Star, Pencil, MoreHorizontal, Trash2,
-  CalendarRange, Image as ImageIcon, FileText, UserCheck, Navigation,
+  Camera, ShieldCheck, Zap, CalendarClock, Pencil, Trash2,
+  CalendarRange, FileText, UserCheck, Navigation,
 } from 'lucide-react';
 import { CATALOG_VEHICLES, getVehicleImage } from '../../utils/carImages';
 
@@ -10,7 +10,6 @@ const fmt = n => Math.round(Number(n || 0)).toLocaleString((localStorage.getItem
 const fmtDate = d => { try { return new Date(d).toLocaleDateString((localStorage.getItem('lang') === 'en' ? 'en-GB' : 'fr-FR'), { day: '2-digit', month: 'short' }); } catch (_) { return '—'; } };
 
 const TIER_BADGE = { gold: 'Prestige Gold VIP', premium: 'Prestige Premium', collection: 'Super Luxe VIP' };
-const QUARTIERS = { Douala: ['Akwa', 'Bonanjo', 'Deïdo', 'Bonapriso'], 'Yaoundé': ['Bastos', 'Centre-ville', 'Nlongkak'] };
 
 export const fleetImage = (v) => {
   if (v.image_url) return v.image_url;
@@ -22,11 +21,12 @@ export const fleetImage = (v) => {
 };
 
 const quality = (v) => {
-  const score = Number(v.condition_score || 0) || (v.status === 'pending' ? 60 : 78 + (v.id % 3) * 5);
+  const score = Number(v.condition_score || 0);
   if (v.status === 'pending') return { score, label: 'Score en évaluation', pct: score, cls: 'text-slate-500', ring: '#94a3b8' };
-  if (score >= 85) return { score, label: "Qualité d'annonce : très bonne", pct: score, cls: 'text-teal-600', ring: '#0d9488' };
-  if (score >= 70) return { score, label: 'Annonce à perfectionner', pct: score, cls: 'text-amber-600', ring: '#f59e0b' };
-  return { score, label: 'Annonce à retravailler', pct: score, cls: 'text-red-500', ring: '#ef4444' };
+  if (!score) return { score, label: 'Pas encore inspecté', pct: 0, cls: 'text-slate-500', ring: '#94a3b8' };
+  if (score >= 85) return { score, label: 'État du véhicule : très bon', pct: score, cls: 'text-teal-600', ring: '#0d9488' };
+  if (score >= 70) return { score, label: 'État du véhicule : correct', pct: score, cls: 'text-amber-600', ring: '#f59e0b' };
+  return { score, label: 'État du véhicule : à revoir', pct: score, cls: 'text-red-500', ring: '#ef4444' };
 };
 
 /* Donut qualité — cercle conique + pourcentage. */
@@ -61,11 +61,11 @@ const Btn = ({ children, cls = '', ...p }) => (
 export default function FleetCard({ v, activeBooking, onDelete }) {
   const navigate = useNavigate();
   const q = quality(v);
-  const city = v.city || 'Douala';
-  const area = QUARTIERS[city]?.[(v.id || 0) % 4] || 'Centre';
-  const photoCount = v.photos?.length || 8;
+  const city = v.city || '—';
+  const photoCount = v.photos?.length || 0;
   const name = `${v.brand || ''} ${v.model || ''} ${v.year || ''}`.trim();
-  const seats = v.seats || (['SUV', 'Van', 'Minibus'].includes(v.category) ? 7 : 5);
+  const seats = v.seats;
+  const instantBooking = !!v.availability_prefs?.instant_booking;
 
   const statusBadge = {
     pending:     { label: 'En contrôle en attente', cls: 'bg-amber-500 text-white' },
@@ -77,10 +77,10 @@ export default function FleetCard({ v, activeBooking, onDelete }) {
 
   const statusLine = {
     pending:     { text: 'En attente de contrôle technique AutoLink', cls: 'text-amber-600' },
-    approved:    { text: 'En ligne · Disponible dès demain',          cls: 'text-teal-600' },
+    approved:    { text: 'En ligne — visible dans le catalogue',      cls: 'text-teal-600' },
     rented:      { text: `En location jusqu'au ${fmtDate(activeBooking?.end_date)}`, cls: 'text-sky-600' },
-    maintenance: { text: 'Maintenance en cours — retour estimé sous 72 h', cls: 'text-amber-600' },
-    suspended:   { text: 'Annonce suspendue par AutoLink',            cls: 'text-red-500' },
+    maintenance: { text: 'Maintenance en cours',                      cls: 'text-amber-600' },
+    suspended:   { text: 'Annonce suspendue',                         cls: 'text-red-500' },
   }[v.status] || { text: 'En ligne', cls: 'text-teal-600' };
 
   return (
@@ -90,18 +90,23 @@ export default function FleetCard({ v, activeBooking, onDelete }) {
         <div className="relative rounded-2xl overflow-hidden h-44 lg:h-40 cursor-pointer" onClick={() => navigate(`/owner/vehicles/${v.id}`)}>
           <img src={fleetImage(v)} alt={name} className="w-full h-full object-cover" />
           <span className={`absolute top-2.5 left-2.5 text-[9px] font-black px-2.5 py-1 rounded-full ${statusBadge.cls}`}>{statusBadge.label}</span>
-          <span className="absolute bottom-2.5 right-2.5 flex items-center gap-1 bg-slate-900/70 backdrop-blur text-white text-[9px] font-bold px-2 py-1 rounded-md">
-            <Camera size={10} /> {photoCount} Photos
-          </span>
+          {photoCount > 0 && (
+            <span className="absolute bottom-2.5 right-2.5 flex items-center gap-1 bg-slate-900/70 backdrop-blur text-white text-[9px] font-bold px-2 py-1 rounded-md">
+              <Camera size={10} /> {photoCount} Photo{photoCount > 1 ? 's' : ''}
+            </span>
+          )}
         </div>
         <div className="flex items-center justify-between mt-2.5 flex-wrap gap-1.5">
-          <span className="text-[9px] font-black text-slate-400 tracking-widest">VIN : {v.plate || `LT-${1000 + (v.id || 0)}-A`}</span>
+          <span className="text-[9px] font-black text-slate-400 tracking-widest">Immat. : {v.plate || '—'}</span>
           <div className="flex gap-1 flex-wrap">
-            {v.status === 'approved' && <><Chip cls="bg-teal-50 text-teal-700 border-teal-100"><ShieldCheck size={9} /> Contrôle validé</Chip>
-              <Chip><Zap size={9} /> Réservation instantanée</Chip></>}
-            {v.status === 'rented' && <Chip cls="bg-sky-50 text-sky-700 border-sky-100"><UserCheck size={9} /> Chauffeur dédié</Chip>}
-            {v.status === 'pending' && <Chip cls="bg-amber-50 text-amber-700 border-amber-100"><CalendarClock size={9} /> RDV {fmtDate(v.technical_control_date)}</Chip>}
-            {['maintenance', 'suspended'].includes(v.status) && <Chip cls="bg-amber-50 text-amber-700 border-amber-100"><CalendarClock size={9} /> Suivi garage</Chip>}
+            {v.status === 'approved' && Number(v.condition_score || 0) > 0 &&
+              <Chip cls="bg-teal-50 text-teal-700 border-teal-100"><ShieldCheck size={9} /> Contrôle validé</Chip>}
+            {instantBooking && <Chip><Zap size={9} /> Réservation instantanée</Chip>}
+            {v.status === 'rented' && <Chip cls="bg-sky-50 text-sky-700 border-sky-100"><UserCheck size={9} /> En mission</Chip>}
+            {v.status === 'pending' && v.technical_control_date &&
+              <Chip cls="bg-amber-50 text-amber-700 border-amber-100"><CalendarClock size={9} /> VT le {fmtDate(v.technical_control_date)}</Chip>}
+            {['maintenance', 'suspended'].includes(v.status) &&
+              <Chip cls="bg-amber-50 text-amber-700 border-amber-100"><CalendarClock size={9} /> Hors catalogue</Chip>}
           </div>
         </div>
       </div>
@@ -115,7 +120,7 @@ export default function FleetCard({ v, activeBooking, onDelete }) {
               <span className="text-[9px] font-black text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-md tracking-widest">{v.plate || '—'}</span>
             </div>
             <p className="text-[11px] text-slate-500 mt-1">
-              {city}, {area} · {v.gear || 'Automatique'} {v.category === 'SUV' ? '(4WD)' : ''} · {v.fuel || 'Essence'} · {seats} Places climatisées
+              {city}{v.availability_prefs?.pickup_hub ? ` · ${v.availability_prefs.pickup_hub}` : ''} · {v.gear || '—'} · {v.fuel || '—'}{seats ? ` · ${seats} places` : ''}
             </p>
             <p className={`flex items-center gap-1.5 text-[11px] font-bold mt-1.5 ${statusLine.cls}`}>
               <span className="w-1.5 h-1.5 rounded-full bg-current" /> {statusLine.text}
@@ -137,8 +142,7 @@ export default function FleetCard({ v, activeBooking, onDelete }) {
               <div className="text-[10px] text-slate-500 mt-0.5">Mission en cours · Chauffeur dédié AutoLink · Retour prévu {fmtDate(activeBooking.end_date)}</div>
             </div>
             <div className="flex gap-2 flex-wrap">
-              <Btn cls="bg-sky-600 text-white hover:bg-sky-700" onClick={() => navigate('/owner/dashboard')}><Navigation size={11} /> Suivre la location</Btn>
-              <Btn cls="bg-white border border-slate-200 text-slate-600 hover:border-teal-400">Retours lieu</Btn>
+              <Btn cls="bg-sky-600 text-white hover:bg-sky-700" onClick={() => navigate('/owner/requests')}><Navigation size={11} /> Voir la réservation</Btn>
             </div>
           </div>
         ) : (
@@ -148,12 +152,13 @@ export default function FleetCard({ v, activeBooking, onDelete }) {
               <div className={`text-xs font-black ${q.cls}`}>{q.label}</div>
               <div className="text-[10px] text-slate-500 mt-0.5">
                 {v.status === 'pending'
-                  ? 'Inspection mécanique & administrative programmée — votre véhicule sera évalué sur 100 points.'
-                  : 'Photos, description et tarification impactent directement votre position dans le catalogue.'}
+                  ? 'Dossier en cours d\'examen par un contrôleur AutoLink.'
+                  : 'Score d\'état mesuré lors des inspections CEMAC du hub.'}
               </div>
             </div>
-            <Btn cls={v.status === 'pending' ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-teal-600 text-white hover:bg-teal-700'}>
-              {v.status === 'pending' ? 'Compléter les documents' : 'Optimiser l\'annonce'}
+            <Btn onClick={() => navigate(`/owner/edit-vehicle/${v.id}`)}
+              cls={v.status === 'pending' ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-teal-600 text-white hover:bg-teal-700'}>
+              {v.status === 'pending' ? 'Compléter le dossier' : 'Modifier l\'annonce'}
             </Btn>
           </div>
         )}
@@ -161,28 +166,21 @@ export default function FleetCard({ v, activeBooking, onDelete }) {
         {/* Specs + actions */}
         <div className="mt-4 flex items-end justify-between gap-4 flex-wrap">
           <div className="flex gap-6 sm:gap-8 flex-wrap">
-            <SpecCell label="Tarif journalier" value={<>{fmt(v.daily_rate)} <span className="text-[9px] text-slate-400">FCFA/j</span></>} sub="avec chauffeur" />
-            <SpecCell label="Performances" value={<>{v.total_bookings || 0} <span className="text-[9px] text-slate-400">locations</span></>}
-              sub={<span className="flex items-center gap-1"><Star size={9} className="text-amber-400 fill-amber-400" /> {(4.6 + ((v.id || 0) % 4) / 10).toFixed(2).replace('.', ',')}/5</span>} />
+            <SpecCell label="Tarif journalier" value={<>{fmt(v.daily_rate)} <span className="text-[9px] text-slate-400">FCFA/j</span></>} sub="par jour" />
+            <SpecCell label="Locations" value={<>{v.total_bookings || 0} <span className="text-[9px] text-slate-400">réservations</span></>}
+              sub={v.driver_available ? 'chauffeur disponible' : 'sans chauffeur'} />
             <SpecCell label="Revenus générés" value={<>{fmt(v.total_earned)} <span className="text-[9px] text-slate-400">FCFA</span></>} sub="cumulés" />
           </div>
           <div className="flex gap-2 flex-wrap">
             {v.status === 'pending' ? (
-              <>
-                <Btn cls="bg-white border border-slate-200 text-slate-600 hover:border-teal-400"><CalendarClock size={12} /> Modifier le rendez-vous</Btn>
-                <Btn cls="bg-white border border-slate-200 text-slate-600 hover:border-teal-400"><FileText size={12} /> Documents</Btn>
-              </>
+              <Btn onClick={() => navigate(`/owner/edit-vehicle/${v.id}`)} cls="bg-white border border-slate-200 text-slate-600 hover:border-teal-400"><FileText size={12} /> Documents</Btn>
             ) : (
-              <>
-                <Btn cls="bg-white border border-slate-200 text-slate-600 hover:border-teal-400 hover:text-teal-700"><CalendarRange size={12} /> Calendrier &amp; Prix</Btn>
-                <Btn cls="bg-white border border-slate-200 text-slate-600 hover:border-teal-400"><ImageIcon size={12} /> Photos</Btn>
-              </>
+              <Btn onClick={() => navigate(`/owner/vehicles/${v.id}`)} cls="bg-white border border-slate-200 text-slate-600 hover:border-teal-400 hover:text-teal-700"><CalendarRange size={12} /> Calendrier &amp; Prix</Btn>
             )}
             <Btn onClick={() => navigate(`/owner/edit-vehicle/${v.id}`)} title="Modifier" cls="bg-white border border-slate-200 text-slate-400 hover:text-teal-600 !px-2.5"><Pencil size={12} /></Btn>
             {onDelete && (
               <Btn onClick={() => onDelete(v)} title="Supprimer" cls="bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-300 !px-2.5"><Trash2 size={12} /></Btn>
             )}
-            <Btn cls="bg-white border border-slate-200 text-slate-400 hover:text-slate-700 !px-2.5"><MoreHorizontal size={12} /></Btn>
           </div>
         </div>
       </div>

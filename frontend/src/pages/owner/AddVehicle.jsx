@@ -284,7 +284,11 @@ export default function AddVehicle() {
 
         {step === 1 && <StepInfos form={form} set={set} />}
         {step === 2 && <StepSpecs form={form} set={set} />}
-        {step === 3 && <StepPhotos photos={photos} setPhotos={setPhotos} existing={existingPhotos} />}
+        {step === 3 && <StepPhotos photos={photos} setPhotos={setPhotos} existing={existingPhotos}
+          onDeleteExisting={editMode ? async (p) => {
+            try { await vehiclesAPI.deleteMedia(id, p.id); setExistingPhotos(l => l.filter(x => x.id !== p.id)); }
+            catch { setApiError('Suppression de la photo impossible — réessayez.'); }
+          } : undefined} />}
         {step === 4 && <StepDocuments form={form} set={set} />}
         {step === 5 && <StepAvailability form={form} set={set} config={siteCfg} preview={preview} setPreview={setPreview} />}
         {step === 6 && <StepRecap form={form} photos={photos} certify={certify} setCertify={setCertify}

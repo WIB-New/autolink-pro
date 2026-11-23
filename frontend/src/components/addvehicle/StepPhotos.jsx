@@ -18,17 +18,32 @@ const TIPS = [
   { t: "Plaque d'immatriculation visible", d: 'Obligatoire pour la conformité CEMAC et l\'inspection documentaire interne AutoLink.' },
 ];
 
-/* Étape 3 — grille de slots photos + sidebar conseils (maquette). */
-export default function StepPhotos({ photos, setPhotos, existing = [] }) {
+/* Étape 3 — grille de slots photos + sidebar conseils.
+   En édition, les photos déjà en ligne occupent les slots (ordre du serveur) :
+   elles peuvent être supprimées ou remplacées individuellement. */
+export default function StepPhotos({ photos, setPhotos, existing = [], onDeleteExisting }) {
   const inputRef = useRef(null);
   const [activeSlot, setActiveSlot] = React.useState(null);
-  const done = SLOTS.filter(s => photos[s.id]).length;
+
+  // Répartit les photos en ligne dans les slots, dans l'ordre renvoyé par l'API
+  const slotExisting = {};
+  const extras = [];
+  existing.forEach((p, i) => {
+    if (i < SLOTS.length) slotExisting[SLOTS[i].id] = p;
+    else extras.push(p);
+  });
+  const done = SLOTS.filter(s => photos[s.id] || slotExisting[s.id]).length;
   const pct = Math.round((done / SLOTS.length) * 100);
 
   const pick = slotId => { setActiveSlot(slotId); inputRef.current?.click(); };
   const onFile = e => {
     const f = e.target.files?.[0];
-    if (f && activeSlot) setPhotos(p => ({ ...p, [activeSlot]: { file: f, url: URL.createObjectURL(f), name: f.name } }));
+    if (f && activeSlot) {
+      setPhotos(p => ({ ...p, [activeSlot]: { file: f, url: URL.createObjectURL(f), name: f.name } }));
+      // Remplacement : l'ancienne photo en ligne du slot est supprimée côté serveur
+      const ex = slotExisting[activeSlot];
+      if (ex && onDeleteExisting) onDeleteExisting(ex);
+    }
     e.target.value = '';
   };
 
@@ -36,12 +51,20 @@ export default function StepPhotos({ photos, setPhotos, existing = [] }) {
     <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
       <div>
-        {existing.length > 0 && (
+        {extras.length > 0 && (
           <div className="mb-4 bg-teal-50 border border-teal-100 rounded-xl p-3.5">
-            <div className="text-[11px] font-black text-teal-800 mb-2">Photos actuellement en ligne ({existing.length}) — conservez-les ou remplacez-les ci-dessous.</div>
+            <div className="text-[11px] font-black text-teal-800 mb-2">Autres photos en ligne ({extras.length})</div>
             <div className="flex gap-2 flex-wrap">
-              {existing.map((p, i) => (
-                <img key={i} src={mediaUrl(p.image)} alt="" className="w-16 h-12 rounded-lg object-cover bg-white" />
+              {extras.map(p => (
+                <div key={p.id} className="relative group">
+                  <img src={mediaUrl(p.image)} alt="" className="w-16 h-12 rounded-lg object-cover bg-white" />
+                  {onDeleteExisting && (
+                    <button onClick={() => onDeleteExisting(p)} title="Supprimer"
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full items-center justify-center hidden group-hover:flex">
+                      <Trash2 size={9} />
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -54,13 +77,14 @@ export default function StepPhotos({ photos, setPhotos, existing = [] }) {
         <div className="grid sm:grid-cols-2 gap-4">
           {SLOTS.map((s, i) => {
             const p = photos[s.id];
+            const ex = !p && slotExisting[s.id];
             return (
               <div key={s.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                {p ? (
+                {p || ex ? (
                   <div className="relative h-44">
-                    <img src={p.url} alt={s.label} className="w-full h-full object-cover" />
-                    <span className={`absolute top-2.5 left-2.5 text-[9px] font-black px-2 py-1 rounded-md ${s.cover ? 'bg-amber-400 text-slate-900' : 'bg-teal-600 text-white'}`}>
-                      {s.cover ? '★ PHOTO DE COUVERTURE' : '✓ Validé'}
+                    <img src={p ? p.url : mediaUrl(ex.image)} alt={s.label} className="w-full h-full object-cover" />
+                    <span className={`absolute top-2.5 left-2.5 text-[9px] font-black px-2 py-1 rounded-md ${p && s.cover ? 'bg-amber-400 text-slate-900' : p ? 'bg-teal-600 text-white' : 'bg-slate-700 text-white'}`}>
+                      {p ? (s.cover ? '★ PHOTO DE COUVERTURE' : '✓ Validé') : 'En ligne'}
                     </span>
                     <span className="absolute bottom-2.5 left-2.5 bg-slate-900/70 text-white text-[9px] font-bold px-2 py-1 rounded-md">Slot {i + 1} · Obligatoire</span>
                   </div>
@@ -76,12 +100,15 @@ export default function StepPhotos({ photos, setPhotos, existing = [] }) {
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <div className="text-xs font-black text-slate-800 truncate">{s.label}</div>
-                      <div className="text-[9px] text-slate-400 truncate">{p ? p.name : s.required ? 'Slot requis' : 'Optionnel'}</div>
+                      <div className="text-[9px] text-slate-400 truncate">{p ? p.name : ex ? (ex.caption || 'Photo actuellement en ligne') : 'Slot requis'}</div>
                     </div>
-                    {p ? (
+                    {p || ex ? (
                       <div className="flex gap-1.5 shrink-0">
-                        <button onClick={() => pick(s.id)} className="p-1.5 text-slate-400 hover:text-teal-600 border border-slate-200 rounded-lg"><Eye size={11} /></button>
-                        <button onClick={() => setPhotos(pp => { const n = { ...pp }; delete n[s.id]; return n; })} className="p-1.5 text-slate-400 hover:text-red-500 border border-slate-200 rounded-lg"><Trash2 size={11} /></button>
+                        <button onClick={() => pick(s.id)} title={ex ? 'Remplacer' : 'Changer'} className="p-1.5 text-slate-400 hover:text-teal-600 border border-slate-200 rounded-lg"><Eye size={11} /></button>
+                        <button onClick={() => {
+                            if (p) setPhotos(pp => { const n = { ...pp }; delete n[s.id]; return n; });
+                            else if (ex && onDeleteExisting) onDeleteExisting(ex);
+                          }} title="Supprimer" className="p-1.5 text-slate-400 hover:text-red-500 border border-slate-200 rounded-lg"><Trash2 size={11} /></button>
                       </div>
                     ) : (
                       <span className={`text-[8px] font-black px-2 py-1 rounded-md shrink-0 ${i < 4 ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700'}`}>
