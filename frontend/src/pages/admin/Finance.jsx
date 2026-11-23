@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import AdminLayout from '../../components/admindash/AdminLayout';
-import { bookingsAPI, withdrawalsAPI } from '../../services/api';
+import { bookingsAPI, withdrawalsAPI, financeAPI } from '../../services/api';
 import {
   Landmark, Wallet, Download, FileText, Eye, X,
   ChevronLeft, ChevronRight, Lock, CheckCircle2, AlertTriangle, Loader, Wifi, WifiOff,
@@ -39,6 +39,23 @@ const ROW_STATUS = {
 
 const METHOD_LABEL = { mtn: 'MTN MoMo', orange: 'Orange Money', card: 'Carte bancaire', wallet: 'Portefeuille' };
 
+/* Export CSV du journal affiché — séparateur « ; » + BOM pour Excel FR. */
+const exportCsv = (list) => {
+  const head = ['Référence', 'Date', 'Type', 'Bénéficiaire / Client', 'Méthode', 'Montant brut (FCFA)', 'Frais', 'Montant net (FCFA)', 'Statut'];
+  const lines = list.map((r) => [
+    `TX-${r.id}`, r.at ? new Date(r.at).toLocaleDateString('fr-FR') : '',
+    TYPE_STYLE[r.type]?.l || r.type, r.who, r.method,
+    Math.round(r.gross || 0), r.fees, Math.round(r.net || 0),
+    ROW_STATUS[r.status]?.l || r.status,
+  ].map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';'));
+  const blob = new Blob(['﻿' + [head.join(';'), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `autolink-finance-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
 /* Page « Supervision Financière & Trésorerie » — console finance admin. */
 export default function Finance() {
   const [bookings, setBookings] = useState([]);
@@ -49,6 +66,24 @@ export default function Finance() {
   const [detail, setDetail] = useState(null);
 
   const [withdrawals, setWithdrawals] = useState([]);
+  const [pdfBusy, setPdfBusy] = useState(false);
+
+  const downloadReport = async () => {
+    setPdfBusy(true);
+    try {
+      const { data } = await financeAPI.report();
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rapport-tresorerie-${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (_) {
+      alert('Rapport PDF indisponible pour le moment.');
+    } finally {
+      setPdfBusy(false);
+    }
+  };
   // Taux configuré — utilisé en secours quand une résa n'a pas de
   // commission_amount ; les libellés affichent le taux effectif réel.
   const commissionRate = useCommissionRate();
@@ -202,11 +237,13 @@ export default function Finance() {
             <Landmark size={15} className="text-teal-600" /> Journal des opérations
           </h3>
           <div className="flex flex-wrap items-center gap-2">
-            <button className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-teal-400 text-slate-600 text-[10px] font-bold px-3 py-1.5 rounded-xl transition-colors">
+            <button onClick={() => exportCsv(filtered)} title={`Exporter ${filtered.length} opération(s) en CSV`}
+              className="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-teal-400 text-slate-600 text-[10px] font-bold px-3 py-1.5 rounded-xl transition-colors">
               <Download size={12} className="text-teal-600" /> CSV
             </button>
-            <button className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-black px-3 py-1.5 rounded-xl transition-colors">
-              <FileText size={12} /> Rapport PDF
+            <button onClick={downloadReport} disabled={pdfBusy}
+              className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-black px-3 py-1.5 rounded-xl transition-colors disabled:opacity-60">
+              {pdfBusy ? <Loader size={12} className="animate-spin" /> : <FileText size={12} />} {pdfBusy ? 'Génération…' : 'Rapport PDF'}
             </button>
             <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400 ml-1">
               {online ? <Wifi size={11} className="text-emerald-500" /> : <WifiOff size={11} className="text-red-500" />}

@@ -5,6 +5,7 @@ from .views import (
     StripeReturnView, PayPalReturnView, StripeWebhookView,
     PaymentMethodsView, OrangeNotificationView, BookingPaymentStatusView,
     FinanceStatsView, FinanceTransactionListView, FinanceTransactionExportView,
+    FinanceReportView,
 )
 
 router = DefaultRouter()
@@ -23,6 +24,7 @@ urlpatterns = [
     path('bookings/<str:reference>/status/', BookingPaymentStatusView.as_view(), name='booking-payment-status'),
     path('finance/stats/', FinanceStatsView.as_view(), name='finance-stats'),
     path('finance/transactions/export/', FinanceTransactionExportView.as_view(), name='finance-transactions-export'),
+    path('finance/report/', FinanceReportView.as_view(), name='finance-report'),
     path('finance/transactions/', FinanceTransactionListView.as_view(), name='finance-transactions'),
     path('', include(router.urls)),
 ]

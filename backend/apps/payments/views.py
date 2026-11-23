@@ -159,6 +159,130 @@ class FinanceTransactionExportView(FinanceTransactionListView):
         return response
 
 
+class FinanceReportView(APIView):
+    """Rapport PDF de trésorerie — KPIs + journal des opérations (admin)."""
+    permission_classes = [FinanceAdminPermission]
+
+    def get(self, request):
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.lib.units import mm
+        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                        Table, TableStyle, HRFlowable)
+        from apps.users.models import PlatformSettings
+
+        fmt = lambda n: f"{int(n or 0):,}".replace(',', ' ')
+        teal = colors.HexColor('#0d7a6f')
+        light = colors.HexColor('#e6f5f3')
+        mute = colors.HexColor('#6b7280')
+        ink = colors.HexColor('#1f2937')
+        base = ParagraphStyle('b', fontName='Helvetica', fontSize=8.5, textColor=ink, leading=11)
+        brand = ParagraphStyle('brand', fontName='Helvetica-Bold', fontSize=20, textColor=colors.white)
+        tag = ParagraphStyle('tag', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#b8e6e0'))
+        ref = ParagraphStyle('r', fontName='Helvetica-Bold', fontSize=11, textColor=colors.white, alignment=2)
+        h2 = ParagraphStyle('h2', fontName='Helvetica-Bold', fontSize=11, textColor=teal, spaceAfter=6)
+        foot = ParagraphStyle('f', fontName='Helvetica', fontSize=8, textColor=mute, alignment=1)
+
+        # KPIs — mêmes agrégats que la page Supervision Financière
+        payments = Payment.objects.all()
+        bookings = Booking.objects.all()
+        gross = bookings.aggregate(s=Coalesce(Sum('subtotal'), Decimal('0.00')))['s']
+        commission = bookings.aggregate(s=Coalesce(Sum('commission_amount'), Decimal('0.00')))['s']
+        rate = PlatformSettings.current().commission_rate
+        pct = round(float(commission) / float(gross) * 100) if gross else round(float(rate) * 100)
+        payouts_total = Payout.objects.filter(status=Payment.Status.COMPLETED).aggregate(
+            s=Coalesce(Sum('amount'), Decimal('0.00')))['s']
+        escrow_held = payments.filter(escrow_status=Payment.Escrow.HELD).aggregate(
+            s=Coalesce(Sum('deposit_amount'), Decimal('0.00')))['s']
+        escrow_held_count = payments.filter(escrow_status=Payment.Escrow.HELD).count()
+        escrow_released = payments.filter(
+            escrow_status__in=[Payment.Escrow.RELEASED, Payment.Escrow.REFUNDED]).aggregate(
+            s=Coalesce(Sum('deposit_amount'), Decimal('0.00')))['s']
+        escrow_lien = bookings.filter(status='disputed').aggregate(
+            s=Coalesce(Sum('deposit_amount'), Decimal('0.00')))['s']
+
+        buf = BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm,
+                                topMargin=14 * mm, bottomMargin=14 * mm)
+        header = Table([[Paragraph('AutoLink Pro', brand),
+                         Paragraph(f'RAPPORT DE TRÉSORERIE<br/><font size="9">{timezone.localdate():%d/%m/%Y}</font>', ref)],
+                        [Paragraph('Supervision financière — flux MoMo, séquestres & reversements', tag), '']],
+                       colWidths=[115 * mm, 60 * mm])
+        header.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), teal), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 14), ('RIGHTPADDING', (0, 0), (-1, -1), 14),
+            ('TOPPADDING', (0, 0), (-1, 0), 12), ('BOTTOMPADDING', (0, -1), (-1, -1), 12),
+            ('SPAN', (0, 1), (1, 1)),
+        ]))
+
+        kpi_row = [
+            [Paragraph('Volume brut (GMV)', ParagraphStyle('k', parent=base, textColor=mute)),
+             Paragraph(f'{fmt(gross)} FCFA', ParagraphStyle('v', parent=base, fontName='Helvetica-Bold'))],
+            [Paragraph(f'Commissions ({pct} %)', ParagraphStyle('k2', parent=base, textColor=mute)),
+             Paragraph(f'{fmt(commission)} FCFA', ParagraphStyle('v2', parent=base, fontName='Helvetica-Bold'))],
+            [Paragraph('Reversements bailleurs', ParagraphStyle('k3', parent=base, textColor=mute)),
+             Paragraph(f'{fmt(payouts_total)} FCFA', ParagraphStyle('v3', parent=base, fontName='Helvetica-Bold'))],
+            [Paragraph('Cautions séquestrées', ParagraphStyle('k4', parent=base, textColor=mute)),
+             Paragraph(f'{fmt(escrow_held)} FCFA', ParagraphStyle('v4', parent=base, fontName='Helvetica-Bold'))],
+        ]
+        kpis = Table([kpi_row], colWidths=[45 * mm] * 4)
+        kpis.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), light), ('BOX', (0, 0), (-1, -1), 0.8, teal),
+            ('TOPPADDING', (0, 0), (-1, -1), 8), ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8), ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        escrow = Table([[
+            Paragraph(f'En séquestre : {fmt(escrow_held)} FCFA ({escrow_held_count} contrats)', base),
+            Paragraph(f'Restituées : {fmt(escrow_released)} FCFA', base),
+            Paragraph(f'Retenues (litiges) : {fmt(escrow_lien)} FCFA', base),
+        ]], colWidths=[60 * mm, 60 * mm, 58 * mm])
+        escrow.setStyle(TableStyle([('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4)]))
+
+        def journal(title, headers, rows):
+            head = [Paragraph(f'<b>{h}</b>', ParagraphStyle('th', parent=base, textColor=colors.white)) for h in headers]
+            body = [[Paragraph(str(c or '—'), base) for c in row] for row in rows]
+            t = Table([head] + body, colWidths=[30 * mm, 50 * mm, 33 * mm, 33 * mm, 32 * mm], repeatRows=1)
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), teal),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
+                ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#e5e7eb')),
+                ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ]))
+            return [Paragraph(title, h2), t, Spacer(1, 12)]
+
+        story = [header, Spacer(1, 14), kpis, Spacer(1, 4), escrow, Spacer(1, 14)]
+
+        pays = payments.select_related('payer', 'booking__vehicle').order_by('-created_at')[:25]
+        story += journal('Derniers paiements (25)',
+                         ['Référence', 'Client / Véhicule', 'Montant', 'Méthode · Statut', 'Séquestre'],
+                         [[p.transaction_ref, f"{p.payer.get_full_name() or p.payer.username} · {p.booking.vehicle.brand} {p.booking.vehicle.model}" if p.booking_id else (p.payer.get_full_name() or p.payer.username),
+                           f'{fmt(p.amount)} FCFA', f'{p.method} · {p.status}',
+                           f'{p.escrow_status} ({fmt(p.deposit_amount)} F)'] for p in pays])
+
+        wds = WithdrawalRequest.objects.select_related('user').order_by('-created_at')[:15]
+        if wds:
+            story += journal('Dernières demandes de retrait (15)',
+                             ['Référence', 'Utilisateur', 'Montant', 'Méthode', 'Statut'],
+                             [[w.reference, w.user.get_full_name() or w.user.username,
+                               f'{fmt(w.amount)} FCFA', w.get_method_display() if hasattr(w, 'get_method_display') else w.method,
+                               w.status] for w in wds])
+
+        pos = Payout.objects.select_related('recipient').order_by('-created_at')[:15]
+        if pos:
+            story += journal('Derniers reversements bailleurs (15)',
+                             ['Référence', 'Bénéficiaire', 'Montant', 'Méthode', 'Statut'],
+                             [[po.transaction_ref, po.recipient.get_full_name() or po.recipient.username,
+                               f'{fmt(po.amount)} FCFA', po.method, po.status] for po in pos])
+
+        story += [HRFlowable(width='100%', thickness=0.6, color=colors.HexColor('#e5e7eb')), Spacer(1, 8),
+                  Paragraph(f'AutoLink Pro — Émis le {timezone.now():%d/%m/%Y à %H:%M} · Document interne', foot)]
+        doc.build(story)
+        resp = HttpResponse(buf.getvalue(), content_type='application/pdf')
+        resp['Content-Disposition'] = f'attachment; filename="rapport-tresorerie-{timezone.localdate()}.pdf"'
+        return resp
+
+
 class PaymentViewSet(viewsets.ModelViewSet):
     serializer_class = PaymentSerializer
     permission_classes = [permissions.IsAuthenticated]

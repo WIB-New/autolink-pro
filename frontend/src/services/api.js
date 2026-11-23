@@ -284,6 +284,7 @@ export const financeAPI = {
   exportTransactions: (params) => api.get('/payments/finance/transactions/export/', {
     params, responseType: 'blob',
   }),
+  report: () => api.get('/payments/finance/report/', { responseType: 'blob' }),
 };
 export const payoutsAPI = {
   list: (params) => api.get('/payments/payouts/', { params }),
