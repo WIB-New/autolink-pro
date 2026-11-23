@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from pathlib import Path
-from .models import Vehicle, VehiclePhoto, VehicleAvailability
+from .models import Vehicle, VehiclePhoto, VehicleAvailability, pricing_config
 
 
 class VehiclePhotoSerializer(serializers.ModelSerializer):
@@ -71,8 +71,24 @@ class VehicleSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         request = self.context.get('request')
-        if request and request.user.role == 'OWNER' and attrs.get('status') not in (None, 'suspended'):
-            raise serializers.ValidationError({'status': 'Le statut est géré par AutoLink.'})
+        if request and request.user.role == 'OWNER':
+            if attrs.get('status') not in (None, 'suspended'):
+                raise serializers.ValidationError({'status': 'Le statut est géré par AutoLink.'})
+            if 'daily_rate' in attrs:
+                # Rejette explicitement un tarif hors plage plutôt que de le
+                # borner silencieusement dans save().
+                probe = self.instance or Vehicle()
+                for k, v in attrs.items():
+                    setattr(probe, k, v)
+                probe.tier = probe.classify()
+                indicative = float(probe.compute_rate())
+                margin = float(pricing_config()['price_margin'])
+                lo, hi = round(indicative * (1 - margin)), round(indicative * (1 + margin))
+                if not lo <= float(attrs['daily_rate']) <= hi:
+                    raise serializers.ValidationError({
+                        'daily_rate': (f'Le tarif doit rester entre {lo} et {hi} FCFA/jour '
+                                       f'(±{margin:.0%} du tarif indicatif {int(indicative)} F).')
+                    })
         return attrs
 
 

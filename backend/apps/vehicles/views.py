@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 from django.shortcuts import get_object_or_404
 from django.db.models import Max, Q
 from rest_framework.exceptions import PermissionDenied
@@ -12,7 +13,7 @@ from rest_framework.decorators import action
 from rest_framework.viewsets import ModelViewSet
 from django_filters.rest_framework import DjangoFilterBackend
 from config.pagination import StandardPagination
-from .models import Favorite, Vehicle, VehicleAvailability, VehiclePhoto
+from .models import Favorite, Vehicle, VehicleAvailability, VehicleDraft, VehiclePhoto, pricing_config
 from .serializers import VehicleMediaUploadSerializer, VehicleSerializer, VehicleAvailabilitySerializer, VehiclePhotoSerializer
 
 
@@ -110,6 +111,46 @@ class VehicleViewSet(ModelViewSet):
         vehicle.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=False, methods=['post'], url_path='rate-preview')
+    def rate_preview(self, request):
+        """Aperçu tarifaire pour le wizard propriétaire : gamme attribuée,
+        prix indicatif, plage autorisée, caution et forfait km — calculés
+        sur les attributs saisis, sans créer le véhicule."""
+        if request.user.role != 'OWNER':
+            raise PermissionDenied('Réservé aux propriétaires.')
+        probe = Vehicle()
+        for f in ('brand', 'model', 'category', 'fuel', 'city', 'gear', 'insurance_type'):
+            if request.data.get(f):
+                setattr(probe, f, request.data[f])
+        for f in ('year', 'mileage', 'condition_score', 'seats'):
+            v = request.data.get(f)
+            if v not in (None, ''):
+                try:
+                    setattr(probe, f, int(v))
+                except (TypeError, ValueError):
+                    pass
+        v = request.data.get('market_value')
+        if v not in (None, ''):
+            try:
+                probe.market_value = Decimal(str(v))
+            except Exception:
+                pass
+        probe.tier = probe.classify()
+        cfg = pricing_config()
+        computed = probe.compute_rate()
+        margin = cfg['price_margin']
+        km = cfg['tier_km'][probe.tier]
+        return Response({
+            'tier': probe.tier,
+            'tier_label': probe.get_tier_display(),
+            'computed_rate': computed,
+            'price_min': round(float(computed) * (1 - float(margin))),
+            'price_max': round(float(computed) * (1 + float(margin))),
+            'deposit': cfg['tier_deposit'][probe.tier],
+            'km_included': km[0],
+            'extra_km_rate': km[1],
+        })
+
     @action(detail=False, methods=['post'], url_path='bulk-pricing')
     def bulk_pricing(self, request):
         """Tarification dynamique : réaligne les tarifs du propriétaire sur le
@@ -137,6 +178,41 @@ class VehicleViewSet(ModelViewSet):
             updated.append({'id': v.id, 'daily_rate': str(v.daily_rate),
                             'computed_rate': str(v.computed_rate)})
         return Response({'updated': len(updated), 'vehicles': updated})
+
+    @action(detail=False, methods=['get', 'put', 'delete'], url_path='draft')
+    def draft(self, request):
+        """Brouillon du wizard « Ajouter un véhicule » — persisté côté serveur.
+
+        GET    ?vehicle=<id>  → brouillon du propriétaire (création si sans param)
+        PUT    {vehicle, step, data} → crée/met à jour le brouillon
+        DELETE ?vehicle=<id>  → supprime le brouillon (après soumission)
+        """
+        if request.user.role != 'OWNER':
+            raise PermissionDenied('Réservé aux propriétaires.')
+        vehicle_id = (request.data.get('vehicle') if request.method == 'PUT'
+                      else request.query_params.get('vehicle'))
+        qs = VehicleDraft.objects.filter(owner=request.user)
+        qs = qs.filter(vehicle_id=vehicle_id) if vehicle_id else qs.filter(vehicle__isnull=True)
+
+        if request.method == 'GET':
+            d = qs.first()
+            return Response({'draft': None} if d is None else {
+                'draft': {'step': d.step, 'data': d.data, 'updated_at': d.updated_at}})
+        if request.method == 'DELETE':
+            qs.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        # PUT — upsert du brouillon (un seul par propriétaire/véhicule)
+        try:
+            step = int(request.data.get('step') or 1)
+        except (TypeError, ValueError):
+            step = 1
+        if vehicle_id and not Vehicle.objects.filter(pk=vehicle_id, owner=request.user).exists():
+            return Response({'vehicle': 'Véhicule introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        d, _ = VehicleDraft.objects.update_or_create(
+            owner=request.user, vehicle_id=vehicle_id or None,
+            defaults={'step': min(max(step, 1), 6), 'data': request.data.get('data') or {}})
+        return Response({'step': d.step, 'updated_at': d.updated_at})
 
     @action(detail=True, methods=['get'], url_path='reviews', permission_classes=[permissions.AllowAny])
     def reviews(self, request, pk=None):

@@ -73,7 +73,7 @@ class Booking(models.Model):
     days = models.IntegerField(validators=[MinValueValidator(1)])
     discount_percent = models.IntegerField(
         default=0, validators=[MinValueValidator(0), MaxValueValidator(50)],
-        help_text='Dégressivité longue durée : -5 % dès 7 jours, -10 % dès 30 jours.')
+        help_text='Dégressivité longue durée — seuils et taux configurés dans PlatformSettings.')
     subtotal = models.DecimalField(max_digits=12, decimal_places=2)
     commission_amount = models.DecimalField(max_digits=12, decimal_places=2)
     owner_amount = models.DecimalField(max_digits=12, decimal_places=2)
@@ -114,11 +114,17 @@ class Booking(models.Model):
         if self.start_date and self.end_date:
             duration = (datetime.combine(self.end_date, self.end_time) - datetime.combine(self.start_date, self.start_time)).total_seconds() if timed else (self.end_date - self.start_date).days * 86400
             self.days = max(1, ceil(duration / 86400))
-        # Tarification dynamique : dégressivité longue durée
-        self.discount_percent = 0 if timed else 10 if self.days >= 30 else 5 if self.days > 3 else 0
         gross = self.daily_rate * self.days
         from apps.users.models import PlatformSettings
         ps = PlatformSettings.current()
+        # Dégressivité longue durée — règles configurables dans les paramètres plateforme.
+        mid_days = int(ps.discount_mid_days or 0)
+        mid_pct = int(ps.discount_mid_percent or 0)
+        long_days = int(ps.discount_long_days or 0)
+        long_pct = int(ps.discount_long_percent or 0)
+        self.discount_percent = 0 if timed else (
+            long_pct if long_days and self.days >= long_days
+            else mid_pct if mid_days and self.days >= mid_days else 0)
         self.driver_fee = Decimal(str(ps.driver_daily_fee or 10000)) * self.days if timed and self.driver_type != self.DriverType.NONE else Decimal('0')
         self.delivery_fee = Decimal(str(ps.delivery_fee or 5000)) if timed and self.delivery_requested else Decimal('0')
         # La commission ne s'applique que sur la location : les frais chauffeur

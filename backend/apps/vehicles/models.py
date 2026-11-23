@@ -378,3 +378,34 @@ class VehicleAvailability(models.Model):
 
     def __str__(self):
         return f'{self.vehicle} — {self.start_date} au {self.end_date}'
+
+
+class VehicleDraft(models.Model):
+    """Brouillon du wizard propriétaire « Ajouter un véhicule ».
+
+    Persiste l'état du formulaire (champs saisis + étape) côté serveur afin que
+    le propriétaire puisse reprendre sa saisie sur n'importe quel appareil.
+    Les fichiers (photos/documents) ne sont pas stockés — seuls leurs noms sont
+    conservés dans `data` à titre indicatif.
+    Un seul brouillon par (propriétaire, véhicule) ; `vehicle=NULL` = brouillon
+    de création (un seul par propriétaire).
+    """
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='vehicle_drafts')
+    vehicle = models.ForeignKey(
+        Vehicle, on_delete=models.CASCADE, null=True, blank=True, related_name='drafts',
+        help_text='Véhicule existant en cours de modification — vide = brouillon de création.')
+    step = models.PositiveSmallIntegerField(default=1)
+    data = models.JSONField(default=dict, help_text='État sérialisé du formulaire wizard.')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['owner'], condition=models.Q(vehicle__isnull=True),
+                                    name='unique_owner_creation_draft'),
+            models.UniqueConstraint(fields=['owner', 'vehicle'], condition=models.Q(vehicle__isnull=False),
+                                    name='unique_owner_vehicle_draft'),
+        ]
+
+    def __str__(self):
+        return f'Brouillon {self.owner} — {self.vehicle or "nouveau véhicule"}'

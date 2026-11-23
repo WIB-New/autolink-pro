@@ -11,13 +11,19 @@ export const WIZARD_STEPS = [
 ];
 
 /* Barre d'étapes — numéro au-dessus de la ligne, description en dessous. */
-export default function WizardSteps({ step, subtitle = "Ajout d'un véhicule à la flotte" }) {
+export default function WizardSteps({ step, subtitle = "Ajout d'un véhicule à la flotte", saveState = 'idle', savedAt = null }) {
+  const saveLabel = {
+    idle: 'Brouillon : aucune sauvegarde',
+    saving: 'Enregistrement du brouillon…',
+    saved: `Brouillon enregistré${savedAt ? ` à ${savedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : ''}`,
+    error: 'Échec de la sauvegarde du brouillon',
+  }[saveState] || '';
   return (
     <div className="space-y-7">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl font-black text-slate-900">{subtitle}</h1>
-        <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
-          <UploadCloud size={12} className="text-teal-500" /> Sauvegarde automatique : Enregistré
+        <span className={`flex items-center gap-1.5 text-[10px] font-bold ${saveState === 'error' ? 'text-red-500' : 'text-slate-400'}`}>
+          <UploadCloud size={12} className={saveState === 'saved' ? 'text-teal-500' : saveState === 'error' ? 'text-red-500' : 'text-slate-300'} /> {saveLabel}
         </span>
       </div>
       <div className="flex items-start px-2">
@@ -49,7 +55,7 @@ export default function WizardSteps({ step, subtitle = "Ajout d'un véhicule à 
 }
 
 /* Pied de page du wizard — précédent / sauvegarder / continuer. */
-export function WizardFooter({ step, setStep, onSubmit, busy, submitLabel, submitDisabled }) {
+export function WizardFooter({ step, setStep, onSubmit, busy, submitLabel, submitDisabled, onSaveDraft, draftBusy }) {
   return (
     <div className="flex items-center justify-between gap-3 flex-wrap pt-2">
       <button onClick={() => setStep(step - 1)} disabled={step === 1}
@@ -57,8 +63,9 @@ export function WizardFooter({ step, setStep, onSubmit, busy, submitLabel, submi
         ← Étape précédente {step === 5 ? '(Documents)' : step === 6 ? '(Tarifs & Dispo)' : ''}
       </button>
       <div className="flex gap-3">
-        <button className="text-xs font-bold text-slate-500 border border-slate-200 hover:border-teal-400 px-5 py-3 rounded-xl transition-colors">
-          Sauvegarder en brouillon
+        <button onClick={onSaveDraft} disabled={draftBusy}
+          className="text-xs font-bold text-slate-500 border border-slate-200 hover:border-teal-400 px-5 py-3 rounded-xl transition-colors disabled:opacity-50">
+          {draftBusy ? 'Enregistrement…' : 'Sauvegarder en brouillon'}
         </button>
         {step < 6 ? (
           <button onClick={() => setStep(step + 1)}

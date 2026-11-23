@@ -86,6 +86,12 @@ export const vehiclesAPI = {
   reviews: (id) => api.get(`/vehicles/${id}/reviews/`),
   similar: (id) => api.get(`/vehicles/${id}/similar/`),
   bulkPricing: (payload) => api.post('/vehicles/bulk-pricing/', payload),
+  ratePreview: (payload) => api.post('/vehicles/rate-preview/', payload),
+  draft: {
+    get: (vehicleId) => api.get('/vehicles/draft/', { params: vehicleId ? { vehicle: vehicleId } : {} }),
+    save: (payload) => api.put('/vehicles/draft/', payload),
+    clear: (vehicleId) => api.delete('/vehicles/draft/', { params: vehicleId ? { vehicle: vehicleId } : {} }),
+  },
 };
 
 export const adminVehiclesAPI = {

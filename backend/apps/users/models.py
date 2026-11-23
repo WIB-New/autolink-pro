@@ -108,6 +108,18 @@ class PlatformSettings(models.Model):
     delivery_fee = models.DecimalField(
         max_digits=12, decimal_places=2, default=5000,
         help_text='Frais de livraison du véhicule facturés au client.')
+    discount_mid_days = models.PositiveIntegerField(
+        default=4,
+        help_text='Durée de location (jours) à partir de laquelle la remise intermédiaire s\'applique.')
+    discount_mid_percent = models.DecimalField(
+        max_digits=4, decimal_places=1, default=5,
+        help_text='Remise (%) sur la location d\'au moins discount_mid_days jours.')
+    discount_long_days = models.PositiveIntegerField(
+        default=30,
+        help_text='Durée de location (jours) déclenchant la remise maximale.')
+    discount_long_percent = models.DecimalField(
+        max_digits=4, decimal_places=1, default=10,
+        help_text='Remise (%) sur la location d\'au moins discount_long_days jours.')
     pricing_overrides = models.JSONField(
         default=dict, blank=True,
         help_text='Surcharges de la grille tarifaire (tier_base, tier_deposit, tier_km, '

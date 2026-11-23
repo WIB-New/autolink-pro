@@ -158,6 +158,12 @@ class SiteConfigAPIView(APIView):
             'phones': [p.strip() for p in platform.phones.split(',') if p.strip()],
             'addresses': [a.strip() for a in platform.addresses.split('|') if a.strip()],
             'commission_rate': platform.commission_rate,
+            'driver_daily_fee': platform.driver_daily_fee,
+            'delivery_fee': platform.delivery_fee,
+            'discount_rules': [
+                {'min_days': platform.discount_mid_days, 'percent': platform.discount_mid_percent},
+                {'min_days': platform.discount_long_days, 'percent': platform.discount_long_percent},
+            ],
             'min_withdrawal_amount': platform.min_withdrawal_amount,
             'maintenance_mode': platform.maintenance_mode,
             'bookings_enabled': platform.bookings_enabled,

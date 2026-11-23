@@ -20,7 +20,8 @@ const inputCls = 'bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 tex
 
 /* Champs persistés par bloc — un PATCH ne transporte que le bloc sauvegardé. */
 const BLOCK_KEYS = {
-  commissions: ['commission_rate', 'driver_daily_fee', 'delivery_fee', 'cancel_deposit_keep_percent'],
+  commissions: ['commission_rate', 'driver_daily_fee', 'delivery_fee', 'cancel_deposit_keep_percent',
+    'discount_mid_days', 'discount_mid_percent', 'discount_long_days', 'discount_long_percent'],
   gateways: ['min_withdrawal_amount', 'max_withdrawal_amount', 'withdrawal_daily_cap', 'withdrawal_auto_approve'],
   tiers: ['pricing'],
   agencies: ['addresses'],
@@ -148,6 +149,32 @@ export default function AdminSettings() {
                 Le client récupère ce % de sa caution s'il annule avant le début ; AutoLink conserve le reste ({Math.round(Number(form.cancel_deposit_keep_percent || 0))} %).
               </p>
             </div>
+          </div>
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Remises longue durée (automatiques à la réservation)</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Remise intermédiaire dès (jours)</label>
+                <input type="number" min={0} value={Number(form.discount_mid_days || 0)}
+                  onChange={(e) => set('discount_mid_days')(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Remise intermédiaire (%)</label>
+                <input type="number" min={0} max={50} step={0.5} value={Number(form.discount_mid_percent || 0)}
+                  onChange={(e) => set('discount_mid_percent')(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Remise maximale dès (jours)</label>
+                <input type="number" min={0} value={Number(form.discount_long_days || 0)}
+                  onChange={(e) => set('discount_long_days')(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Remise maximale (%)</label>
+                <input type="number" min={0} max={50} step={0.5} value={Number(form.discount_long_percent || 0)}
+                  onChange={(e) => set('discount_long_percent')(e.target.value)} className={inputCls} />
+              </div>
+            </div>
+            <p className="text-[10px] text-slate-400 font-semibold mt-2">0 jour = remise désactivée. La remise s'applique sur le tarif de location (hors frais chauffeur et livraison).</p>
           </div>
           <div className="mt-4 bg-slate-50 rounded-xl p-3">
             <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Répartition — location de 100 000 F (hors frais)</div>

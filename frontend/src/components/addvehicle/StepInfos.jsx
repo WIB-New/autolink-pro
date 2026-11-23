@@ -45,8 +45,9 @@ export default function StepInfos({ form, set }) {
       </F>
       <div className="bg-teal-50 border border-teal-100 rounded-xl p-3.5 flex gap-2.5 text-[10px] text-teal-800">
         <Info size={13} className="shrink-0 mt-0.5" />
-        Le tarif de référence est adapté au marché local (Douala = référence). La gamme (Économique → Super Luxe)
-        sera attribuée objectivement par AutoLink selon la marque, l'année, le kilométrage et l'état.
+        Le tarif de référence est adapté au marché local de la ville choisie (coefficient de la grille tarifaire
+        plateforme). La gamme (Économique → Super Luxe) sera attribuée objectivement par AutoLink selon la marque,
+        l'année, le kilométrage et l'état.
       </div>
     </div>
   );
