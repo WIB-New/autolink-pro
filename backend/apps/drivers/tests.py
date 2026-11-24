@@ -78,6 +78,7 @@ class DriverRideWorkflowTests(APITestCase):
             client=self.client_user,
             vehicle=vehicle,
             driver=self.driver,
+            driver_type='internal',
             driver_response='offered',
             status='confirmed',
             start_date=start,
@@ -89,6 +90,12 @@ class DriverRideWorkflowTests(APITestCase):
             owner_amount=12500,
             pickup_address='Akwa, Douala',
             dropoff_address='Bonanjo, Douala',
+        )
+        from apps.payments.models import Payment
+        Payment.objects.create(
+            booking=self.booking, payer=self.client_user, method='wallet', status='completed',
+            amount=self.booking.subtotal, commission=self.booking.commission_amount,
+            owner_payout=self.booking.owner_amount,
         )
         self.client.force_authenticate(self.driver)
 
@@ -108,7 +115,7 @@ class DriverRideWorkflowTests(APITestCase):
         self.booking.finish()
         self.assertEqual(DriverEarning.objects.filter(booking=self.booking).count(), 1)
         profile = DriverProfile.objects.get(driver=self.driver)
-        self.assertEqual(profile.total_earned, Decimal('2500.00'))
+        self.assertEqual(profile.total_earned, self.booking.driver_fee)
         self.assertEqual(profile.total_trips, 1)
 
     def test_completion_without_assigned_driver_creates_no_earning(self):

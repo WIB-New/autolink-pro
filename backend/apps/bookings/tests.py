@@ -39,6 +39,111 @@ class BookingFlowTests(APITestCase):
         return self.client.post('/api/bookings/', {**self.payload, **extra}, format='json')
 
     # ── Création + paiement wallet ──────────────────────────────────────────
+    def test_blocked_dates_reject_quote_and_booking_without_debit(self):
+        from apps.vehicles.models import VehicleAvailability
+        VehicleAvailability.objects.create(vehicle=self.vehicle, start_date=self.start, end_date=self.end)
+        self.client_user.balance = 5_000_000
+        self.client_user.save()
+        quote = self.client.post('/api/bookings/quote/', self.payload, format='json')
+        self.assertEqual(quote.status_code, 400, quote.data)
+        response = self._book()
+        self.assertEqual(response.status_code, 400, response.data)
+        self.client_user.refresh_from_db()
+        self.assertEqual(self.client_user.balance, Decimal('5000000'))
+        self.assertFalse(Booking.objects.exists())
+        self.assertFalse(Payment.objects.exists())
+
+    def test_blocked_dates_reject_modification_without_extra_debit(self):
+        from apps.vehicles.models import VehicleAvailability
+        booking = self._confirmed_booking()
+        blocked_end = self.end + timedelta(days=3)
+        VehicleAvailability.objects.create(vehicle=self.vehicle, start_date=blocked_end, end_date=blocked_end)
+        self.client_user.refresh_from_db()
+        balance = self.client_user.balance
+        response = self.client.patch(f'/api/bookings/{booking.pk}/', {'end_date': str(blocked_end)}, format='json')
+        self.assertEqual(response.status_code, 400, response.data)
+        self.client_user.refresh_from_db()
+        self.assertEqual(self.client_user.balance, balance)
+        booking.refresh_from_db()
+        self.assertIsNone(booking.modification)
+
+    def test_untimed_driver_fee_is_charged_and_paid_once_at_booked_rate(self):
+        from apps.users.models import PlatformSettings
+        from apps.drivers.models import DriverEarning
+        settings = PlatformSettings.current()
+        settings.driver_daily_fee = Decimal('10000')
+        settings.save()
+        self.client_user.balance = 5_000_000
+        self.client_user.save()
+        response = self._book(driver_type='internal')
+        self.assertEqual(response.status_code, 201, response.data)
+        booking = Booking.objects.get(pk=response.data['id'])
+        self.assertEqual(booking.driver_fee, Decimal('20000'))
+        self.assertEqual(booking.payment.amount, booking.subtotal)
+        self.assertEqual(booking.payment.amount - booking.payment.commission - booking.payment.owner_payout, Decimal('20000'))
+        self.client.force_authenticate(self.admin)
+        assigned = self.client.post(f'/api/bookings/{booking.pk}/assign-driver/', {'driver_id': self.driver.pk}, format='json')
+        self.assertEqual(assigned.status_code, 200, assigned.data)
+        settings.driver_daily_fee = Decimal('15000')
+        settings.save()
+        booking.refresh_from_db()
+        booking.finish()
+        booking.finish()
+        booking.refresh_from_db()
+        self.assertEqual(booking.driver_fee, Decimal('20000'))
+        self.assertEqual(DriverEarning.objects.get(booking=booking).amount, Decimal('20000'))
+        self.driver.refresh_from_db()
+        self.assertEqual(self.driver.balance, Decimal('20000'))
+
+    def test_admin_cannot_add_unfunded_driver_to_paid_booking(self):
+        booking = self._confirmed_booking()
+        self.client_user.refresh_from_db()
+        balance = self.client_user.balance
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(f'/api/bookings/{booking.pk}/assign-driver/', {'driver_id': self.driver.pk}, format='json')
+        self.assertEqual(response.status_code, 400, response.data)
+        booking.refresh_from_db()
+        self.client_user.refresh_from_db()
+        self.assertIsNone(booking.driver_id)
+        self.assertEqual(booking.driver_type, 'none')
+        self.assertEqual(self.client_user.balance, balance)
+
+    def test_client_can_pay_for_driver_modification_before_assignment(self):
+        from apps.users.models import PlatformSettings
+        settings = PlatformSettings.current()
+        settings.driver_daily_fee = Decimal('10000')
+        settings.save()
+        booking = self._confirmed_booking()
+        initial_subtotal = booking.subtotal
+        self.client.force_authenticate(self.owner)
+        self.assertEqual(self.client.post(f'/api/bookings/{booking.pk}/owner-accept/').status_code, 200)
+        self.client.force_authenticate(self.client_user)
+        self.client_user.refresh_from_db()
+        balance = self.client_user.balance
+        response = self.client.patch(f'/api/bookings/{booking.pk}/', {'driver_type': 'internal'}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.client_user.refresh_from_db()
+        self.assertEqual(self.client_user.balance, balance - Decimal('20000'))
+        self.client.force_authenticate(self.owner)
+        accepted = self.client.post(f'/api/bookings/{booking.pk}/owner-accept/')
+        self.assertEqual(accepted.status_code, 200, accepted.data)
+        booking.refresh_from_db()
+        self.assertEqual(booking.subtotal, initial_subtotal + Decimal('20000'))
+        self.assertEqual(booking.payment.amount, booking.subtotal)
+        self.client.force_authenticate(self.admin)
+        assigned = self.client.post(f'/api/bookings/{booking.pk}/assign-driver/', {'driver_id': self.driver.pk}, format='json')
+        self.assertEqual(assigned.status_code, 200, assigned.data)
+
+    def test_unfunded_legacy_driver_creates_no_wallet_credit(self):
+        from apps.drivers.models import DriverEarning
+        booking = self._confirmed_booking()
+        Booking.objects.filter(pk=booking.pk).update(driver=self.driver, driver_type='internal', driver_fee=0)
+        booking.refresh_from_db()
+        booking.finish()
+        self.assertFalse(DriverEarning.objects.filter(booking=booking).exists())
+        self.driver.refresh_from_db()
+        self.assertEqual(self.driver.balance, 0)
+
     def test_timed_quote_and_wallet_payment_match(self):
         self.client_user.balance = 5_000_000
         self.client_user.save()

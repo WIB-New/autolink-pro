@@ -81,6 +81,10 @@ class BookingSerializer(serializers.ModelSerializer):
             errors = {field: 'Votre accord est obligatoire.' for field in ('terms_accepted', 'debit_authorized') if not attrs.get(field)}
             if errors:
                 raise serializers.ValidationError(errors)
+        vehicle = attrs.get('vehicle', getattr(self.instance, 'vehicle', None))
+        if vehicle and start and end and (not self.instance or {'vehicle', 'start_date', 'end_date'} & attrs.keys()):
+            if vehicle.unavailable_periods.filter(start_date__lte=end, end_date__gte=start).exists():
+                raise serializers.ValidationError({'vehicle': 'Le propriétaire a bloqué ce véhicule sur cette période.'})
         return attrs
 
     def create(self, validated_data):

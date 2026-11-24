@@ -101,3 +101,9 @@ class VehicleAvailabilitySerializer(serializers.ModelSerializer):
     class Meta:
         model = VehicleAvailability
         fields = '__all__'
+        read_only_fields = ['vehicle']
+
+    def validate(self, attrs):
+        if attrs['end_date'] < attrs['start_date']:
+            raise serializers.ValidationError({'end_date': 'La fin ne peut pas précéder le début.'})
+        return attrs

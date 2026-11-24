@@ -32,6 +32,29 @@ class VehicleCatalogueTests(APITestCase):
         self.approved = make_vehicle(self.owner, 'LT-100-AA')
         self.pending = make_vehicle(self.owner, 'LT-200-BB', status='pending')
 
+    def test_owner_blocks_dates_without_vehicle_in_payload(self):
+        self.client.force_authenticate(self.owner)
+        start = date.today() + timedelta(days=10)
+        response = self.client.post(f'/api/vehicles/{self.approved.pk}/availability/', {
+            'start_date': str(start), 'end_date': str(start + timedelta(days=2)),
+            'reason': 'Maintenance',
+        }, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['vehicle'], self.approved.pk)
+
+    def test_block_dates_rejects_other_owner_and_invalid_range(self):
+        self.client.force_authenticate(self.client_user)
+        start = date.today() + timedelta(days=10)
+        payload = {'start_date': str(start), 'end_date': str(start + timedelta(days=2))}
+        forbidden = self.client.post(f'/api/vehicles/{self.approved.pk}/availability/', payload, format='json')
+        self.assertEqual(forbidden.status_code, 403, forbidden.data)
+        self.client.force_authenticate(self.owner)
+        invalid = self.client.post(f'/api/vehicles/{self.approved.pk}/availability/', {
+            **payload, 'end_date': str(start - timedelta(days=1)),
+        }, format='json')
+        self.assertEqual(invalid.status_code, 400, invalid.data)
+        self.assertFalse(self.approved.unavailable_periods.exists())
+
     def test_public_catalogue_only_approved(self):
         r = self.client.get('/api/vehicles/')
         self.assertEqual(r.status_code, 200)

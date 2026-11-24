@@ -163,6 +163,11 @@ class BookingViewSet(viewsets.ModelViewSet):
         booking = self.get_object()
         if booking.status not in ('pending', 'confirmed'):
             raise ValidationError({'status': 'Cette réservation ne peut plus recevoir de chauffeur.'})
+        payment = getattr(booking, 'payment', None)
+        if (booking.driver_type != Booking.DriverType.INTERNAL or booking.driver_fee <= 0
+                or not payment or payment.status != 'completed'
+                or payment.amount - payment.commission - payment.owner_payout - booking.delivery_fee < booking.driver_fee):
+            raise ValidationError({'driver_id': 'La prestation chauffeur doit être choisie et payée par le client avant toute affectation.'})
         from apps.users.models import User
         driver_id = request.data.get('driver_id')
         if not driver_id:
@@ -340,8 +345,9 @@ class BookingViewSet(viewsets.ModelViewSet):
                         user=cl, kind='refund', method='wallet', amount=delta,
                         balance_after=cl.balance, reference=f'BK-{booking.pk:04d}-MODREF',
                         note=f'Remboursement supplément — modification refusée {booking.vehicle}')
+                booking.owner_response = booking.modification.get('previous_owner_response', 'pending')
                 booking.modification = None
-                booking.save(update_fields=['modification', 'updated_at'])
+                booking.save(update_fields=['modification', 'owner_response', 'updated_at'])
             _notify(booking.client, 'Modification refusée',
                     f'Le propriétaire a refusé votre modification sur {booking}. '
                     f'Votre réservation initiale reste inchangée.')
@@ -374,13 +380,12 @@ class BookingViewSet(viewsets.ModelViewSet):
                 setattr(booking, f, v)
         delta = Decimal(str(mod.get('delta', '0')))
         # Recalcule jours/prix depuis les nouvelles dates-heures
-        from datetime import datetime as dtc, time as tz
-        start = dtc.combine(booking.start_date, booking.start_time or tz(0, 0))
-        end = dtc.combine(booking.end_date, booking.end_time or tz(0, 0))
-        hours = max(1, (end - start).total_seconds() / 3600)
-        booking.days = max(1, -(-int(hours * 60) // (24 * 60)))
-        from apps.users.models import PlatformSettings
-        booking.driver_fee = (Decimal(str(PlatformSettings.current().driver_daily_fee or 10000)) * booking.days) if booking.driver_type != Booking.DriverType.NONE else Decimal('0')
+        booking.calculate_price()
+        for field, value in (mod.get('pricing') or {}).items():
+            if field in ('days', 'discount_percent'):
+                setattr(booking, field, int(value))
+            elif field in ('driver_fee', 'delivery_fee', 'subtotal', 'commission_amount', 'owner_amount'):
+                setattr(booking, field, Decimal(value))
         if delta < 0:
             from apps.payments.models import WalletTransaction
             cl = booking.client
@@ -392,7 +397,13 @@ class BookingViewSet(viewsets.ModelViewSet):
                 balance_after=cl.balance, reference=f'BK-{booking.pk:04d}-MODREF',
                 note=f'Remboursement modification {booking.vehicle}')
         booking.modification = None
-        booking.save()
+        booking.save(reprice=False)
+        payment = getattr(booking, 'payment', None)
+        if payment and payment.status == 'completed' and payment.escrow_status == 'held':
+            payment.amount = booking.subtotal
+            payment.commission = booking.commission_amount
+            payment.owner_payout = booking.owner_amount
+            payment.save(update_fields=['amount', 'commission', 'owner_payout'])
 
     @action(detail=False, methods=['get'], url_path='owner-stats')
     def owner_stats(self, request):
@@ -778,17 +789,8 @@ class BookingViewSet(viewsets.ModelViewSet):
             delivery_requested=booking.delivery_requested,
             daily_rate=booking.daily_rate, deposit_amount=booking.deposit_amount,
         )
-        from datetime import datetime as dtc, time as tz
-        _s = dtc.combine(merged['start_date'], merged['start_time'] or tz(0, 0))
-        _e = dtc.combine(merged['end_date'], merged['end_time'] or tz(0, 0))
-        probe.days = max(1, -(-int((_e - _s).total_seconds() / 60) // 1440))
-        from apps.users.models import PlatformSettings
-        _ps = PlatformSettings.current()
-        probe.driver_fee = (Decimal(str(_ps.driver_daily_fee or 10000)) * probe.days) if merged['driver_type'] != Booking.DriverType.NONE else Decimal('0')
-        probe.delivery_fee = Decimal(str(_ps.delivery_fee or 5000)) if booking.delivery_requested else Decimal('0')
-        probe.discount_percent = 10 if probe.days >= 30 else 5 if probe.days > 3 else 0
-        gross = probe.daily_rate * probe.days * Decimal(100 - probe.discount_percent) / 100
-        new_subtotal = (gross + probe.driver_fee + probe.delivery_fee).quantize(Decimal('0.01'))
+        probe.calculate_price()
+        new_subtotal = probe.subtotal
         delta = new_subtotal - booking.subtotal
         from apps.payments.models import WalletTransaction
         from apps.users.models import User
@@ -821,9 +823,14 @@ class BookingViewSet(viewsets.ModelViewSet):
             booking.modification = {
                 'patch': {k: str(v) for k, v in merged.items() if k in changes},
                 'delta': str(delta), 'subtotal': str(new_subtotal),
+                'pricing': {field: str(getattr(probe, field)) for field in (
+                    'days', 'discount_percent', 'driver_fee', 'delivery_fee',
+                    'subtotal', 'commission_amount', 'owner_amount')},
                 'delta_paid': want_extra > 0,
+                'previous_owner_response': prev.get('previous_owner_response', booking.owner_response),
             }
-            booking.save(update_fields=['modification', 'updated_at'])
+            booking.owner_response = 'pending'
+            booking.save(update_fields=['modification', 'owner_response', 'updated_at'])
         _notify(booking.vehicle.owner, 'Modification à valider',
                 f'{user.get_full_name()} propose : {merged["start_date"]} {merged["start_time"] or ""} '
                 f'→ {merged["end_date"]} {merged["end_time"] or ""}, '

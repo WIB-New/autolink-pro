@@ -125,7 +125,7 @@ class Booking(models.Model):
         self.discount_percent = 0 if timed else (
             long_pct if long_days and self.days >= long_days
             else mid_pct if mid_days and self.days >= mid_days else 0)
-        self.driver_fee = Decimal(str(ps.driver_daily_fee or 10000)) * self.days if timed and self.driver_type != self.DriverType.NONE else Decimal('0')
+        self.driver_fee = Decimal(str(ps.driver_daily_fee)) * self.days if self.driver_type != self.DriverType.NONE else Decimal('0')
         self.delivery_fee = Decimal(str(ps.delivery_fee or 5000)) if timed and self.delivery_requested else Decimal('0')
         # La commission ne s'applique que sur la location : les frais chauffeur
         # reviennent au chauffeur, les frais de livraison à la plateforme.
@@ -135,7 +135,11 @@ class Booking(models.Model):
         self.owner_amount = rental - self.commission_amount
 
     def save(self, *args, **kwargs):
-        self.calculate_price()
+        reprice = kwargs.pop('reprice', True)
+        price_fields = ('start_date', 'end_date', 'start_time', 'end_time', 'daily_rate', 'driver_type', 'delivery_requested')
+        previous = type(self).objects.filter(pk=self.pk).values(*price_fields).first() if self.pk else None
+        if reprice and (previous is None or any(previous[field] != getattr(self, field) for field in price_fields)):
+            self.calculate_price()
         super().save(*args, **kwargs)
 
     def sync_vehicle_status(self):
@@ -176,10 +180,14 @@ class Booking(models.Model):
             return
         from apps.drivers.models import DriverEarning, DriverProfile
         from apps.payments.models import WalletTransaction
-        from apps.users.models import PlatformSettings
 
-        daily = Decimal(str(PlatformSettings.current().driver_daily_fee or 10000))
-        amount = (daily * (self.days or 1)).quantize(Decimal('0.01'))
+        amount = self.driver_fee
+        payment = getattr(self, 'payment', None)
+        if amount <= 0 or not payment or payment.status != 'completed':
+            return
+        funded = payment.amount - payment.commission - payment.owner_payout - self.delivery_fee
+        if funded < amount:
+            return
         DriverProfile.objects.get_or_create(driver_id=self.driver_id)
         profile = DriverProfile.objects.select_for_update().get(driver_id=self.driver_id)
         _, created = DriverEarning.objects.get_or_create(
